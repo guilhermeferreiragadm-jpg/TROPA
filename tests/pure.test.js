@@ -1,0 +1,143 @@
+// Rodar: node --test tests/*.test.js
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
+const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
+const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;");
+const puro = trecho("/* @pure:start */", "/* @pure:end */");
+// new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
+// têm outro Object.prototype e falham no deepEqual estrito.
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida};")();
+
+test("diasPausa conta o primeiro e o último dia", () => {
+  assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
+  assert.equal(F.diasPausa("2026-10-05", "2026-10-11"), 7);
+  assert.equal(F.diasPausa("2026-10-05", "2026-10-12"), 8);
+});
+
+test("semanasDeslocadas: até 7 dias não desloca, depois arredonda para cima", () => {
+  assert.equal(F.semanasDeslocadas(7), 0);
+  assert.equal(F.semanasDeslocadas(8), 2);
+  assert.equal(F.semanasDeslocadas(14), 2);
+  assert.equal(F.semanasDeslocadas(15), 3);
+});
+
+test("rampaRetorno segue a tabela aprovada", () => {
+  assert.deepEqual(F.rampaRetorno(3), {fatores: [], refazer: false});
+  assert.deepEqual(F.rampaRetorno(4), {fatores: [0.8], refazer: false});
+  assert.deepEqual(F.rampaRetorno(8), {fatores: [0.6, 0.8], refazer: false});
+  assert.deepEqual(F.rampaRetorno(15), {fatores: [0.5, 0.65, 0.8], refazer: false});
+  assert.deepEqual(F.rampaRetorno(29), {fatores: [0.5, 0.65, 0.8], refazer: true});
+});
+
+test("pausaCobre: pausa aberta cobre tudo depois do início, fechada só até o fim", () => {
+  const ps = [{inicio: "2026-10-05", fim: "2026-10-08"}, {inicio: "2026-10-20", fim: null}];
+  assert.equal(F.pausaCobre(ps, "2026-10-04"), false);
+  assert.equal(F.pausaCobre(ps, "2026-10-05"), true);
+  assert.equal(F.pausaCobre(ps, "2026-10-08"), true);
+  assert.equal(F.pausaCobre(ps, "2026-10-09"), false);
+  assert.equal(F.pausaCobre(ps, "2026-10-25"), true);
+});
+
+test("deslocamentoEm só conta pausas já terminadas antes do dia", () => {
+  const ps = [{inicio: "2026-10-05", fim: "2026-10-18", desl: 2}, {inicio: "2026-11-02", fim: null}];
+  assert.equal(F.deslocamentoEm(ps, "2026-10-18"), 0);
+  assert.equal(F.deslocamentoEm(ps, "2026-10-19"), 2);
+  assert.equal(F.deslocamentoEm(ps, "2026-11-10"), 2);
+});
+
+test("fatorRetornoEm: primeira semana de volta usa o primeiro fator, depois sobe, depois volta a 1", () => {
+  const ps = [{inicio: "2026-10-05", fim: "2026-10-18", fatores: [0.6, 0.8]}];
+  assert.equal(F.fatorRetornoEm(ps, "2026-10-18"), 1);
+  assert.equal(F.fatorRetornoEm(ps, "2026-10-19"), 0.6);
+  assert.equal(F.fatorRetornoEm(ps, "2026-10-25"), 0.6);
+  assert.equal(F.fatorRetornoEm(ps, "2026-10-26"), 0.8);
+  assert.equal(F.fatorRetornoEm(ps, "2026-11-02"), 1);
+  assert.equal(F.fatorRetornoEm([], "2026-11-02"), 1);
+});
+
+test("semanaEm desloca o plano em semanas inteiras", () => {
+  const plano = {inicio: "2026-10-05", semanas: [{n: 1}, {n: 2}, {n: 3}, {n: 4}]};
+  assert.equal(F.semanaEm(plano, [], "2026-10-19").w, 3);
+  const ps = [{inicio: "2026-10-12", fim: "2026-10-18", desl: 0}];
+  assert.equal(F.semanaEm(plano, ps, "2026-10-19").w, 3);
+  const ps2 = [{inicio: "2026-10-12", fim: "2026-10-25", desl: 2}];
+  assert.equal(F.semanaEm(plano, ps2, "2026-10-26").w, 2);
+  assert.equal(F.semanaEm(plano, ps2, "2026-10-26").sem.n, 2);
+  assert.equal(F.semanaEm(plano, ps2, "2026-10-25").w, 3);
+});
+
+test("semanasAtrasoProva só avisa em plano com prova", () => {
+  const ps = [{desl: 2}, {desl: 3}];
+  assert.equal(F.semanasAtrasoProva({semProva: false}, ps), 5);
+  assert.equal(F.semanasAtrasoProva({semProva: true}, ps), 0);
+  assert.equal(F.semanasAtrasoProva({semProva: false}, []), 0);
+});
+
+test("escalarTreino reduz volume, tira intensidade e avisa", () => {
+  const forte = {k: "run", t: "Intervalado", min: 45, z: "forte", ef: "7–8/10", passos: ["x"]};
+  const r = F.escalarTreino(forte, 0.6);
+  assert.equal(r.min, 27); assert.equal(r.z, "fácil"); assert.match(r.passos[0], /60%/);
+  assert.equal(forte.min, 45, "não pode mudar o original");
+  const longo = {k: "run", t: "Longão", km: 10, z: "fácil", passos: []};
+  assert.equal(F.escalarTreino(longo, 0.8).km, 8);
+  assert.match(F.escalarTreino(longo, 0.8).passos[0], /8 km/);
+  assert.equal(F.escalarTreino(longo, 1), longo, "fator 1 devolve o mesmo treino");
+  const forca = {k: "gym", t: "Força A", min: 50, passos: ["Agachamento 4×8"]};
+  assert.equal(F.escalarTreino(forca, 0.5).passos[1], "Agachamento 4×8");
+});
+
+test("minutosPlan e prioridadeTreino", () => {
+  assert.equal(F.minutosPlan({min: 40}), 40);
+  assert.equal(F.minutosPlan({km: 10}), 70);
+  assert.equal(F.minutosPlan({}), 0);
+  assert.equal(F.prioridadeTreino({t: "Longão"}), 3);
+  assert.equal(F.prioridadeTreino({t: "Intervalado", z: "forte"}), 3);
+  assert.equal(F.prioridadeTreino({t: "Regenerativo", z: "muito fácil"}), 1);
+});
+
+test("calcularTeto: média das semanas feitas, +10%, piso de +15 min, limite do documento", () => {
+  assert.deepEqual(F.calcularTeto([200, 220, 180], 0, 0), {base: 200, teto: 220});
+  assert.deepEqual(F.calcularTeto([60, 0, 0], 0, 0), {base: 60, teto: 75});
+  assert.deepEqual(F.calcularTeto([0, 0, 0], 100, 0), {base: 100, teto: 115});
+  assert.equal(F.calcularTeto([0, 0, 0], 0, 0), null);
+  assert.deepEqual(F.calcularTeto([200, 200, 200], 0, 150), {base: 200, teto: 150});
+  assert.deepEqual(F.calcularTeto([0, 0, 0], 0, 90), {base: 0, teto: 90});
+});
+
+test("reduzirParaTeto corta primeiro o que importa menos e respeita os fixos", () => {
+  const dias = [
+    {id: "seg", min: 40, prio: 1, fixo: false},
+    {id: "qua", min: 45, prio: 3, fixo: false},
+    {id: "qui", min: 30, prio: 1, fixo: false},
+    {id: "dom", min: 90, prio: 3, fixo: false}
+  ];
+  assert.deepEqual(F.reduzirParaTeto(dias, 300), {cortes: [], total: 205, excedeu: false});
+  const r = F.reduzirParaTeto(dias, 190);
+  assert.deepEqual(r.cortes, [{id: "seg", de: 40, para: 24}]);
+  assert.equal(r.total, 189); assert.equal(r.excedeu, false);
+  const r2 = F.reduzirParaTeto(dias, 100);
+  assert.deepEqual(r2.cortes.map(c => c.id), ["seg", "qui", "dom", "qua"]);
+  assert.equal(r2.excedeu, true);
+  const fixos = dias.map(d => ({...d, fixo: true}));
+  const r3 = F.reduzirParaTeto(fixos, 100);
+  assert.deepEqual(r3.cortes, []); assert.equal(r3.excedeu, true);
+});
+
+test("fotoValida aceita só miniatura JPEG em data URL, pequena", () => {
+  const ok = "data:image/jpeg;base64," + "A".repeat(1000);
+  assert.equal(F.fotoValida(ok), true);
+  assert.equal(F.fotoValida("data:image/jpeg;base64," + "A".repeat(61000)), false, "acima de 60 KB");
+  assert.equal(F.fotoValida("data:image/png;base64,AAAA"), false, "só JPEG");
+  assert.equal(F.fotoValida("javascript:alert(1)"), false);
+  assert.equal(F.fotoValida("https://x.com/a.jpg"), false);
+  assert.equal(F.fotoValida('data:image/jpeg;base64,AAA"onerror="x'), false, "caracteres fora do base64");
+  assert.equal(F.fotoValida("data:image/jpeg;base64,"), false, "vazia");
+  assert.equal(F.fotoValida(""), false);
+  assert.equal(F.fotoValida(null), false);
+  assert.equal(F.fotoValida({}), false);
+});

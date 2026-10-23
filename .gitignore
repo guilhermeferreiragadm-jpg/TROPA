@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+backups/
+.sdd/
+# cópias locais: o git guarda o histórico e o publicar.html é a fonte
+index.html
+original-publicado.html
