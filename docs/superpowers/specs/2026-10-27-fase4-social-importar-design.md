@@ -68,24 +68,24 @@ Documento `grupos/<id>`:
 - Fim do desafio: o grupo fica visível por 30 dias como encerrado, depois `podarGrupos` o remove na próxima atualização. "Meta juntos" batida dá +200 XP uma vez por grupo (`dz.contado`, guardado em `LOG["gc_<gid>"] = true`).
 
 ## 4. Parceiro de responsa (dupla)
-- Um grupo com `dupla: true`, criado por "Chamar um parceiro" (Perfil, bloco Extras): sem tipo nem meta, só o resumo. Usa o mesmo código, o gid e a entrada de `grupos/<eu>`, e aceita exatamente 2 membros.
+- Um grupo com `dupla: true`, criado por "Chamar um parceiro" (tela Desafios, bloco "grupos de verdade"): sem tipo nem meta, só o resumo. Usa o mesmo código, o gid e a entrada de `grupos/<eu>`, e aceita exatamente 2 membros.
 - Mostra na tela Hoje um cartão "Parceiro" com: treinos da semana de cada um (`t`), foguinho de cada um (`f`) e a data da última atualização do parceiro. Sem parceiro ainda, mostra o código para convidar.
-- **Cutucada:** 4 frases prontas ("Bora treinar?", "Vi que você treinou, boa!", "Não esquece de hoje", "Descansa e volta amanhã"), uma por dia por dupla. Grava `cut: {d: hoje, k}` na minha entrada; o parceiro vê quando abrir o app (cartão na tela Hoje, dispensável por dia com `LOG["cd_<gid>_<data>"] = true`). Sem notificação do celular.
+- **Cutucada:** 4 frases prontas ("Bora treinar?", "Vi que você treinou, boa!", "Não esquece de hoje", "Descansa e volta amanhã"), uma por dia por dupla. Grava `cut: {d: hoje, k}` na minha entrada; o parceiro vê quando abrir o app (cartão na tela Hoje, dispensável por dia com `LOG["cdp_<gid>_<data>"] = true`). Sem notificação do celular.
 - Sair da dupla é um botão no cartão ("Sair da dupla"), com confirmação inline, e apaga a minha entrada. O parceiro continua vendo a dupla vazia e pode chamar outra pessoa com o mesmo código.
 - O cartão da dupla não mostra nada de saúde, comida ou peso, só `t`, `f` e a cutucada.
 
 ## 5. Importar treino (GPX, TCX e FIT, com .gz)
-- Entrada: um botão "Importar treino" no registro de treino do dia (tela de treino e `extrasHoje`) abre o seletor de arquivo (`.gpx,.tcx,.fit,.gz`). Limite de 10 MB depois de descompactar e de 60.000 pontos; acima disso recusa com mensagem clara.
+- Entrada: um botão "Importar do relógio ou Strava" na tela de cada treino planejado ainda não feito abre o seletor de arquivo. O app não tem o conceito de treino extra, então o arquivo sempre é registrado **no treino em que o botão foi tocado**; se a data ou o esporte do arquivo não batem, a prévia avisa e o botão vira "Registrar mesmo assim" (`.gpx,.tcx,.fit,.gz`). Limite de 10 MB depois de descompactar e de 60.000 pontos; acima disso recusa com mensagem clara.
 - `.gz`: descompactado com `DecompressionStream("gzip")`. Sem suporte no navegador, mensagem "Seu navegador não abre .gz, descompacte antes".
 - Detecção do formato pelo conteúdo, não pela extensão: `<gpx` é GPX, `<TrainingCenterDatabase` é TCX, bytes 8 a 11 iguais a `.FIT` é FIT.
 - Funções puras (no bloco `@pure`), todas síncronas e sem DOM:
   - `lerGPX(texto)` e `lerTCX(texto)`: lêem por expressão regular os trackpoints (`lat`, `lon`, `ele`, `time`, frequência cardíaca) e devolvem `{pontos, esporte}`. O esporte vem de `<type>` no GPX e de `Sport="..."` no TCX.
   - `lerFIT(bytes)`: leitor binário (cabeçalho de 12 ou 14 bytes, definições e mensagens de dados, campos de `record`: timestamp, posição em semicírculos, distância, altitude, frequência cardíaca; mensagem `session` para o esporte e totais). Ignora mensagens desconhecidas. Valida o CRC do cabeçalho quando existe; arquivo truncado devolve o que foi lido até ali e marca `parcial: true`.
-  - `resumirAtividade(leitura)`: devolve `{esporte, data, min, km, paceMinKm, subidaM, fcMedia, fcMax, parcial}`. A distância soma os trechos de Haversine (ou usa `distance` do FIT quando existe), pontos duplicados ou paradas de GPS são ignorados, a subida usa filtro de 3 m, o tempo é o intervalo entre o primeiro e o último ponto menos pausas de mais de 120 s.
+  - `resumirAtividade(leitura)`: devolve `{esporte, data, min, km, paceMinKm, subidaM, fcMedia, fcMax, parcial}`. A distância soma os trechos de Haversine (ou usa `distance` do FIT quando existe), pontos duplicados ou paradas de GPS são ignorados, a subida usa filtro de 3 m, o tempo soma os intervalos entre pontos; um intervalo de mais de 120 s só conta se houve deslocamento acima de 0,5 m/s nele (senão é pausa).
   - `esporteDoApp(esporteImportado)`: mapeia para os esportes do app (`run`, `bike`, `swim`, `walk`, `gym` ou, sem correspondência, `outro`).
-- **Tela de prévia:** mostra esporte, data, km, minutos, pace, subida e FC com a nota "O trajeto não é guardado, só estes números". Escolhas: "Registrar neste treino" (lista os treinos planejados do dia do mesmo esporte; usa o mesmo registro de treino feito da tela de treino, com `km`, `min`, `fc` e a origem "importado") ou "Registrar como treino extra". Se o treino do dia já está feito, pergunta se substitui.
+- **Tela de prévia:** mostra esporte, data, km, minutos, pace, subida e FC com a nota "O trajeto não é guardado, só estes números", mais a escolha de esforço (leve, ok, pesado, no limite) como no "Fiz o treino". "Registrar neste treino" grava o mesmo registro de treino feito (`ck_<data>_<i>`), com um campo extra `imp: {km, fc, sub, pace}` que marca a origem. Treino já feito não mostra o botão (é preciso desmarcar antes).
 - Nada do arquivo (nem o trajeto, nem o horário exato) é guardado. Só os campos do resumo, no mesmo registro do treino feito.
-- Duplicatas: se já existe treino importado para a mesma data com km e minutos idênticos, avisa "Esse treino já foi importado".
+- Duplicatas: se já existe treino importado na data do arquivo com os mesmos km e minutos, avisa "Esse treino já foi importado" e não grava.
 - Erros: arquivo vazio, formato desconhecido, sem pontos, datas fora de 1 ano para trás ou 1 dia para a frente, km acima de 500 ou minutos acima de 1.440: mensagem clara e nada é gravado.
 - Download do Strava: o texto de ajuda explica "No Strava, abra a atividade, menu, Exportar GPX (ou Exportar original, que pode ser .fit ou .gz)". Nenhuma integração com a conta.
 
