@@ -22,6 +22,8 @@ Decisão do usuário: a Nutri monta a lista da semana toda.
 - O card de sugestão (`sugestaoHTML`) também aparece dentro da sheet do resumo, logo abaixo da pergunta, com os mesmos botões e a mesma regra: nada muda sem o toque do usuário.
 - O botão **Falar com o coach sobre a semana** (sempre presente na sheet) abre o chat do coach com `chatPre` preenchido ("Como foi a minha semana e o que muda na próxima?").
 - Sem alteração no que o app grava de `rs_<segunda>.lido`.
+- O botão "Resumo da semana pronto" na tela Hoje continua visível, mesmo com `lido` verdadeiro, enquanto o resumo for da semana atual e ainda não tiver `corpo`: a pergunta do corpo é feita só uma vez, mas não se perde se o usuário fechou a sheet sem responder.
+- Ao aceitar o alívio, o motivo gravado em cada `aj_<dia>` vem de `motivoAjuste(sug)` (a causa real: corpo ou treinos pesados), seguido de ": aliviei a semana de X para Y min", e o `corpo` informado é gravado também em `fb_<segunda>`.
 
 ## 2. Carga de musculação considera prontidão e dor
 - Função pura `ajustarSugestaoCarga(sg, ctx)` com `ctx = {pront, dor, hold}`:

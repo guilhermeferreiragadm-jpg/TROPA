@@ -631,6 +631,11 @@ function podarFotos(){
   });
   comprasObsoletas(Object.keys(LOG), key(today)).forEach(k=>{ delete LOG[k]; });
   let tam = 0; try{ tam = JSON.stringify(LOG).length; }catch(e){}
+  if (tam > 200000){
+    const cps = Object.keys(LOG).filter(k=>/^compras_\d{4}-\d{2}-\d{2}$/.test(k)).sort();   // a poda de emergência larga primeiro as listas de compras, menos a mais recente
+    cps.slice(0, -1).forEach(k=>{ delete LOG[k]; });
+    try{ tam = JSON.stringify(LOG).length; }catch(e){}
+  }
   if (tam > 200000){ Object.keys(LOG).filter(k=>/^(ft_|ref_)/.test(k)).sort().forEach(k=>{ if (JSON.stringify(LOG).length < 180000) return; if (k.startsWith("ft_")) delete LOG[k]; else LOG[k] = LOG[k].map(r=>{ const c = Object.assign({}, r); delete c.thumb; return c; }); }); }
 }
 function enviarResumo(){
@@ -778,6 +783,12 @@ function ajustarSugestaoCarga(sg, ctx){
   const estado = (pront != null ? "prontidão "+pront : "") + (pront != null && dor != null ? ", " : "") + (dor != null ? "dor "+dor+"/10" : "");
   return {kg:hold, txt:"Hoje o seu corpo pede calma ("+estado+"). Mantenha "+String(hold).replace(".",",")+" kg, a maior carga da última sessão, e pare 2 reps antes da falha."+(dor != null && dor >= 7 ? " Pule o movimento que doer." : "")};
 }
+/* motivo gravado em cada dia aliviado: usa a causa real da sugestão (corpo ou treinos pesados), sem o conselho que vem depois do ponto */
+function motivoAjuste(sug){
+  const m = sug && typeof sug.motivo === "string" ? sug.motivo.trim() : "";
+  const base = m.split(/\.\s/)[0].replace(/[.:\s]+$/,"").trim();
+  return base || "Você pediu mais leveza";
+}
 const GRUPOS_COMPRAS = ["Hortifrúti","Carnes e ovos","Laticínios","Grãos e massas","Mercearia","Bebidas","Outros"];
 function comprasObsoletas(chaves, hoje){
   const ok = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d+"T00:00:00Z"));
@@ -793,7 +804,7 @@ function normalizarCompras(itens){
     const n = String(nb).trim().slice(0,60); if (!n) return;
     const k = normTxt(n); if (vistos.has(k)) return; vistos.add(k);
     const bruto = normTxt(x.grupo || x.g || ""), g = GRUPOS_COMPRAS.find(y=>normTxt(y) === bruto) || "Outros";
-    out.push({g, n, q:String(x.qtd || x.q || "").trim().slice(0,30), ok:false});
+    out.push({g, n, q:(v=>typeof v === "string" || typeof v === "number" ? String(v).trim().slice(0,30) : "")(x.qtd || x.q || ""), ok:false});
   });
   return out.sort((a,b)=>GRUPOS_COMPRAS.indexOf(a.g) - GRUPOS_COMPRAS.indexOf(b.g));
 }
@@ -876,8 +887,10 @@ function sugestao(ex){
   return {kg:kg, txt:"Mantenha "+num(kg,1)+" kg até fechar "+top+" reps em todas as séries."};
 }
 /* sugestão de carga ajustada pelo check-in de hoje: com prontidão baixa ou dor, segura a carga em vez de subir */
-function sugestaoAjustada(ex){
-  const sg = sugestao(ex), h = historicoEx(ex.nome), c = LOG["ci_"+key(today)];
+/* na tela do exercício e no contexto do coach: se o exercício está no treino de hoje, a sugestão já considera o check-in de hoje */
+function sugestaoDoEx(ex){ const hoje = treinosDe(today).some(t=>parseEx(t.passos).some(x=>norm(x.nome)===norm(ex.nome))); return hoje ? sugestaoAjustada(ex) : sugestao(ex); }
+function sugestaoAjustada(ex, dia){
+  const sg = sugestao(ex), h = historicoEx(ex.nome), c = LOG["ci_"+key(dia || today)];   // o check-in é do dia da sessão (padrão: hoje)
   const hold0 = h.length ? Math.max(...h[h.length-1].sets.map(x=>+x.kg||0)) : null, hold = hold0 > 0 ? hold0 : null;
   return ajustarSugestaoCarga(sg, {pront: c ? prontidao(c) : null, dor: c && c.dor != null ? +c.dor : null, hold});
 }
@@ -2010,8 +2023,9 @@ function sugestaoHTML(sug, pre){ pre = pre || "";
 }
 async function aceitarSugestao(sug){
   const at = new Date().toISOString();
-  for (const c of sug.cortes) await salvarLog("aj_"+c.id, {acao:"leve", por:"feedback", motivo:"Você sentiu a semana pesada ("+sug.pesados+" de "+sug.total+" treinos): aliviei a semana de "+sug.de+" para "+sug.para+" min", at});
-  await salvarLog("fb_"+sug.next, {estado:"aceito", de:sug.de, para:sug.para, cortes:sug.cortes.length, at});
+  const corpo = (LOG["rs_"+key(addDays(today, -dow(today)))] || {}).corpo;
+  for (const c of sug.cortes) await salvarLog("aj_"+c.id, {acao:"leve", por:"feedback", motivo:motivoAjuste(sug)+": aliviei a semana de "+sug.de+" para "+sug.para+" min", at});
+  await salvarLog("fb_"+sug.next, Object.assign({estado:"aceito", de:sug.de, para:sug.para, cortes:sug.cortes.length, at}, corpo ? {corpo} : {}));
   render(true); toast("Próxima semana aliviada.");
 }
 async function recusarSugestao(sug){ await salvarLog("fb_"+sug.next, {estado:"recusado", at:new Date().toISOString()}); render(true); }
@@ -2109,10 +2123,10 @@ function sheetFeito(a){
 /* ===================== FORÇA ===================== */
 let SESS = null, restT = null, restFim = 0;
 function sessaoDe(a){
-  const {k,i,t} = argTreino(a); const sk = "fs_"+k+"_"+i;
+  const {d,k,i,t} = argTreino(a); const sk = "fs_"+k+"_"+i;
   if (SESS && SESS.sk===sk) return SESS;
   const salvo = LOG[sk];
-  const ex = parseEx(t.passos).map(e=>{ const sv = salvo && (salvo.ex||[]).find(x=>norm(x.nome)===norm(e.nome)); const sg = sugestaoAjustada(e); const h = historicoEx(e.nome); const last = h.length ? h[h.length-1].sets : null;
+  const ex = parseEx(t.passos).map(e=>{ const sv = salvo && (salvo.ex||[]).find(x=>norm(x.nome)===norm(e.nome)); const sg = sugestaoAjustada(e, d); const h = historicoEx(e.nome); const last = h.length ? h[h.length-1].sets : null;
     return Object.assign({}, e, {sets: sv ? sv.sets : Array.from({length:e.series},(_,j)=>({kg: sg.kg!=null ? sg.kg : (last && last[j] ? +last[j].kg : ""), reps: e.reps, ok:false}))}); });
   SESS = {sk, a, ex, ini:(salvo&&salvo.ini)||new Date().toISOString()};
   return SESS;
@@ -2138,7 +2152,7 @@ function telaForca(a){
   app.querySelectorAll("[data-kg]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.kg.split("~").map(Number); S.ex[x].sets[y].kg = parseFloat(String(inp.value).replace(",","."))||""; salvarSessao(); }));
   app.querySelectorAll("[data-rp]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.rp.split("~").map(Number); S.ex[x].sets[y].reps = parseInt(inp.value)||""; salvarSessao(); }));
   app.querySelectorAll("[data-ok]").forEach(b=>b.addEventListener("click", ()=>{ const [x,y] = b.dataset.ok.split("~").map(Number); const s2 = S.ex[x].sets[y]; s2.ok = !s2.ok; salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); if (s2.ok) iniciarDescanso(90); }));
-  app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); }));
+  app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e, d); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); }));
   const f = $("fim"); if (f) f.addEventListener("click", ()=>terminarForca(a));
   desenharDescanso(); crono();
 }
@@ -2169,7 +2183,7 @@ async function terminarForca(a){
   ir("treino","fim",a); checarNivel(antes);
 }
 function telaExercicio(nome){
-  const p = POSES[poseDe(nome)], h = historicoEx(nome), sg = sugestao((()=>{ const ini0 = addDays(today,-dow(today)); for (let i=-7;i<14;i++){ const e = parseEx(treinosBase(addDays(ini0,i)).flatMap(t=>t.passos||[])).find(x=>norm(x.nome)===norm(nome)); if (e) return e; } return {nome, series:3, reps:8}; })());
+  const p = POSES[poseDe(nome)], h = historicoEx(nome), sg = sugestaoDoEx((()=>{ const ini0 = addDays(today,-dow(today)); for (let i=-7;i<14;i++){ const e = parseEx(treinosBase(addDays(ini0,i)).flatMap(t=>t.passos||[])).find(x=>norm(x.nome)===norm(nome)); if (e) return e; } return {nome, series:3, reps:8}; })());
   const kgs = h.map(s=>Math.max(...s.sets.map(x=>+x.kg||0))), mx = Math.max(1,...kgs), mn = Math.min(...kgs, mx);
   const app = tela('<button type="button" class="back" id="vt">← Treino</button><span class="k">como fazer</span><h1 class="h1">'+esc(nome)+'</h1>'+
     '<div class="demo big">'+demoSVG(nome)+'</div><div class="steps">'+p.cues.map((c,i)=>'<div><span>'+(i+1)+' · '+esc(c)+'</span></div>').join("")+'</div><div class="chips">'+p.mus.split(", ").map(m=>'<span>'+esc(m)+'</span>').join("")+'</div>'+
@@ -2410,7 +2424,9 @@ function bindFeed(app){
   });
 }
 function convite(){ const c = meuCodigo(); return "Bora treinar junto? Tô usando o "+BRAND+", app de treino com IA que monta o plano pro seu objetivo. Entra pelo link com sua conta do Claude (é grátis)"+(c?" e usa meu código "+c:"")+": https://claude.ai/artifact/"+ARTIFACT_ID; }
-async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Copiado. Cole no WhatsApp."); }catch(e){ const ov = $("ov"); ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpx").onclick = ()=>{ ov.innerHTML = ""; }; } }
+async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Copiado. Cole no WhatsApp."); }catch(e){ const ov = $("ov"), aberta = ov.querySelector(".sheet");
+    if (aberta){ const w = document.createElement("div"); w.innerHTML = '<b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5"></textarea>'; aberta.appendChild(w); const ta = w.querySelector("textarea"); ta.value = t; ta.select(); toast("Não consegui copiar sozinho. Copie o texto abaixo."); return; }   // já tem uma sheet aberta (ex.: lista de compras): não substitui nem fecha
+    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpx").onclick = ()=>{ ov.innerHTML = ""; }; } }
 
 /* ===================== COMIDA ===================== */
 function telaComida(o){
@@ -2453,32 +2469,34 @@ function sheetRepetir(ref){
 /* ===== lista de compras da semana (a Nutri monta, você marca o que já tem) ===== */
 function semanaCompras(){ return key(dow(today)===6 ? addDays(today,1) : addDays(today, -dow(today))); }
 async function gerarCompras(ini){
-  const p = P.perfil || {}, m = metasDia(today); let n = 0;
-  for (let i=0;i<7;i++) n += treinosDe(addDays(parseD(ini), i)).length;
+  const p = P.perfil || {}; let n = 0, diaT = null;   // metas pelo primeiro dia com treino da semana da lista (dia típico de treino); sem treino, as de hoje
+  for (let i=0;i<7;i++){ const d = addDays(parseD(ini), i), q = treinosDe(d).length; n += q; if (q && !diaT) diaT = d; }
+  const m = metasDia(diaT || today);
   const pedido = "Você é a Nutri do app (guia de alimentação, não nutricionista). Monte a lista de compras de supermercado para 7 dias a partir de "+ini+", comida brasileira simples e barata, para UMA pessoa. Restrições: "+((p.restricoes||[]).join(", ")||"nenhuma")+". Orçamento: "+(p.orcamento||"normal")+". Metas diárias: proteína "+(m ? m.prot[0]+"–"+m.prot[1] : "?")+" g, carboidrato "+(m ? m.carb[0]+"–"+m.carb[1] : "?")+" g. Treinos na semana: "+n+"."+(p.menor ? " Menor de idade: sem déficit e sem suplemento." : "")+
     " Use quantidades realistas para a semana (ex.: 1 kg, 2 dúzias, 3 pacotes). No máximo 40 itens. Responda só JSON: {\"itens\":[{\"grupo\":\"Hortifrúti|Carnes e ovos|Laticínios|Grãos e massas|Mercearia|Bebidas|Outros\",\"nome\":\"...\",\"qtd\":\"...\"}]}.";
   try{
     const r = await comTempo(sample.json(pedido, {cache:false}), 40000);
-    const itens = normalizarCompras(r && r.itens); if (!itens.length) return null;
+    const itens = normalizarCompras(Array.isArray(r) ? r : r && r.itens); if (!itens.length) return null;
     const v = {itens, at:new Date().toISOString()}; await salvarLog("compras_"+ini, v); return v;
   }catch(e){ registrarErro("lista de compras", e); return null; }
 }
+let comprasGerando = false;
 function sheetCompras(){
   const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ ov.innerHTML = ""; };
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
   $("dim").addEventListener("click", fecha);
-  let gerando = false;
+  const raiz = $("cpb");
   const montar = async ()=>{
-    if (gerando) return;
+    if (comprasGerando) return;
     if (!sample){ $("cpm").textContent = "A Nutri não está disponível agora."; return; }
-    gerando = true;
+    comprasGerando = true;
     try{
       $("cpb").innerHTML = '<div class="hint">A Nutri está montando a lista…</div>';
       const v = await gerarCompras(ini);
-      const m = $("cpm"); if (!m) return;
+      const m = $("cpm"); if (!m || !raiz.isConnected || $("cpb") !== raiz) return;   // a sheet foi fechada (ou refeita) durante a espera: não pinta na antiga
       m.textContent = v ? "" : "Não consegui montar agora. Tente de novo.";
       pinta();
-    } finally { gerando = false; }
+    } finally { comprasGerando = false; }
   };
   const pinta = ()=>{
     const v = LOG["compras_"+ini], b = $("cpb"); if (!b) return;
@@ -2489,7 +2507,7 @@ function sheetCompras(){
     b.querySelectorAll("input[data-i]").forEach(c=>c.addEventListener("change", ()=>{ v.itens[+c.dataset.i].ok = c.checked; salvarLog("compras_"+ini, v); }));
     $("cpco").onclick = ()=>copiar(comprasTexto(v.itens));
     $("cpba").onclick = ()=>baixar("lista-de-compras-"+ini+".txt", comprasTexto(v.itens), "text/plain");
-    $("cpre").onclick = montar; $("cpfe").onclick = fecha;
+    $("cpre").onclick = ()=>{ if ((LOG["compras_"+ini]||{}).itens && LOG["compras_"+ini].itens.some(i=>i.ok) && !confirm("Refazer a lista apaga as marcações. Continuar?")) return; montar(); }; $("cpfe").onclick = fecha;
   };
   pinta();
 }
@@ -2997,6 +3015,9 @@ async function gerarResumo(ini){
     try{ const r = await comTempo(sample.json(pedido, {cache:false}), 40000); if (r && r.resumo) v = {titulo:String(r.titulo||"Resumo da semana").slice(0,50), txt:String(r.resumo).slice(0,360), destaque:String(r.destaque||"").slice(0,200), atencao:String(r.atencao||"").slice(0,200), proxima:String(r.proxima||"").slice(0,260)}; }catch(e){ registrarErro("resumo semanal", e); }
   }
   if (!v) v = {titulo:"Resumo da semana", txt:"Você fez "+dd.feitos+" de "+dd.plan+" treinos e "+dd.km+" km."+(dd.sono!=null?" Sono médio de "+dd.sono+" h.":""), destaque:dd.prs?dd.prs+" recorde"+(dd.prs>1?"s":"")+" de carga.":"", atencao:dd.dorMax>=6?"Teve dor de "+dd.dorMax+"/10 num check-in. Fale com o coach.":"", proxima:dd.prox.length?"Semana que vem: "+dd.prox.slice(0,3).join(" · ")+".":""};
+  const agora = LOG["rs_"+k];   // pode ter mudado durante o await (outra aba, outra abertura, resposta do corpo)
+  if (agora && agora.txt) return agora;
+  if (agora){ if (agora.corpo) v.corpo = agora.corpo; if (agora.lido) v.lido = agora.lido; }
   v.at = new Date().toISOString(); await salvarLog("rs_"+k, v); return v;
 }
 async function sheetResumo(ini){
@@ -3024,7 +3045,7 @@ async function sheetResumo(ini){
 /* ---- peças extras da tela Hoje (a janela, o resumo e o atalho das missões) ---- */
 function extrasHoje(){
   const out = [], est = janelaEstado(), ini = semanaDoResumo();
-  if (ini){ const rs = LOG["rs_"+key(ini)]; if (!(rs && rs.lido)){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "rsbtn"; b.innerHTML = '<span><b>Resumo da semana pronto</b><small>como foi, o que mudou e o foco da próxima</small></span><span class="n">→</span>'; b.addEventListener("click", ()=>sheetResumo(ini)); out.push(b); } }
+  if (ini){ const rs = LOG["rs_"+key(ini)], atual = +ini === +addDays(today, -dow(today)); if (!(rs && rs.lido) || (atual && !rs.corpo)){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "rsbtn"; b.innerHTML = '<span><b>Resumo da semana pronto</b><small>como foi, o que mudou e o foco da próxima</small></span><span class="n">→</span>'; b.addEventListener("click", ()=>sheetResumo(ini)); out.push(b); } }
   if (est==="aberta"){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "tjbtn"; const sq = janelaSeq(); b.innerHTML = '<span><b>A Tropa está aberta agora</b><small>conte como foi o dia até 21h · +20 XP'+(sq?' · '+sq+(sq===1?' dia':' dias')+' seguidos':'')+'</small></span><span class="n">→</span>'; b.addEventListener("click", sheetTropa); out.push(b); }
   return out;
 }
@@ -3338,7 +3359,7 @@ function contexto(q){
   const ci = LOG["ci_"+key(today)];
   const cis = ESCALA_DOR+"\n"+(ci ? "Check-in hoje: sono "+ci.sono+"h"+(ci.dormiu?" (dormiu "+ci.dormiu+", acordou "+ci.acordou+")":"")+", energia "+ci.humor+"/5, dor "+ci.dor+"/10, prontidão "+prontidao(ci)+"." : "Sem check-in hoje.")+(LOG["aj_"+key(today)] ? " Ajuste de hoje: "+LOG["aj_"+key(today)].acao+"." : "");
   const nomes = new Set(); Object.keys(LOG).filter(k=>k.startsWith("fs_")).forEach(k=>(LOG[k].ex||[]).forEach(e=>nomes.add(e.nome)));
-  const cargas = [...nomes].slice(0,10).map(nm=>{ const h = historicoEx(nm); if (!h.length) return ""; const l = h[h.length-1]; return nm+": último "+l.d+" "+l.sets.map(x=>x.kg+"kg×"+x.reps).join(", ")+" → "+sugestao({nome:nm, series:l.sets.length, reps:Math.max(...l.sets.map(x=>+x.reps||0))}).txt; }).filter(Boolean).join("\n");
+  const cargas = [...nomes].slice(0,10).map(nm=>{ const h = historicoEx(nm); if (!h.length) return ""; const l = h[h.length-1]; return nm+": último "+l.d+" "+l.sets.map(x=>x.kg+"kg×"+x.reps).join(", ")+" → "+sugestaoDoEx({nome:nm, series:l.sets.length, reps:Math.max(...l.sets.map(x=>+x.reps||0))}).txt; }).filter(Boolean).join("\n");
   const m = metasDia(today), c = consumido(today);
   const comida = "REFEIÇÕES DE HOJE: "+(refeicoesHoje().filter(r=>r.comeu).map(r=>r.refeicao+": "+r.comeu+(r.estimativa?" ("+r.estimativa+")":"")+(r.foto?" [foto]":"")).join("; ")||"nada registrado")+(m?"\nMETAS DE HOJE: proteína "+m.prot.join("–")+" g (já ~"+c.p+" g), carbo "+m.carb.join("–")+" g, água "+m.agua+" L.":"");
   const kb = kbPick(modo==="treino"?KBC:KBN, q);

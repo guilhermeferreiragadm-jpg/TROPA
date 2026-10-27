@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas, motivoAjuste};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -427,4 +427,21 @@ test("normalizarCompras mantém ordem estável no grupo e corta em 60 antes de o
 
 test("comprasTexto aceita q indefinido", () => {
   assert.equal(F.comprasTexto([{g:"Outros", n:"Sal", ok:false}]), "Outros\n[ ] Sal");
+});
+
+test("motivoAjuste usa a causa real e não diz pesada quando a causa é o corpo", () => {
+  const dol = F.motivoAjuste(F.sugerirSemana([], "dolorido"));
+  assert.equal(dol, "Você disse que está dolorido");
+  assert.ok(!/pesad/i.test(dol));
+  const can = F.motivoAjuste(F.sugerirSemana([{rpe:"pesado", comoPlano:true}], "cansado"));
+  assert.match(can, /cansado/);
+  const pes = F.motivoAjuste(F.sugerirSemana([{rpe:"pesado"}, {rpe:"limite"}, {rpe:"ok"}]));
+  assert.match(pes, /pesados \(2 de 3\)/);
+  assert.equal(F.motivoAjuste(null), "Você pediu mais leveza");
+  assert.equal(F.motivoAjuste({motivo:""}), "Você pediu mais leveza");
+});
+
+test("normalizarCompras só aceita qtd texto ou número", () => {
+  const r = F.normalizarCompras([{nome:"A", qtd:{x:1}}, {nome:"B", qtd:["1"]}, {nome:"C", qtd:2}, {nome:"D", qtd:" 1 kg "}, {nome:"E", qtd:true}, {nome:"F", q:"3 pct"}]);
+  assert.deepEqual(r.map(x=>x.q), ["", "", "2", "1 kg", "", "3 pct"]);
 });
