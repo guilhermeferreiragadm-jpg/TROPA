@@ -4,7 +4,7 @@ App de treino e nutrição com coach de IA, feed entre amigos e acompanhamento d
 
 ## Como o projeto é organizado
 - `publicar.html`: o app inteiro (HTML, CSS e JS). **É a fonte principal.** Edite este arquivo.
-- `tests/`: testes em Node das funções puras (pausa, volta gradual, teto de carga, validação da foto) e uma checagem de que o script compila.
+- `tests/`: testes em Node das funções puras (pausa, volta gradual, teto de carga, validação da foto, grupos, importação de GPX e TCX, leitor de FIT) e uma checagem de que o script compila.
 - `docs/superpowers/specs/`: especificação da pausa, do teto de carga e do documento de fisioterapia.
 - `docs/superpowers/plans/`: plano de implementação dessas funcionalidades.
 
@@ -47,6 +47,9 @@ Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem pap
 - Foguinho, XP, medalhas, desafios, feed e retrospectiva.
 - Resumo de domingo com pergunta sobre o corpo e sugestão de aliviar a próxima semana, carga da musculação que considera prontidão e dor, e lista de compras da semana montada pela Nutri.
 - Tela Corpo (Perfil): peso, medidas, gráfico e tendência de 4 semanas, fotos de progresso em miniatura (até 6, só adultos), cartão semanal de pesagem na tela Hoje e faixa de calorias estimada com piso de segurança (só adultos, sem alerta de saúde nem ciclo irregular informado).
+- Grupos reais por código com desafio coletivo.
+- Parceiro de responsa (dupla com cutucada diária).
+- Importar treino de GPX, TCX e FIT (inclusive .gz).
 
 ## Pendências conhecidas
 - A fase 1 (sugestão da próxima semana, repetir refeição, motivo do treino) foi validada só por testes de funções puras e leitura de código; falta conferir os cards e a sheet dentro do artifact. Planos personalizados com fases (pl.fases) usam textos de motivo específicos do plano de origem; os planos gerados pelo app usam textos genéricos.
@@ -56,3 +59,4 @@ Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem pap
 - Ids repetidos entre telas (`pt`, `pm`, `pok`) e pequenos textos a ajustar.
 - A foto de perfil só aparece para a própria pessoa; no feed os amigos aparecem com iniciais.
 - A fase 3 (corpo) foi validada só por testes de funções puras e leitura de código; falta conferir dentro do artifact. Menores de 18 anos registram só o peso: sem medidas, foto, tendência, faixa de calorias ou lembrete. A faixa de calorias não substitui nutricionista.
+- A fase 4 (grupos, parceiro de responsa e importação de treino) foi validada só por testes de funções puras e leitura de código; falta conferir dentro do artifact. As regras de banco `grupos` e `grupos/{self}` precisam ser declaradas no publish. O fluxo de grupos e a importação ainda não foram exercitados no app publicado.
