@@ -1950,7 +1950,7 @@ function feitosSemana(ini){
 function sugestaoSemana(){
   if (!P || !P.perfil || !planoAtual() || pausaAtiva()) return null;
   const seg0 = addDays(today, -dow(today)), next = addDays(seg0, 7), nk = key(next);
-  const res = sugerirSemana(feitosSemana(seg0));
+  const res = sugerirSemana(feitosSemana(seg0), (LOG["rs_"+key(seg0)]||{}).corpo);
   if (res.tipo === "subir") return LOG["fbs_"+key(seg0)] ? null : res;
   if (res.tipo !== "aliviar" || LOG["fb_"+nk]) return null;
   const dias = [];
@@ -1962,10 +1962,10 @@ function sugestaoSemana(){
   const r = reduzirParaTeto(dias, Math.round(de*0.85)); if (!r.cortes.length) return null;
   return Object.assign({}, res, {next:nk, de, para:r.total, cortes:r.cortes});
 }
-function sugestaoHTML(sug){
+function sugestaoHTML(sug, pre){ pre = pre || "";
   if (!sug) return "";
-  if (sug.tipo === "aliviar") return '<div class="flag"><b>Quer aliviar a próxima semana?</b> '+esc(sug.motivo)+'. Posso passar '+sug.cortes.length+(sug.cortes.length===1?' dia':' dias')+' da próxima semana para a versão leve ('+sug.de+' para '+sug.para+' min). Nada muda sem o seu aceite.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="sgok">Aliviar a próxima semana</button><button type="button" class="btn sm ghost" id="sgno">Manter como está</button></div></div>';
-  return '<div class="flag ok"><b>'+esc(sug.motivo)+'.</b> Se quiser mais desafio, converse com o coach: o plano só sobe se você pedir.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="sgco">Falar com o coach</button><button type="button" class="btn sm ghost" id="sgnn">Agora não</button></div></div>';
+  if (sug.tipo === "aliviar") return '<div class="flag"><b>Quer aliviar a próxima semana?</b> '+esc(sug.motivo)+'. Posso passar '+sug.cortes.length+(sug.cortes.length===1?' dia':' dias')+' da próxima semana para a versão leve ('+sug.de+' para '+sug.para+' min). Nada muda sem o seu aceite.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="'+pre+'sgok">Aliviar a próxima semana</button><button type="button" class="btn sm ghost" id="'+pre+'sgno">Manter como está</button></div></div>';
+  return '<div class="flag ok"><b>'+esc(sug.motivo)+'.</b> Se quiser mais desafio, converse com o coach: o plano só sobe se você pedir.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="'+pre+'sgco">Falar com o coach</button><button type="button" class="btn sm ghost" id="'+pre+'sgnn">Agora não</button></div></div>';
 }
 async function aceitarSugestao(sug){
   const at = new Date().toISOString();
@@ -1980,13 +1980,14 @@ async function manterOriginalFeedback(ini){
   await salvarLog("fb_"+key(ini), {estado:"recusado", at:new Date().toISOString()});
   render(true); toast("Plano original mantido nesta semana.");
 }
-function bindSugestao(){
+function bindSugestao(aoAgir, pre){
   const sug = sugestaoSemana(); if (!sug) return;
-  const ok = $("sgok"), no = $("sgno"), co = $("sgco"), nn = $("sgnn");
-  if (ok) ok.addEventListener("click", ()=>aceitarSugestao(sug));
-  if (no) no.addEventListener("click", ()=>recusarSugestao(sug));
-  if (co) co.addEventListener("click", ()=>{ chatModo = "coach"; chatPre = "Os últimos treinos estavam leves. Dá para aumentar a carga da próxima semana?"; ir("chat"); });
-  if (nn) nn.addEventListener("click", ()=>salvarLog("fbs_"+key(addDays(today, -dow(today))), true).then(()=>render(true)));
+  pre = pre || ""; const depois = () => { if (aoAgir) aoAgir(); };
+  const ok = $(pre+"sgok"), no = $(pre+"sgno"), co = $(pre+"sgco"), nn = $(pre+"sgnn");
+  if (ok) ok.addEventListener("click", ()=>{ depois(); aceitarSugestao(sug); });
+  if (no) no.addEventListener("click", ()=>{ depois(); recusarSugestao(sug); });
+  if (co) co.addEventListener("click", ()=>{ depois(); chatModo = "coach"; chatPre = "Os últimos treinos estavam leves. Dá para aumentar a carga da próxima semana?"; ir("chat"); });
+  if (nn) nn.addEventListener("click", ()=>{ depois(); salvarLog("fbs_"+key(addDays(today, -dow(today))), true).then(()=>render(true)); });
 }
 
 /* ===================== SEMANA ===================== */
@@ -2917,8 +2918,20 @@ async function sheetResumo(ini){
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">Resumo da semana</h2><div id="rsb"><div class="hint">O coach está montando o seu resumo…</div></div></div>';
   $("dim").onclick = fecha;
   const v = await gerarResumo(ini), b = $("rsb"); if (!b) return;
-  b.innerHTML = '<h3 class="h2" style="font-size:1.3rem">'+esc(v.titulo)+'</h3><p>'+esc(v.txt)+'</p>'+(v.destaque?'<div class="flag ok"><b>Destaque:</b> '+esc(v.destaque)+'</div>':'')+(v.atencao?'<div class="flag"><b>Atenção:</b> '+esc(v.atencao)+'</div>':'')+(v.proxima?'<div class="coach"><span class="av">IA</span><span><b>Próxima semana:</b> '+esc(v.proxima)+'</span></div>':'')+'<button type="button" class="btn ghost" id="rsok">Fechar</button>';
-  $("rsok").onclick = fecha; if (!v.lido){ v.lido = true; salvarLog("rs_"+key(ini), v); }
+  b.innerHTML = '<h3 class="h2" style="font-size:1.3rem">'+esc(v.titulo)+'</h3><p>'+esc(v.txt)+'</p>'+(v.destaque?'<div class="flag ok"><b>Destaque:</b> '+esc(v.destaque)+'</div>':'')+(v.atencao?'<div class="flag"><b>Atenção:</b> '+esc(v.atencao)+'</div>':'')+(v.proxima?'<div class="coach"><span class="av">IA</span><span><b>Próxima semana:</b> '+esc(v.proxima)+'</span></div>':'')+'<div id="rsx"></div>';
+  const atual = +ini === +addDays(today, -dow(today));   // pergunta e card só quando o resumo é da semana atual
+  const desenhar = () => {
+    const x = $("rsx"); if (!x) return;
+    const rs = LOG["rs_"+key(ini)] || v;
+    x.innerHTML = (atual ? '<span class="k">como está o corpo para a próxima semana?</span><div class="chips" id="rscorpo">'+[["bem","Bem"],["cansado","Cansado"],["dolorido","Dolorido"]].map(([c,l])=>'<button type="button" class="chip" data-v="'+c+'" aria-pressed="'+(rs.corpo===c)+'">'+l+'</button>').join("")+'</div>'+sugestaoHTML(sugestaoSemana(), "r") : '')+
+      '<button type="button" class="btn" id="rscoach">Falar com o coach sobre a semana</button><button type="button" class="btn ghost" id="rsok">Fechar</button>';
+    const c = $("rscorpo"); if (c) c.onclick = async e=>{ const bt = e.target.closest("button[data-v]"); if (!bt) return; await salvarLog("rs_"+key(ini), Object.assign({}, LOG["rs_"+key(ini)] || v, {corpo:bt.dataset.v})); desenhar(); };
+    if (atual) bindSugestao(fecha, "r");
+    $("rscoach").onclick = ()=>{ fecha(); chatModo = "coach"; chatPre = "Como foi a minha semana e o que muda na próxima?"; ir("chat"); };
+    $("rsok").onclick = fecha;
+  };
+  desenhar();
+  if (!v.lido){ v.lido = true; salvarLog("rs_"+key(ini), v); }
 }
 
 /* ---- peças extras da tela Hoje (a janela, o resumo e o atalho das missões) ---- */
