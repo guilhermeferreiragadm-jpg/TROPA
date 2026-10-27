@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -140,4 +140,34 @@ test("fotoValida aceita só miniatura JPEG em data URL, pequena", () => {
   assert.equal(F.fotoValida(""), false);
   assert.equal(F.fotoValida(null), false);
   assert.equal(F.fotoValida({}), false);
+});
+
+test("motivoGenerico nunca cita prova, data ou distância que não está no contexto", () => {
+  const proibidos = /18\/10|70\.3|fevereiro|10 km de|Hyrox/;
+  const casos = [
+    {k:"run", t:"Longão", km:12}, {k:"run", t:"Corrida regenerativa"}, {k:"run", t:"Intervalado"},
+    {k:"run", t:"Corrida limiar"}, {k:"run", t:"Corrida leve"}, {k:"bike", t:"Bike sweet spot"},
+    {k:"bike", t:"Bike zona 2"}, {k:"swim", t:"Natação CSS"}, {k:"swim", t:"Natação contínua"},
+    {k:"gym", t:"Força"}
+  ];
+  for (const t of casos) {
+    const m = F.motivoGenerico(t, {});
+    assert.ok(m.length > 20, "motivo vazio para " + t.t);
+    assert.doesNotMatch(m, proibidos, t.t);
+  }
+});
+
+test("motivoGenerico usa fase, descarga, longão anterior e prova só quando vêm no contexto", () => {
+  const lg = F.motivoGenerico({k:"run", t:"Longão", km:12}, {longaoAnt:10, prova:"Meia maratona", fase:"base", deload:true});
+  assert.match(lg, /12 km/);
+  assert.match(lg, /semana passada: 10 km/);
+  assert.match(lg, /Meia maratona/);
+  assert.match(lg, /descarga/i);
+  const semProva = F.motivoGenerico({k:"run", t:"Longão", km:12}, {});
+  assert.doesNotMatch(semProva, /semana passada|Meia/);
+});
+
+test("motivoGenerico: treino de força só cita Hyrox se o nome do treino citar", () => {
+  assert.doesNotMatch(F.motivoGenerico({k:"gym", t:"Força"}, {}), /Hyrox/);
+  assert.match(F.motivoGenerico({k:"gym", t:"Hyrox · estações"}, {}), /resistência/i);
 });
