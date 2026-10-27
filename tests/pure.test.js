@@ -295,3 +295,29 @@ test("motivoGenerico: sessão ajustada (leve) explica a versão leve", () => {
   assert.doesNotMatch(m, /VO2/);
   assert.match(F.motivoGenerico({k:"gym", t:"Força (leve)"}, {}), /Versão leve hoje/);
 });
+
+test("sugerirSemana com corpo dolorido sempre propõe aliviar", () => {
+  const r = F.sugerirSemana([], "dolorido");
+  assert.equal(r.tipo, "aliviar");
+  assert.match(r.motivo, /dolorido/);
+  assert.match(r.motivo, /fisioterapeuta/);
+  assert.equal(F.sugerirSemana([{rpe:"leve", comoPlano:true}], "dolorido").tipo, "aliviar");
+});
+
+test("sugerirSemana com corpo cansado só propõe aliviar com sinal de carga", () => {
+  const um = F.sugerirSemana([{rpe:"pesado", comoPlano:true}], "cansado");
+  assert.equal(um.tipo, "aliviar"); assert.match(um.motivo, /cansado/);
+  assert.equal(F.sugerirSemana([{rpe:"ok"}, {rpe:"ok"}], "cansado").tipo, null);
+  assert.equal(F.sugerirSemana([], "cansado").tipo, null);
+  // sinal de carga já existente continua valendo, com o motivo dos treinos
+  assert.match(F.sugerirSemana([{rpe:"pesado"}, {rpe:"ok"}], "cansado").motivo, /pesados/);
+});
+
+test("sugerirSemana: cansado nunca sugere subir; bem e ausente mantêm o comportamento", () => {
+  const leves = [{rpe:"leve", comoPlano:true}, {rpe:"leve", comoPlano:true}, {rpe:"leve", comoPlano:true}];
+  assert.equal(F.sugerirSemana(leves).tipo, "subir");
+  assert.equal(F.sugerirSemana(leves, "bem").tipo, "subir");
+  assert.equal(F.sugerirSemana(leves, "cansado").tipo, null);
+  assert.equal(F.sugerirSemana([{rpe:"pesado"}, {rpe:"ok"}], "bem").tipo, "aliviar");
+  assert.equal(F.sugerirSemana([{rpe:"ok"}, {rpe:"ok"}], "bem").tipo, null);
+});

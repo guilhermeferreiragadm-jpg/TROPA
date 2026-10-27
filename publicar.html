@@ -729,15 +729,18 @@ function motivoGenerico(t, c){
   if (t.k === "gym") return "Força previne lesão e deixa a passada mais econômica: com a perna mais forte, o mesmo ritmo gasta menos energia."+desc+fase;
   return "";
 }
-function sugerirSemana(feitos){
+function sugerirSemana(feitos, corpo){
   const f = (feitos||[]).filter(x=>x && x.rpe), total = f.length;
   const pesados = f.filter(x=>x.rpe==="pesado" || x.rpe==="limite").length;
   const limites = f.filter(x=>x.rpe==="limite").length;
   const abaixo = f.filter(x=>x.comoPlano===false).length;
   const nada = {tipo:null, total, pesados, motivo:""};
-  if (total < 2) return nada;
-  if (pesados*2 >= total || limites >= 2) return {tipo:"aliviar", total, pesados, motivo:"Seus últimos treinos foram pesados ("+pesados+" de "+total+")"};
-  if (abaixo >= 2 && pesados >= 1) return {tipo:"aliviar", total, pesados, motivo:"Você ficou abaixo do plano em "+abaixo+" de "+total+" treinos e sentiu o peso"};
+  if (corpo === "dolorido") return {tipo:"aliviar", total, pesados, motivo:"Você disse que está dolorido. Se a dor continuar, fale com o coach ou com o seu fisioterapeuta"};
+  if (total >= 2){
+    if (pesados*2 >= total || limites >= 2) return {tipo:"aliviar", total, pesados, motivo:"Seus últimos treinos foram pesados ("+pesados+" de "+total+")"};
+    if (abaixo >= 2 && pesados >= 1) return {tipo:"aliviar", total, pesados, motivo:"Você ficou abaixo do plano em "+abaixo+" de "+total+" treinos e sentiu o peso"};
+  }
+  if (corpo === "cansado") return pesados >= 1 ? {tipo:"aliviar", total, pesados, motivo:"Você disse que está cansado e teve treino pesado nesta semana"} : nada;
   if (total >= 3 && f.every(x=>x.rpe==="leve" && x.comoPlano!==false)) return {tipo:"subir", total, pesados:0, motivo:"Você achou os últimos "+total+" treinos leves"};
   return nada;
 }
