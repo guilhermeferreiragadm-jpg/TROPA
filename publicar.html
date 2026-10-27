@@ -943,6 +943,7 @@ async function registrarRefeicao(nome, dados){
   const k = key(today), lst = (LOG["ref_"+k] || []).slice();
   lst.push(Object.assign({refeicao:nome, at:new Date().toISOString()}, dados));
   await salvarLog("ref_"+k, lst);
+  try{ await salvarLog("fav_refs", atualizarFavoritas(LOG["fav_refs"]||[], Object.assign({refeicao:nome}, dados), k)); }catch(e){ registrarErro("favoritas", e); }
 }
 function acharRefeicao(txt){
   const q = norm(txt), nomes = refeicoesHoje().map(r=>r.refeicao);
@@ -2365,10 +2366,11 @@ function telaComida(o){
   const m = metasDia(today), k = key(today), cd = LOG["cardapio_"+k], refs = refeicoesHoje(), c = consumido(today);
   if (!m){ const app = tela(topo("comida","Comida")+'<p>Para as metas, coloque seu peso.</p><div class="fld"><label for="cpe">Peso (kg)</label><input class="inp" id="cpe" type="number" inputmode="decimal"></div><button class="btn go" type="button" id="cps">Salvar</button>', o); bindGo(app); $("cps").addEventListener("click", async ()=>{ const v = +$("cpe").value; if (v>30){ P.perfil.peso = v; await salvarPerfil(); render(); } }); return; }
   const agua = LOG["agua_"+k]||0;
+  const regsOntem = LOG["ref_"+key(addDays(today,-1))] || [], favs = LOG["fav_refs"] || [];
   const h = topo(esc(NOMETP[m.tp]+" · "+fmt(today)), "Comida")+
     '<div class="macro"><div><b>'+c.p+'<small class="s">/'+m.prot[0]+'g</small></b><span>proteína</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.p/m.prot[0]))+'%"></i></div></div><div><b>'+c.c+'<small class="s">/'+m.carb[0]+'g</small></b><span>carbo</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.c/m.carb[0]))+'%"></i></div></div><button type="button" style="border:1px solid var(--mist);background:var(--white);padding:9px;text-align:left" id="agua"><b class="n" style="font-size:1.25rem;display:block;line-height:1">'+String(agua).replace(".",",")+'<small class="s">/'+num(m.agua,1)+'L</small></b><span class="k" style="font-size:.56rem">água · toque +250 ml</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*agua/m.agua))+'%"></i></div></button></div>'+
     '<p class="s">Metas de hoje: proteína '+m.prot[0]+'–'+m.prot[1]+' g · carbo '+m.carb[0]+'–'+m.carb[1]+' g (pelo seu peso e o treino do dia). Os números somam o que você registra.</p>'+
-    '<span class="k">refeições</span>'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>')+'</div>').join("")+
+    '<span class="k">refeições</span>'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>'+(candidatasRepetir(regsOntem, favs, r.refeicao).length?'<button type="button" class="btn sm ghost" data-rep="'+esc(r.refeicao)+'">repetir</button>':''))+'</div>').join("")+
     '<p class="msg" id="cmm"></p>'+
     '<div class="box"><div class="between"><b>Cardápio do dia</b>'+(cd?'<button type="button" class="lk" id="cg2">refazer</button>':'')+'</div>'+(cd ? cd.refeicoes.map(r=>'<div><b style="font-size:.88rem">'+esc(r.hora||"")+' · '+esc(r.nome)+'</b><p class="s">'+esc((r.itens||[]).join(", "))+' · P ~'+esc(r.prot||"?")+' g</p></div>').join("") : '<p class="s">Opcional. A Nutri conta o que você come e dá dicas. Se você quiser, ela também monta um cardápio com comida brasileira, dentro das suas metas'+((P.perfil.restricoes||[]).length?' e restrições ('+esc(P.perfil.restricoes.join(", "))+')':'')+'.</p><button type="button" class="btn ghost" id="cg">Quero um cardápio para hoje</button>')+'</div>'+
     '<p class="s" style="text-align:center">Guia de alimentação com base em consensos (ACSM, ISSN). Não substitui nutricionista.</p>';
@@ -2376,9 +2378,25 @@ function telaComida(o){
   $("agua").addEventListener("click", ()=>{ salvarLog("agua_"+k, Math.round(((LOG["agua_"+k]||0)+0.25)*100)/100).then(()=>render(true)); });
   app.querySelectorAll("input[data-ref]").forEach(inp=>inp.addEventListener("change", ()=>fotoRefeicao(inp.dataset.ref, inp.files&&inp.files[0])));
   app.querySelectorAll("[data-txt]").forEach(b=>b.addEventListener("click", ()=>{ chatModo = "nutri"; chatPre = "No "+b.dataset.txt.toLowerCase()+" comi "; ir("chat"); }));
+  app.querySelectorAll("[data-rep]").forEach(b=>b.addEventListener("click", ()=>sheetRepetir(b.dataset.rep)));
   const g = $("cg"), g2 = $("cg2"); [g,g2].forEach(x=>{ if (x) x.addEventListener("click", gerarCardapio); });
 }
 /* Nutri analisa a refeição (foto ou texto), responde na hora e salva no dia */
+function sheetRepetir(ref){
+  const cands = candidatasRepetir(LOG["ref_"+key(addDays(today,-1))]||[], LOG["fav_refs"]||[], ref), ov = $("ov");
+  if (!cands.length){ toast("Nada para repetir ainda."); return; }
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Repetir refeição"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Repetir: '+esc(ref)+'</h2>'+
+    '<p class="s">A estimativa de calorias é copiada do registro anterior. Se a porção mudou, use "escrever" e conte o que comeu.</p>'+
+    cands.map((c,i)=>'<button type="button" class="btn ghost" data-i="'+i+'" style="text-align:left">'+esc(c.comeu)+'<small class="s" style="display:block">'+(c.origem==="ontem"?"ontem":"favorita")+(c.estimativa?' · '+esc(c.estimativa):'')+'</small></button>').join("")+
+    '<button type="button" class="lk" id="rno">Cancelar</button></div>';
+  const fecha = ()=>{ ov.innerHTML = ""; };
+  $("dim").addEventListener("click", fecha); $("rno").addEventListener("click", fecha);
+  ov.querySelectorAll("[data-i]").forEach(b=>b.addEventListener("click", async ()=>{
+    const c = cands[+b.dataset.i]; fecha();
+    await registrarRefeicao(ref, {comeu:c.comeu, estimativa:c.estimativa, porcao:c.porcao, repetida:true});
+    render(true); toast(ref+": repetido.");
+  }));
+}
 async function analisarRefeicao(ref, f, texto){
   const m = metasDia(today), c = consumido(today), p = P.perfil || {};
   const thumb = f ? await comTempo(miniatura(f, 160, 0.6), 8000).catch(()=>"") : "";

@@ -37,7 +37,7 @@ Decisão do usuário: o item 2 **sugere e espera o aceite**, nunca reduz sozinho
 - Dado: `LOG["fav_refs"] = [{comeu, estimativa, porcao, refeicao, usos, ultimo}]`, no máximo 12, ordenadas por uso e data. Fica no LOG, então o `enviarPerfil` não apaga.
 - `atualizarFavoritas(lista, reg, hoje)` (pura): chamada em `registrarRefeicao` sempre que há `comeu` e a refeição não foi pulada. Junta por texto normalizado (mesmo prato soma `usos`), corta em 12 removendo o menos usado e mais antigo.
 - `candidatasRepetir(ontem, favoritas, refeicao)` (pura): primeiro o que a pessoa comeu naquela refeição ontem, depois até 4 favoritas, sem repetidos.
-- UI na tela Comida: cada refeição sem registro hoje ganha o botão **repetir**. Abre uma sheet com as candidatas; um toque registra a refeição com `comeu`, `estimativa`, `porcao` copiados e `repetida:true`, sem foto e sem chamar a IA. A sheet avisa "estimativa copiada de outro dia" e oferece "Corrigir com a Nutri".
+- UI na tela Comida: cada refeição sem registro hoje ganha o botão **repetir**. Abre uma sheet com as candidatas; um toque registra a refeição com `comeu`, `estimativa`, `porcao` copiados e `repetida:true`, sem foto e sem chamar a IA. A sheet avisa que a estimativa é copiada do registro anterior e orienta a usar "escrever" se a porção mudou.
 - Limites do LOG: o doc tem 256 KB; os favoritos guardam só texto curto (140 caracteres).
 
 ## Testes
