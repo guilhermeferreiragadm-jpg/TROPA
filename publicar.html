@@ -178,6 +178,7 @@ textarea.inp{resize:vertical;min-height:80px}
 /* folha (sheet) */
 .dim{position:fixed;inset:0;background:rgba(11,13,16,.45);z-index:40}
 .sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(480px,100%);max-height:90vh;overflow-y:auto;background:var(--white);padding:16px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;z-index:41}
+#rsb,#rsx{display:flex;flex-direction:column;gap:12px}
 .grab{width:38px;height:4px;background:var(--mist);margin:0 auto 2px;flex:none}
 .pain{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:2px}
 .pain button{height:34px;border:0;font-family:var(--f-n);font-weight:700;font-size:.86rem;padding:0;color:var(--tx)}
@@ -628,6 +629,7 @@ function podarFotos(){
     if (k.startsWith("ft_") && k.slice(3,13) < lim) delete LOG[k];
     if (k.startsWith("ref_") && k.slice(4,14) < lim && Array.isArray(LOG[k]) && LOG[k].some(r=>r.thumb)) LOG[k] = LOG[k].map(r=>{ const c = Object.assign({}, r); delete c.thumb; return c; });
   });
+  comprasObsoletas(Object.keys(LOG), key(today)).forEach(k=>{ delete LOG[k]; });
   let tam = 0; try{ tam = JSON.stringify(LOG).length; }catch(e){}
   if (tam > 200000){ Object.keys(LOG).filter(k=>/^(ft_|ref_)/.test(k)).sort().forEach(k=>{ if (JSON.stringify(LOG).length < 180000) return; if (k.startsWith("ft_")) delete LOG[k]; else LOG[k] = LOG[k].map(r=>{ const c = Object.assign({}, r); delete c.thumb; return c; }); }); }
 }
@@ -769,19 +771,26 @@ function candidatasRepetir(ontem, favoritas, refeicao){
 function ajustarSugestaoCarga(sg, ctx){
   ctx = ctx || {};
   const n = v => (v === null || v === undefined || v === "" || !isFinite(+v)) ? null : +v;
-  const dor = n(ctx.dor), pront = n(ctx.pront), hold = n(ctx.hold);
+  const dor = n(ctx.dor), pront = n(ctx.pront), hold0 = n(ctx.hold), hold = hold0 != null && hold0 > 0 ? hold0 : null;
   if (!sg || sg.kg == null || hold == null) return sg;
   const ruim = (dor != null && dor >= 5) || (pront != null && pront < 50);
   if (!ruim || !(sg.kg > hold)) return sg;
   const estado = (pront != null ? "prontidão "+pront : "") + (pront != null && dor != null ? ", " : "") + (dor != null ? "dor "+dor+"/10" : "");
-  return {kg:hold, txt:"Hoje o seu corpo pede calma ("+estado+"). Mantenha "+String(hold).replace(".",",")+" kg, a carga da última vez, e pare 2 reps antes da falha."+(dor != null && dor >= 7 ? " Pule o movimento que doer." : "")};
+  return {kg:hold, txt:"Hoje o seu corpo pede calma ("+estado+"). Mantenha "+String(hold).replace(".",",")+" kg, a maior carga da última sessão, e pare 2 reps antes da falha."+(dor != null && dor >= 7 ? " Pule o movimento que doer." : "")};
 }
 const GRUPOS_COMPRAS = ["Hortifrúti","Carnes e ovos","Laticínios","Grãos e massas","Mercearia","Bebidas","Outros"];
+function comprasObsoletas(chaves, hoje){
+  const ok = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d+"T00:00:00Z"));
+  if (!ok(hoje) || !Array.isArray(chaves)) return [];
+  const lim = new Date(new Date(hoje+"T00:00:00Z").getTime() - 21*86400000).toISOString().slice(0,10);
+  return chaves.filter(k=>typeof k === "string" && k.startsWith("compras_") && k.length === 18 && ok(k.slice(8)) && k.slice(8) < lim);
+}
 function normalizarCompras(itens){
   const vistos = new Set(), out = [];
   (Array.isArray(itens) ? itens : []).forEach(x=>{
     if (out.length >= 60 || !x) return;
-    const n = String(x.nome || x.n || "").trim().slice(0,60); if (!n) return;
+    const nb = x.nome || x.n; if (typeof nb !== "string" && typeof nb !== "number") return;
+    const n = String(nb).trim().slice(0,60); if (!n) return;
     const k = normTxt(n); if (vistos.has(k)) return; vistos.add(k);
     const bruto = normTxt(x.grupo || x.g || ""), g = GRUPOS_COMPRAS.find(y=>normTxt(y) === bruto) || "Outros";
     out.push({g, n, q:String(x.qtd || x.q || "").trim().slice(0,30), ok:false});
@@ -869,8 +878,8 @@ function sugestao(ex){
 /* sugestão de carga ajustada pelo check-in de hoje: com prontidão baixa ou dor, segura a carga em vez de subir */
 function sugestaoAjustada(ex){
   const sg = sugestao(ex), h = historicoEx(ex.nome), c = LOG["ci_"+key(today)];
-  const hold = h.length ? Math.max(...h[h.length-1].sets.map(x=>+x.kg||0)) : null;
-  return ajustarSugestaoCarga(sg, {pront: c ? prontidao(c) : null, dor: c ? +c.dor : null, hold});
+  const hold0 = h.length ? Math.max(...h[h.length-1].sets.map(x=>+x.kg||0)) : null, hold = hold0 > 0 ? hold0 : null;
+  return ajustarSugestaoCarga(sg, {pront: c ? prontidao(c) : null, dor: c && c.dor != null ? +c.dor : null, hold});
 }
 /* animação do movimento: boneco em SVG que alterna entre duas posições */
 function anim(at, a, b, dur){ return '<animate attributeName="'+at+'" values="'+a+';'+b+';'+b+';'+a+'" keyTimes="0;.4;.6;1" dur="'+(dur||2.4)+'s" repeatCount="indefinite" calcMode="spline" keySplines=".4 0 .2 1;0 0 1 1;.4 0 .2 1"/>'; }
@@ -2458,12 +2467,18 @@ function sheetCompras(){
   const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ ov.innerHTML = ""; };
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
   $("dim").addEventListener("click", fecha);
+  let gerando = false;
   const montar = async ()=>{
+    if (gerando) return;
     if (!sample){ $("cpm").textContent = "A Nutri não está disponível agora."; return; }
-    $("cpb").innerHTML = '<div class="hint">A Nutri está montando a lista…</div>';
-    const v = await gerarCompras(ini);
-    if (!v) $("cpm").textContent = "Não consegui montar agora. Tente de novo."; else $("cpm").textContent = "";
-    pinta();
+    gerando = true;
+    try{
+      $("cpb").innerHTML = '<div class="hint">A Nutri está montando a lista…</div>';
+      const v = await gerarCompras(ini);
+      const m = $("cpm"); if (!m) return;
+      m.textContent = v ? "" : "Não consegui montar agora. Tente de novo.";
+      pinta();
+    } finally { gerando = false; }
   };
   const pinta = ()=>{
     const v = LOG["compras_"+ini], b = $("cpb"); if (!b) return;
@@ -2985,7 +3000,8 @@ async function gerarResumo(ini){
   v.at = new Date().toISOString(); await salvarLog("rs_"+k, v); return v;
 }
 async function sheetResumo(ini){
-  const ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; };
+  const ov = $("ov"); let mudou = false;
+  const fecha = ()=>{ ov.innerHTML = ""; if (mudou){ mudou = false; render(true); } };
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">Resumo da semana</h2><div id="rsb"><div class="hint">O coach está montando o seu resumo…</div></div></div>';
   $("dim").onclick = fecha;
   const v = await gerarResumo(ini), b = $("rsb"); if (!b) return;
@@ -2994,9 +3010,9 @@ async function sheetResumo(ini){
   const desenhar = () => {
     const x = $("rsx"); if (!x) return;
     const rs = LOG["rs_"+key(ini)] || v;
-    x.innerHTML = (atual ? '<span class="k">como está o corpo para a próxima semana?</span><div class="chips" id="rscorpo">'+[["bem","Bem"],["cansado","Cansado"],["dolorido","Dolorido"]].map(([c,l])=>'<button type="button" class="chip" data-v="'+c+'" aria-pressed="'+(rs.corpo===c)+'">'+l+'</button>').join("")+'</div>'+sugestaoHTML(sugestaoSemana(), "r") : '')+
+    x.innerHTML = (atual ? '<span class="k">como está o corpo para a próxima semana?</span><div class="chips" id="rscorpo">'+[["bem","Bem"],["cansado","Cansado"],["dolorido","Dolorido"]].map(([c,l])=>'<button type="button" class="chip" data-v="'+c+'" aria-pressed="'+(rs.corpo===c)+'">'+l+'</button>').join("")+'</div>'+sugestaoHTML(sugestaoSemana(), "r")+((rs.corpo === "cansado" || rs.corpo === "dolorido") && !sugestaoSemana() ? '<p class="s" id="rsori">'+(rs.corpo === "dolorido" ? "Se a dor continuar, fale com o coach ou com o seu fisioterapeuta." : "Anotado. Se o cansaço continuar, fale com o coach.")+'</p>' : '') : '')+
       '<button type="button" class="btn" id="rscoach">Falar com o coach sobre a semana</button><button type="button" class="btn ghost" id="rsok">Fechar</button>';
-    const c = $("rscorpo"); if (c) c.onclick = async e=>{ const bt = e.target.closest("button[data-v]"); if (!bt) return; await salvarLog("rs_"+key(ini), Object.assign({}, LOG["rs_"+key(ini)] || v, {corpo:bt.dataset.v})); desenhar(); };
+    const c = $("rscorpo"); if (c) c.onclick = async e=>{ const bt = e.target.closest("button[data-v]"); if (!bt) return; await salvarLog("rs_"+key(ini), Object.assign({}, LOG["rs_"+key(ini)] || v, {corpo:bt.dataset.v})); mudou = true; desenhar(); };
     if (atual) bindSugestao(fecha, "r");
     $("rscoach").onclick = ()=>{ fecha(); chatModo = "coach"; chatPre = "Como foi a minha semana e o que muda na próxima?"; ir("chat"); };
     $("rsok").onclick = fecha;

@@ -17,6 +17,7 @@ Decisão do usuário: a Nutri monta a lista da semana toda.
   - `"dolorido"` gera `tipo:"aliviar"` com motivo "Você disse que está dolorido. Se a dor continuar, fale com o coach ou com o seu fisioterapeuta.", mesmo com menos de 2 treinos feitos.
   - `"cansado"` gera `tipo:"aliviar"` com motivo "Você disse que está cansado" quando já havia pelo menos 1 treino "pesado" ou "no limite" ou quando o resultado sem `corpo` já seria `aliviar`. Sem nenhum sinal de carga, apenas "cansado" não propõe redução.
   - `"bem"` ou ausente: comportamento atual.
+- Quando Cansado ou Dolorido não gera card, a sheet mostra um texto curto de orientação.
 - `sugestaoSemana()` lê `LOG["rs_"+key(seg0)]` e repassa `.corpo` a `sugerirSemana`. Como o resumo da semana atual só existe depois de domingo 18h e a pergunta só aparece lá, o `corpo` só influencia a sugestão nesse momento.
 - O card de sugestão (`sugestaoHTML`) também aparece dentro da sheet do resumo, logo abaixo da pergunta, com os mesmos botões e a mesma regra: nada muda sem o toque do usuário.
 - O botão **Falar com o coach sobre a semana** (sempre presente na sheet) abre o chat do coach com `chatPre` preenchido ("Como foi a minha semana e o que muda na próxima?").
@@ -25,14 +26,13 @@ Decisão do usuário: a Nutri monta a lista da semana toda.
 ## 2. Carga de musculação considera prontidão e dor
 - Função pura `ajustarSugestaoCarga(sg, ctx)` com `ctx = {pront, dor, hold}`:
   - Se `sg.kg == null` ou o contexto não tem `pront` nem `dor`, devolve `sg` igual.
-  - Se `dor >= 5` ou `pront < 50`: devolve `{kg: hold, txt}` com texto "Hoje o seu corpo pede calma (prontidão X, dor Y/10). Mantenha a carga da última vez e pare 2 reps antes da falha." quando `sg.kg > hold` (ou seja, a sugestão era subir); se a sugestão já era manter ou reduzir, devolve `sg` igual.
+  - Se `dor >= 5` ou `pront < 50`: devolve `{kg: hold, txt}` com texto "Hoje o seu corpo pede calma (prontidão X, dor Y/10). Mantenha X kg, a maior carga da última sessão, e pare 2 reps antes da falha." quando `sg.kg > hold` (ou seja, a sugestão era subir); se a sugestão já era manter ou reduzir, devolve `sg` igual.
   - Se `dor >= 7`: o texto acrescenta "Pule o movimento que doer."
 - A função `sugestaoAjustada(ex)` calcula `hold` a partir do histórico, aplica `ajustarSugestaoCarga` com a prontidão e a dor do check-in de hoje e é usada em `sessaoDe` (carga inicial dos sets), na exibição da sugestão e no botão Aplicar de `telaForca`. Sem check-in feito, nada muda.
-- O botão **Aplicar** passa a aplicar a carga ajustada (hold).
 
 ## 3. Lista de compras da semana
 - Entrada: na tela Comida, botão **Lista de compras da semana**. Abre uma sheet.
-A semana da lista é a atual; no domingo é a semana seguinte (a chave é a segunda-feira dessa semana).
+- A semana da lista é a atual; no domingo é a semana seguinte (a chave é a segunda-feira dessa semana).
 - Dados: `LOG["compras_<segunda>"] = {itens:[{g, n, q, ok}], at}`, no máximo 60 itens; `g` grupo, `n` nome (até 60 caracteres), `q` quantidade (até 30 caracteres), `ok` marcado.
 - Geração: um pedido à Nutri (`sample.json`) com restrições, orçamento, metas de proteína e carboidrato, número de treinos da semana e a data da semana, em comida brasileira simples e barata. Responde `{"itens":[{"grupo":"...","nome":"...","qtd":"..."}]}`.
 - Funções puras no bloco `@pure`:
@@ -40,10 +40,10 @@ A semana da lista é a atual; no domingo é a semana seguinte (a chave é a segu
   - `comprasTexto(lista)`: texto simples agrupado, com `[x]` e `[ ]`, para copiar e baixar.
 - Sheet: itens agrupados com caixa de marcar (grava em `compras_<segunda>` a cada toque), botões **Copiar**, **Baixar** (usa o helper `baixar` existente) e **Refazer a lista**. Se não houver IA disponível, mostra a mensagem "A Nutri não está disponível agora" e não gera nada.
 - Menores de idade: o pedido à Nutri inclui "sem déficit e sem suplemento".
-- Limite do LOG: a lista fica em torno de 4 a 6 KB; ao criar uma nova semana a lista antiga continua no LOG até o fim do período de poda existente (sem regra nova de poda nesta fase).
+- Limite do LOG: a lista fica em torno de 4 a 6 KB; ao criar uma nova semana listas com mais de 21 dias são removidas junto com a poda de fotos e refeições antigas (`comprasObsoletas`).
 
 ## Testes
-- Funções puras no bloco `@pure`: `sugerirSemana(feitos, corpo)` (estendida), `ajustarSugestaoCarga`, `normalizarCompras`, `comprasTexto`. Testes em Node com `node --test tests/*.test.js`.
+- Funções puras no bloco `@pure`: `sugerirSemana(feitos, corpo)` (estendida), `ajustarSugestaoCarga`, `normalizarCompras`, `comprasTexto`, `comprasObsoletas`. Testes em Node com `node --test tests/*.test.js`.
 - Interface verificada no artifact do usuário: pergunta e card dentro do resumo, aplicar carga ajustada, sheet de compras (gerar, marcar, copiar, baixar).
 - Banco: nenhuma regra nova; usa `data/users/{self}`.
 

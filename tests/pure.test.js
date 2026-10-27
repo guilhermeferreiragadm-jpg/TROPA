@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -338,7 +338,7 @@ test("ajustarSugestaoCarga segura a carga com prontidão baixa ou dor 5 ou mais"
   const sg = {kg:52.5, txt:"Suba para 52,5 kg"};
   const a = F.ajustarSugestaoCarga(sg, {pront:40, dor:2, hold:50});
   assert.equal(a.kg, 50);
-  assert.match(a.txt, /prontidão 40/); assert.match(a.txt, /dor 2\/10/); assert.match(a.txt, /Mantenha 50 kg/);
+  assert.match(a.txt, /prontidão 40/); assert.match(a.txt, /dor 2\/10/); assert.match(a.txt, /Mantenha 50 kg, a maior carga da última sessão/);
   assert.doesNotMatch(a.txt, /Pule/);
   const b = F.ajustarSugestaoCarga({kg:52.5, txt:""}, {dor:5, hold:50});
   assert.equal(b.kg, 50); assert.doesNotMatch(b.txt, /prontidão/); assert.match(b.txt, /dor 5\/10/);
@@ -380,4 +380,51 @@ test("comprasTexto agrupa por grupo e marca os itens", () => {
   ]);
   assert.equal(t, "Hortifrúti\n[x] Banana (2 dúzias)\n[ ] Tomate\n\nLaticínios\n[ ] Leite (6 L)");
   assert.equal(F.comprasTexto([]), "");
+});
+
+test("ajustarSugestaoCarga respeita os limites de prontidão e dor", () => {
+  const sg = {kg:52.5, txt:"Suba"};
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:50, dor:4, hold:50}), sg);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:49, dor:4, hold:50}).kg, 50);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:80, dor:5, hold:50}).kg, 50);
+});
+
+test("ajustarSugestaoCarga ignora hold zero e valores inválidos", () => {
+  const sg = {kg:52.5, txt:"Suba"};
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:30, dor:6, hold:0}), sg);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:NaN, dor:"", hold:50}), sg);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:"", dor:NaN, hold:50}), sg);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:"abc", dor:"x", hold:50}), sg);
+});
+
+test("comprasObsoletas devolve só listas com mais de 21 dias", () => {
+  const ch = ["compras_2026-09-01", "compras_2026-10-05", "compras_2026-10-06", "compras_2026-10-20", "ft_2026-01-01", "rs_2026-01-05", "ci_2026-01-01"];
+  assert.deepEqual(F.comprasObsoletas(ch, "2026-10-27"), ["compras_2026-09-01", "compras_2026-10-05"]);
+  assert.deepEqual(F.comprasObsoletas(["compras_2026-10-06"], "2026-10-27"), []);   // exatamente 21 dias: fica
+  assert.deepEqual(F.comprasObsoletas([], "2026-10-27"), []);
+});
+
+test("comprasObsoletas ignora chaves malformadas e entrada inválida", () => {
+  const ruins = ["compras_", "compras_abc", "compras_2026-1-5", "compras_2026-10-05x", "compras_2026-13-45", "compras_2026-10-05-extra", "compras", 123, null];
+  assert.deepEqual(F.comprasObsoletas(ruins, "2026-10-27"), []);
+  assert.deepEqual(F.comprasObsoletas(["compras_2020-01-01"], "lixo"), []);
+  assert.deepEqual(F.comprasObsoletas(null, "2026-10-27"), []);
+});
+
+test("normalizarCompras descarta nome que não é texto nem número", () => {
+  const r = F.normalizarCompras([{nome:{a:1}}, {nome:["x"]}, {nome:123, grupo:"Mercearia"}, {n:true}, {nome:"Arroz"}]);
+  assert.deepEqual(r.map(x => x.n), ["123", "Arroz"]);
+});
+
+test("normalizarCompras mantém ordem estável no grupo e corta em 60 antes de ordenar", () => {
+  const est = F.normalizarCompras([{nome:"B", grupo:"Mercearia"}, {nome:"A", grupo:"Hortifrúti"}, {nome:"C", grupo:"Mercearia"}, {nome:"D", grupo:"Hortifrúti"}]);
+  assert.deepEqual(est.map(x => x.n), ["A", "D", "B", "C"]);
+  const gr = ["Bebidas", "Hortifrúti"], itens = Array.from({length: 80}, (_, i) => ({nome:"Item " + i, grupo:gr[i % 2]}));
+  const r = F.normalizarCompras(itens);
+  assert.equal(r.length, 60);
+  assert.deepEqual(new Set(r.map(x => x.n)), new Set(itens.slice(0, 60).map(x => x.nome)));
+});
+
+test("comprasTexto aceita q indefinido", () => {
+  assert.equal(F.comprasTexto([{g:"Outros", n:"Sal", ok:false}]), "Outros\n[ ] Sal");
 });
