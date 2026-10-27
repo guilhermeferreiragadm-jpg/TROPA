@@ -47,7 +47,7 @@ Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem pap
 - Foguinho, XP, medalhas, desafios, feed e retrospectiva.
 
 ## Pendências conhecidas
-- A fase 1 (sugestão da próxima semana, repetir refeição, motivo do treino) foi validada só por testes de funções puras e leitura de código; falta conferir os cards e a sheet dentro do artifact. O gerador de plano ainda tem fases fixas (festas, meia, tri) herdadas do plano de origem.
+- A fase 1 (sugestão da próxima semana, repetir refeição, motivo do treino) foi validada só por testes de funções puras e leitura de código; falta conferir os cards e a sheet dentro do artifact. Planos personalizados com fases (pl.fases) usam textos de motivo específicos do plano de origem; os planos gerados pelo app usam textos genéricos.
 - A integração das novidades do amigo foi feita por merge de três vias e validada só por teste de sintaxe e testes de funções puras. Falta conferir tema escuro, metas, compromissos fixos e missões dentro do artifact, junto com a pausa nova.
 - A leitura de PDF usa o pdf.js do cdnjs e ainda não foi validada dentro do artifact. Se falhar, o app pede uma foto.
 - Ids repetidos entre telas (`pt`, `pm`, `pok`) e pequenos textos a ajustar.

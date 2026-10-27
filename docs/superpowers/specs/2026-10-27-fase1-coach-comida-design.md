@@ -46,5 +46,5 @@ Decisão do usuário: o item 2 **sugere e espera o aceite**, nunca reduz sozinho
 - Banco: nenhuma regra nova; usa `data/users/{self}` como já usa.
 
 ## Fora desta fase
-- O gerador de plano (`gerarPlano`) tem fases fixas de festas, meia e tri vindas do plano de origem. Anotado para depois, junto com a Fase 2.
+- Planos personalizados com fases (`pl.fases`) usam textos de motivo específicos do plano de origem; os planos gerados pelo app (`gerarPlano`, sem fases) usam textos genéricos. Anotado para depois, junto com a Fase 2.
 - Faixa de calorias para o total do dia (hoje o total soma o ponto médio).

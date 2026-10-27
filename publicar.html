@@ -705,11 +705,13 @@ function motivoGenerico(t, c){
   const desc = c.deload ? " Semana de descarga: volume menor para o corpo absorver as semanas anteriores e voltar mais forte." : "";
   const fase = c.fase ? " Fase do plano: "+c.fase+"." : "";
   const alvo = c.prova ? " para "+c.prova : "";
+  if (/\(leve\)\s*$/.test(nome)) return "Versão leve hoje: o volume caiu para cerca de 60% e sem tiros, para o corpo absorver a carga."+desc+fase;
   if (t.k === "run"){
     if (/longa|longao/.test(nome)) return "Longão de "+km(t.km||"")+" km"+(c.longaoAnt ? " (semana passada: "+km(c.longaoAnt)+" km)" : "")+". É o treino que mais constrói resistência"+alvo+"."+(c.longaoAnt && !c.deload ? " Sobe no máximo 10% por vez para não machucar." : "")+desc+fase;
     if (/regenerativ/.test(nome)) return "Corrida bem leve para soltar a perna e somar quilômetros sem cansar. Assim você chega inteiro nos treinos fortes da semana."+desc+fase;
     if (/intervalad|tiro/.test(nome)) return "O treino forte de corrida da semana: deixa seu ritmo mais rápido (VO2 máximo). Fica longe do longão para você chegar descansado nele."+desc+fase;
     if (/limiar|tempo/.test(nome)) return "Treino de ritmo: aumenta o quanto você aguenta correr forte por muito tempo."+desc+fase;
+    if (/cardio/.test(nome)) return "Cardio leve para o coração e a recuperação, sem atrapalhar o treino de força."+desc+fase;
     return "Corrida leve para somar volume sem cansar: é a base que deixa os treinos fortes e o longão possíveis."+desc+fase;
   }
   if (t.k === "bike"){
@@ -723,6 +725,7 @@ function motivoGenerico(t, c){
     return "Natação contínua e leve: técnica e resistência para nadar mais sem parar."+desc+fase;
   }
   if (/hyrox/.test(nome)) return "Força com resistência: deixa pernas e core fortes para segurar a postura quando o corpo cansa."+desc+fase;
+  if (t.k === "gym" && /superior|ombro|braco/.test(nome)) return "Força de parte superior: ganha músculo (hipertrofia) em peito, costas e ombros e melhora a postura, que sustenta todo o resto do treino."+desc+fase;
   if (t.k === "gym") return "Força previne lesão e deixa a passada mais econômica: com a perna mais forte, o mesmo ritmo gasta menos energia."+desc+fase;
   return "";
 }
@@ -742,18 +745,20 @@ const normTxt = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-�
 function atualizarFavoritas(lista, reg, hoje){
   const out = (lista||[]).map(x=>Object.assign({}, x));
   const comeu = String(reg && reg.comeu || "").trim().slice(0,140);
-  if (!reg || reg.pulou || !comeu || comeu === "foto enviada") return out;
+  if (!reg || reg.pulou || reg.rapido || !comeu || comeu === "foto enviada" || comeu.indexOf("Correção da pessoa:") >= 0) return out;
   const chave = normTxt(comeu), i = out.findIndex(x=>normTxt(x.comeu) === chave);
+  let novo = null;
   const estimativa = String(reg.estimativa||"").slice(0,80), porcao = String(reg.porcao||"").slice(0,80);
   if (i >= 0){ const x = out[i]; x.usos = (x.usos||0)+1; x.ultimo = hoje; x.estimativa = estimativa || x.estimativa || ""; x.porcao = porcao || x.porcao || ""; x.refeicao = reg.refeicao || x.refeicao || ""; }
-  else out.push({comeu, estimativa, porcao, refeicao:String(reg.refeicao||""), usos:1, ultimo:hoje});
+  else { novo = {comeu, estimativa, porcao, refeicao:String(reg.refeicao||""), usos:1, ultimo:hoje}; out.push(novo); }
   out.sort((a,b)=>(b.usos||0)-(a.usos||0) || (a.ultimo < b.ultimo ? 1 : a.ultimo > b.ultimo ? -1 : 0));
+  if (novo && out.indexOf(novo) >= 12){ out.splice(out.indexOf(novo), 1); out.length = 11; out.push(novo); }
   return out.slice(0,12);
 }
 function candidatasRepetir(ontem, favoritas, refeicao){
   const out = [], vistos = new Set();
   const add = (x, origem)=>{ const c = String(x && x.comeu || "").trim(); if (!c || c === "foto enviada") return false; const k = normTxt(c); if (vistos.has(k)) return false; vistos.add(k); out.push({comeu:c, estimativa:String(x.estimativa||""), porcao:String(x.porcao||""), origem}); return true; };
-  (ontem||[]).filter(r=>r && r.refeicao === refeicao && !r.pulou).forEach(r=>add(r, "ontem"));
+  (ontem||[]).filter(r=>r && r.refeicao === refeicao && !r.pulou && !r.rapido).forEach(r=>add(r, "ontem"));
   const fav = (favoritas||[]), ordem = fav.filter(f=>f.refeicao === refeicao).concat(fav.filter(f=>f.refeicao !== refeicao));
   let n = 0; for (const f of ordem){ if (n >= 4) break; if (add(f, "favorita")) n++; }
   return out;
@@ -1948,7 +1953,7 @@ function sugestaoSemana(){
   const dias = [];
   for (let i=0;i<7;i++){
     const d = addDays(next,i), k = key(d), ts = treinosDe(d);
-    dias.push({id:k, min:ts.reduce((s,t)=>s+minutosPlan(t),0), prio:ts.length?Math.max(...ts.map(prioridadeTreino)):0, fixo:!!LOG["aj_"+k]});
+    dias.push({id:k, min:ts.reduce((s,t)=>s+minutosPlan(t),0), prio:ts.length?Math.max(...ts.map(prioridadeTreino)):0, fixo: d < today || ts.some((t,j)=>feito(d,j)) || !!LOG["aj_"+k]});
   }
   const de = dias.reduce((s,d)=>s+d.min,0); if (!(de > 0)) return null;
   const r = reduzirParaTeto(dias, Math.round(de*0.85)); if (!r.cortes.length) return null;
@@ -1967,7 +1972,8 @@ async function aceitarSugestao(sug){
 }
 async function recusarSugestao(sug){ await salvarLog("fb_"+sug.next, {estado:"recusado", at:new Date().toISOString()}); render(true); }
 async function manterOriginalFeedback(ini){
-  for (let i=0;i<7;i++){ const k = key(addDays(ini,i)), a = LOG["aj_"+k]; if (a && a.por==="feedback") await salvarLog("aj_"+k, null); }
+  for (let i=0;i<7;i++){ if (addDays(ini,i) < today) continue; const k = key(addDays(ini,i)), a = LOG["aj_"+k]; if (a && a.por==="feedback") await salvarLog("aj_"+k, null); }
+  if (LOG["teto_"+key(ini)] && !LOG["teto_off_"+key(ini)]) await salvarLog("teto_"+key(ini), null);
   await salvarLog("fb_"+key(ini), {estado:"recusado", at:new Date().toISOString()});
   render(true); toast("Plano original mantido nesta semana.");
 }
@@ -1988,7 +1994,7 @@ function telaSemana(o){
   let h = topo(s && s.sem ? 'semana '+s.w+' de '+pl.semanas.length+' · '+fase : esc(pl.nome), semOff===0 ? "Sua semana" : semOff<0 ? "Semana passada" : "Próxima semana")+
     (LOG["teto_"+key(base0)] ? (tt=>'<div class="flag"><b>Carga reduzida por segurança.</b> Esta semana passava de '+tt.de+' min e '+(tt.fonte==='fisio' ? 'o limite do seu fisioterapeuta é '+tt.teto+' min' : 'o limite é '+tt.teto+' min (+10% do que você vem fazendo)')+'. Passei '+tt.cortes+(tt.cortes===1?' dia':' dias')+' para a versão leve.'+(tt.excedeu?' Ainda ficou acima do limite: fale com o coach.':'')+(tt.fonte==='fisio' ? '' : ' <button type="button" class="lk" id="toff" style="padding:0">manter o plano original</button>')+'</div>')(LOG["teto_"+key(base0)]) : '')+
     (semOff===0 ? sugestaoHTML(sugestaoSemana()) : '')+
-    (LOG["fb_"+key(base0)] && LOG["fb_"+key(base0)].estado==="aceito" ? '<div class="flag"><b>Semana aliviada pelo seu feedback.</b> Passei '+LOG["fb_"+key(base0)].cortes+(LOG["fb_"+key(base0)].cortes===1?' dia':' dias')+' para a versão leve ('+LOG["fb_"+key(base0)].de+' para '+LOG["fb_"+key(base0)].para+' min). <button type="button" class="lk" id="fboff" style="padding:0">manter o plano original</button></div>' : '')+
+    (LOG["fb_"+key(base0)] && LOG["fb_"+key(base0)].estado==="aceito" ? '<div class="flag"><b>Semana aliviada pelo seu feedback.</b> Passei '+LOG["fb_"+key(base0)].cortes+(LOG["fb_"+key(base0)].cortes===1?' dia':' dias')+' para a versão leve ('+LOG["fb_"+key(base0)].de+' para '+LOG["fb_"+key(base0)].para+' min).'+(addDays(base0,6) < today ? '' : ' <button type="button" class="lk" id="fboff" style="padding:0">manter o plano original</button>')+'</div>' : '')+
     '<div class="phase">'+fasesDe(pl).map(f=>'<span style="flex:'+f[1]+';background:'+(f[0]===fase?f[2]:"#c9ced4")+'">'+esc(f[0])+'</span>').join("")+'</div>'+
     '<div class="between"><button type="button" class="btn sm ghost" id="wp">← anterior</button><span class="k">'+fmt(base0)+' – '+fmt(addDays(base0,6))+'</span><button type="button" class="btn sm ghost" id="wn">próxima →</button></div><div>';
   for (let i=0;i<7;i++){

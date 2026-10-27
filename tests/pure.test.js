@@ -254,3 +254,44 @@ test("candidatasRepetir: ontem primeiro, depois até 4 favoritas, sem repetidos"
   assert.equal(r[0].origem, "ontem"); assert.equal(r[0].estimativa, "~400 kcal"); assert.equal(r[1].origem, "favorita");
   assert.deepEqual(F.candidatasRepetir([], [], "Almoço"), []);
 });
+
+test("atualizarFavoritas ignora check rápido e texto de correção", () => {
+  const l0 = [{comeu:"Arroz", estimativa:"", porcao:"", refeicao:"Almoço", usos:1, ultimo:"2026-10-01"}];
+  const a = F.atualizarFavoritas(l0, {refeicao:"Almoço", comeu:"comeu", rapido:true}, "2026-10-02");
+  assert.deepEqual(a, l0); assert.notEqual(a, l0);
+  assert.equal(F.atualizarFavoritas([], {refeicao:"Almoço", comeu:"Arroz", rapido:true}, "2026-10-02").length, 0);
+  const c = F.atualizarFavoritas(l0, {refeicao:"Almoço", comeu:"Arroz e feijão. Correção da pessoa: era integral"}, "2026-10-02");
+  assert.deepEqual(c, l0);
+});
+
+test("atualizarFavoritas: prato novo nunca é cortado quando a lista está cheia de favoritos usados", () => {
+  let l = [];
+  for (let i = 0; i < 12; i++) l.push({comeu:"Prato " + i, estimativa:"", porcao:"", refeicao:"Almoço", usos:3, ultimo:"2026-10-" + String(10 + i).padStart(2, "0")});
+  const r = F.atualizarFavoritas(l, {refeicao:"Almoço", comeu:"Prato novo"}, "2026-10-27");
+  assert.equal(r.length, 12);
+  assert.ok(r.some(x => x.comeu === "Prato novo"));
+  assert.ok(!r.some(x => x.comeu === "Prato 0"));
+  assert.ok(r.some(x => x.comeu === "Prato 1"));
+});
+
+test("candidatasRepetir ignora registros de check rápido de ontem", () => {
+  const ontem = [{refeicao:"Almoço", comeu:"comeu", rapido:true}, {refeicao:"Almoço", comeu:"Arroz e feijão"}];
+  assert.deepEqual(F.candidatasRepetir(ontem, [], "Almoço").map(x => x.comeu), ["Arroz e feijão"]);
+});
+
+test("motivoGenerico: planos de massa (força superior e cardio leve) têm texto próprio", () => {
+  const b = F.motivoGenerico({k:"gym", t:"Força B · superiores"}, {});
+  const d = F.motivoGenerico({k:"gym", t:"Força D · ombro e braço"}, {});
+  for (const m of [b, d]) { assert.ok(m.length > 20); assert.doesNotMatch(m, /perna|corr|passada|econ/i); assert.match(m, /postura|músculo|hipertrofia/i); }
+  const a = F.motivoGenerico({k:"gym", t:"Força A · pernas"}, {});
+  assert.match(a, /perna/);
+  const c = F.motivoGenerico({k:"run", t:"Cardio leve", min:30}, {});
+  assert.match(c, /coração/); assert.doesNotMatch(c, /longão/i);
+});
+
+test("motivoGenerico: sessão ajustada (leve) explica a versão leve", () => {
+  const m = F.motivoGenerico({k:"run", t:"Intervalado (leve)"}, {deload:true, fase:"base"});
+  assert.match(m, /Versão leve hoje/); assert.match(m, /60%/); assert.match(m, /descarga/i); assert.match(m, /Fase do plano: base/);
+  assert.doesNotMatch(m, /VO2/);
+  assert.match(F.motivoGenerico({k:"gym", t:"Força (leve)"}, {}), /Versão leve hoje/);
+});
