@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {"name": "harness-tropa", "runtimeExecutable": "node", "runtimeArgs": ["tests/harness/servir.js"], "port": 5173}
+  ]
+}
