@@ -25,10 +25,10 @@ Decisões do usuário (2026-10-27): faixa de calorias só para adultos com piso 
   - `registrarCorpo(lista, reg, menor)`: devolve a lista nova (substitui o mesmo dia, ordena por data, corta em 120, descarta valores fora da faixa, remove `m` quando `menor`).
   - `tendenciaPeso(lista, hoje)`: regressão linear dos pesos dos últimos 28 dias. Precisa de pelo menos 3 registros que cubram 14 dias ou mais; senão devolve `null`. Devolve `{kgSemana, pesoAtual, n, dias}` com `kgSemana` arredondado a 0,1.
   - `variacaoMedidas(lista)`: para cada medida, primeira e última marcações e a diferença em cm.
-- Tela **Corpo**, aberta por um botão novo no Perfil ("Peso, medidas e fotos") e pelo cartão de lembrete: campo de peso, medidas (adultos), gráfico simples de peso dos últimos 90 dias (linhas em SVG inline, sem biblioteca), tendência em texto ("Nas últimas 4 semanas: −0,3 kg por semana"), variação das medidas, lista de registros com apagar.
+- Tela **Corpo**, aberta por um botão novo no Perfil ("Peso, medidas e fotos") e pelo cartão de lembrete: campo de peso, medidas (adultos), gráfico simples de peso dos últimos 90 dias (linhas em SVG inline, sem biblioteca; não aparece para menores), tendência em texto ("Nos últimos 28 dias: −0,3 kg por semana"), variação das medidas, lista de registros com apagar.
 
 ## 2. Fotos de progresso
-- Só adultos. Dado: `LOG["fp_<AAAA-MM-DD>"] = {th, at}`, onde `th` é a miniatura (lado maior de 320 px, JPEG qualidade 0,55, cerca de 10 KB) gerada por `miniatura(file, 320, 0.55)`.
+- Só adultos. Dado: `LOG["fp_<AAAA-MM-DD>"] = {th, at}`, onde `th` é a miniatura (lado maior de 240 px, JPEG qualidade 0,5, cerca de 8 a 15 KB) gerada por `miniatura(file, 240, 0.5)`, com uma segunda tentativa em 200 px e qualidade 0,45. Uma foto nova é recusada se o registro (LOG) passar de 200 KB com ela.
 - No máximo 6 fotos. Ao adicionar a sétima, a sheet avisa e oferece substituir a mais antiga. A pessoa pode apagar cada foto.
 - A poda de rotina (`podarFotos`) não toca em `fp_`. A poda de emergência (acima de 200 KB) só remove `fp_` depois de `ft_` e `ref_`, preservando as duas mais recentes.
 - Tela Corpo mostra as miniaturas em grade, e "Comparar" mostra a primeira e a última lado a lado, com as datas. Nada de download nem compartilhar nesta fase.
@@ -36,7 +36,7 @@ Decisões do usuário (2026-10-27): faixa de calorias só para adultos com piso 
 
 ## 3. Faixa de calorias (só adultos)
 - Função pura `faixaKcal(ctx)` com `ctx = {kg, cm, idade, sexo, objetivo, menor, red, ciclo, treinoDia, tendenciaKgSemana}`:
-  - Devolve `null` se `menor`, se `red` tem itens, se `ciclo === "sim"`, ou se faltar kg, cm, idade ou sexo. A função pura também bloqueia idade menor que 18 e sexo fora de m/f/o. Para sexo "o" (Outro) usa a média das duas fórmulas (deslocamento -78) e piso de 1350 kcal.
+  - Devolve `null` com IMC abaixo de 18,5 (adulto abaixo do peso não recebe faixa) e fora de 120 a 230 cm / 30 a 300 kg. Devolve `null` também se `menor`, se `red` tem itens, se `ciclo === "sim"`, ou se faltar kg, cm, idade ou sexo. A função pura também bloqueia idade menor que 18 e sexo fora de m/f/o. Para sexo "o" (Outro) usa a média das duas fórmulas (deslocamento -78) e piso de 1350 kcal.
   - Taxa basal (Mifflin-St Jeor, a mesma de `gastoDia`) vezes 1,35, mais `treinoDia` (média diária de kcal de treino da semana planejada). É a manutenção estimada.
   - `emagrecer`: faixa de −10% a −20% da manutenção. `massa`: +5% a +10%. Demais objetivos (forma, saúde, correr, provas): manutenção ±5%.
   - **Piso:** a faixa nunca fica abaixo da taxa basal estimada, nem abaixo de 1500 kcal (sexo masculino) ou 1200 kcal (sexo feminino).
@@ -59,7 +59,7 @@ Decisões do usuário (2026-10-27): faixa de calorias só para adultos com piso 
 - Banco: nenhuma regra nova; usa `data/users/{self}` como já usa.
 
 ## Limites do LOG
-- `corpo` (120 entradas, cerca de 8 KB), `fp_` (até 6 miniaturas, cerca de 60 KB no total) e `corpo_cfg`/`cd_` (poucos bytes). Margem sobre os 256 KB: a poda de emergência da seção 2 protege o resto do registro.
+- `corpo` (120 entradas, cerca de 8 KB), `fp_` (até 6 miniaturas, cerca de 50 a 90 KB no total) e `corpo_cfg`/`cd_` (poucos bytes). Margem sobre os 256 KB: a poda de emergência da seção 2 protege o resto do registro.
 
 ## Fora desta fase
 - Compartilhar ou baixar a comparação de fotos, importar do relógio ou Strava (Fase 4), grupos com desafio e parceiro de responsa (Fase 4), notificação do celular (só no app oficial).

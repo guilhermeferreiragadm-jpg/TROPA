@@ -636,9 +636,11 @@ function podarFotos(){
     cps.slice(0, -1).forEach(k=>{ delete LOG[k]; });
     try{ tam = JSON.stringify(LOG).length; }catch(e){}
   }
-  if (tam > 200000){ Object.keys(LOG).filter(k=>/^(ft_|ref_)/.test(k)).sort().forEach(k=>{ if (JSON.stringify(LOG).length < 180000) return; if (k.startsWith("ft_")) delete LOG[k]; else LOG[k] = LOG[k].map(r=>{ const c = Object.assign({}, r); delete c.thumb; return c; }); }); }
+  if (tam > 200000){ const alvoT = 180000 + Object.keys(LOG).filter(k=>/^fp_/.test(k)).reduce((a,k)=>a+JSON.stringify(LOG[k]).length, 0); Object.keys(LOG).filter(k=>/^(ft_|ref_)/.test(k)).sort().forEach(k=>{ if (JSON.stringify(LOG).length < alvoT) return; if (k.startsWith("ft_")) delete LOG[k]; else LOG[k] = LOG[k].map(r=>{ const c = Object.assign({}, r); delete c.thumb; return c; }); }); }
   try{ tam = JSON.stringify(LOG).length; }catch(e){}
   if (tam > 220000){ const fp = Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k)).sort(); fp.slice(0, -2).forEach(k=>{ delete LOG[k]; }); }
+  try{ tam = JSON.stringify(LOG).length; }catch(e){}
+  if (tam > 240000){ Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k)).forEach(k=>{ delete LOG[k]; }); }
 }
 function enviarResumo(){
   if (!(P && P.perfil && P.perfil.consent2) || DEMO) return;
@@ -858,7 +860,8 @@ function lembretePesagem(lista, cfg, hoje, dispensado, menor){
 function faixaKcal(c){
   c = c || {};
   const kg = +c.kg, cm = +c.cm, id = +c.idade;
-  if (c.menor || id < 18 || !/^[mfo]$/.test(String(c.sexo)) || (c.red && c.red.length) || c.ciclo === "sim" || !(kg > 0) || !(cm > 0) || !(id > 0)) return null;
+  if (c.menor || id < 18 || !/^[mfo]$/.test(String(c.sexo)) || (c.red && c.red.length) || c.ciclo === "sim" || !(kg >= 30 && kg <= 300) || !(cm >= 120 && cm <= 230) || !(id > 0)) return null;
+  if (kg/((cm/100)*(cm/100)) < 18.5) return null;   // adulto abaixo do peso não recebe faixa
   const bmr = 10*kg + 6.25*cm - 5*id + (c.sexo === "f" ? -161 : c.sexo === "m" ? 5 : -78);
   const manut = bmr*1.35 + (+c.treinoDia > 0 ? +c.treinoDia : 0);
   let lo = 0.95, hi = 1.05, motivo = "Para manter o peso e treinar bem, perto do que você gasta";
@@ -2495,7 +2498,7 @@ function bindFeed(app){
 function convite(){ const c = meuCodigo(); return "Bora treinar junto? Tô usando o "+BRAND+", app de treino com IA que monta o plano pro seu objetivo. Entra pelo link com sua conta do Claude (é grátis)"+(c?" e usa meu código "+c:"")+": https://claude.ai/artifact/"+ARTIFACT_ID; }
 async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Copiado. Cole no WhatsApp."); }catch(e){ const ov = $("ov"), aberta = ov.querySelector(".sheet");
     if (aberta){ let ta = aberta.querySelector("#cpt"); if (!ta){ const w = document.createElement("div"); w.innerHTML = '<b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5"></textarea>'; aberta.appendChild(w); ta = w.querySelector("textarea"); } ta.value = t; ta.select(); toast("Não consegui copiar sozinho. Copie o texto abaixo."); return; }   // já tem uma sheet aberta (ex.: lista de compras): não substitui nem fecha
-    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpx").onclick = ()=>{ ov.innerHTML = ""; }; } }
+    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpfx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpfx").onclick = ()=>{ ov.innerHTML = ""; }; } }
 
 /* ===================== COMIDA ===================== */
 function telaComida(o){
@@ -3603,9 +3606,11 @@ function bindCorpoExtra(){
     const fs = fotosCorpo(), hojeK = "fp_"+key(today);
     const guardar = async (f, substituir) => {
       m.className = "msg"; m.textContent = "Preparando a foto…";
-      let th = await comTempo(miniatura(f, 320, 0.55), 10000).catch(()=>"");
-      if (!fotoValida(th)) th = await comTempo(miniatura(f, 240, 0.5), 10000).catch(()=>"");
+      let th = await comTempo(miniatura(f, 240, 0.5), 10000).catch(()=>"");
+      if (!fotoValida(th)) th = await comTempo(miniatura(f, 200, 0.45), 10000).catch(()=>"");
       if (!fotoValida(th)){ m.textContent = "Não consegui usar essa foto. Tente outra."; m.className = "msg err"; return; }
+      let usado = 0; try{ usado = JSON.stringify(LOG).length + th.length; if (substituir && LOG[fs[0]]) usado -= JSON.stringify(LOG[fs[0]]).length; else if (LOG[hojeK]) usado -= JSON.stringify(LOG[hojeK]).length; }catch(e){}
+      if (usado > 200000){ m.textContent = "Sem espaço para mais uma foto agora. Apague uma foto antiga ou fotos de refeição e tente de novo."; m.className = "msg err"; return; }
       if (substituir) await salvarLog(fs[0], null);
       await salvarLog(hojeK, {th, at:new Date().toISOString()}); toast("Foto guardada."); render(true);
     };
@@ -3631,16 +3636,16 @@ function bindCorpoExtra(){
 function telaCorpo(o){
   const menor = ehMenor(P && P.perfil), lista = LOG.corpo || [], hojeK = key(today), hoje = lista.find(x=>x.d === hojeK) || {};
   const td = menor ? null : tendenciaPeso(lista, hojeK), vm = menor ? {} : variacaoMedidas(lista);
-  const campoM = k => '<div class="fld"><label for="cm-'+k+'">'+ROTULO_MEDIDA[k]+' (cm)</label><input class="inp" id="cm-'+k+'" type="number" inputmode="decimal" value="'+esc(hoje.m && hoje.m[k] != null ? hoje.m[k] : "")+'"></div>';
+  const campoM = k => '<div class="fld"><label for="cm-'+k+'">'+ROTULO_MEDIDA[k]+' (cm)</label><input class="inp" id="cm-'+k+'" type="text" inputmode="decimal" value="'+esc(hoje.m && hoje.m[k] != null ? hoje.m[k] : "")+'"></div>';
   const app = tela('<button type="button" class="back" data-go="perfil">← Perfil</button><span class="k">'+esc(fmtLongo(today))+'</span><h1 class="h1">Corpo</h1>'+
-    '<div class="box"><div class="fld"><label for="cp-kg">Peso de hoje (kg)</label><input class="inp" id="cp-kg" type="number" inputmode="decimal" placeholder="74,2" value="'+esc(hoje.kg != null ? hoje.kg : "")+'"></div>'+
+    '<div class="box"><div class="fld"><label for="cp-kg">Peso de hoje (kg)</label><input class="inp" id="cp-kg" type="text" inputmode="decimal" placeholder="74,2" value="'+esc(hoje.kg != null ? hoje.kg : "")+'"></div>'+
     (menor ? '' : '<span class="k">medidas (opcional)</span><div class="grid2">'+CHAVES_MEDIDA.map(campoM).join("")+'</div>')+
     '<button type="button" class="btn go" id="cp-ok">Salvar</button><p class="msg" id="cp-m"></p></div>'+
-    (lista.length ? '<div class="box"><b>Peso</b>'+graficoPeso(lista)+
-      (td ? '<p>Nas últimas 4 semanas: '+(td.kgSemana>0?'+':'')+num(td.kgSemana,1)+' kg por semana.</p><span class="s">É a média de vários dias, não o número de um dia só. O peso oscila com água, sono e comida.</span>' : '<span class="s">'+(menor ? '' : 'Com 3 registros em 2 semanas, mostro a tendência.')+'</span>')+'</div>' : '')+
+    (lista.length ? '<div class="box"><b>Peso</b>'+(menor ? '' : graficoPeso(lista))+
+      (td ? '<p>Nos últimos '+Math.round(td.dias)+' dias: '+(td.kgSemana>0?'+':'')+num(td.kgSemana,1)+' kg por semana.</p><span class="s">É a média de vários dias, não o número de um dia só. O peso oscila com água, sono e comida.</span>' : '<span class="s">'+(menor ? '' : 'Com 3 registros em 2 semanas, mostro a tendência.')+'</span>')+'</div>' : '')+
     (Object.keys(vm).length ? '<div class="box"><b>Medidas</b>'+Object.keys(vm).map(k=>'<div class="between"><span>'+ROTULO_MEDIDA[k]+'</span><b>'+num(vm[k].para,1)+' cm <small class="s">('+(vm[k].dif>0?'+':'')+num(vm[k].dif,1)+' desde '+esc(fmt(parseD(vm[k].desde)))+')</small></b></div>').join("")+'</div>' : '')+
     '<div id="cpx">'+faixaCaloriasHTML()+secaoCorpoExtra(menor)+'</div>'+
-    (lista.length ? '<span class="k">registros</span>'+lista.slice().reverse().slice(0,30).map(x=>'<div class="between"><span>'+esc(fmt(parseD(x.d)))+' · <b>'+num(x.kg,1)+' kg</b>'+(x.m ? ' <small class="s">'+Object.keys(x.m).map(k=>ROTULO_MEDIDA[k].toLowerCase()+' '+num(x.m[k],1)).join(", ")+'</small>' : '')+'</span><button type="button" class="lk" data-del="'+esc(x.d)+'" aria-label="Apagar registro de '+esc(fmt(parseD(x.d)))+'">apagar</button></div>').join("")+(lista.length > 30 ? '<p class="s">Mostrando os 30 mais recentes.</p>' : '') : '')+
+    (lista.length ? '<span class="k">registros</span>'+lista.slice().reverse().slice(0,30).map(x=>'<div class="between"><span>'+esc(fmt(parseD(x.d)))+' · <b>'+num(x.kg,1)+' kg</b>'+(x.m ? ' <small class="s">'+Object.keys(x.m).filter(k=>ROTULO_MEDIDA[k]).map(k=>ROTULO_MEDIDA[k].toLowerCase()+' '+num(x.m[k],1)).join(", ")+'</small>' : '')+'</span><button type="button" class="lk" data-del="'+esc(x.d)+'" aria-label="Apagar registro de '+esc(fmt(parseD(x.d)))+'">apagar</button></div>').join("")+(lista.length > 30 ? '<p class="s">Mostrando os 30 mais recentes.</p>' : '') : '')+
     '<p class="s">Estimativas e acompanhamento, não diagnóstico. '+esc(BRAND)+' não substitui médico ou nutricionista.</p>', {tabs:true, fab:true, keepScroll:o && o.keepScroll});
   bindGo(app);
   const salvar = async (ignorarSalto) => {
@@ -3660,7 +3665,7 @@ function telaCorpo(o){
   };
   $("cp-ok").addEventListener("click", ()=>salvar(false));
   bindCorpoExtra();
-  app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog("corpo", (LOG.corpo||[]).filter(x=>x.d !== b.dataset.del)); render(true); }));
+  app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async ()=>{ const antes = LOG.corpo || [], era = antes.length && antes[antes.length-1].d === b.dataset.del, resto = antes.filter(x=>x.d !== b.dataset.del); await salvarLog("corpo", resto); if (era && resto.length){ P.perfil.peso = Math.round(resto[resto.length-1].kg*10)/10; await salvarPerfil(); } render(true); }));
 }
 function telaPerfil(){
   const p = P.perfil, pl = planoAtual(), n = nivelXP(), as = p.assinatura || {};
@@ -3672,7 +3677,7 @@ function telaPerfil(){
       '<button type="button" id="tema">Aparência<small>'+esc(NOME_TEMA[temaSalvo()])+'</small><span>→</span></button>'+
       '<button type="button" id="pau">'+(pausaAtiva()?'Voltar a treinar':'Pausar o plano')+'<small>'+(pausaAtiva()?'seu plano está em pausa':'lesão, doença ou viagem: o foguinho não apaga')+'</small><span>→</span></button>'+
       '<button type="button" id="ext">Objetivos extras e metas<small>Hyrox, academia, compromissos fixos e metas</small><span>→</span></button>'+
-      '<button type="button" id="cor">Peso, medidas e fotos<small>'+((LOG.corpo||[]).length ? 'último peso: '+num((LOG.corpo[LOG.corpo.length-1]||{}).kg||0, 1)+' kg · toque para registrar' : 'acompanhe o seu corpo ao longo do tempo')+'</small><span>→</span></button>'+
+      '<button type="button" id="cor">'+(ehMenor(p) ? 'Meu peso' : 'Peso, medidas e fotos')+'<small>'+((LOG.corpo||[]).length ? 'último peso: '+num((LOG.corpo[LOG.corpo.length-1]||{}).kg||0, 1)+' kg · toque para registrar' : (ehMenor(p) ? 'registre o peso para as metas de comida' : 'acompanhe o seu corpo ao longo do tempo'))+'</small><span>→</span></button>'+
       '<button type="button" id="obj">Meu plano e objetivo<small>mudar objetivo ou adicionar prova</small><span>→</span></button>'+
       '<button type="button" id="doc">Laudo de fisioterapia<small>'+(p.fisio&&p.fisio.lesao?esc(p.fisio.lesao)+' · toque para editar':'suba um documento para o plano respeitar sua lesão')+'</small><span>→</span></button>'+
       '<button type="button" id="foto">Foto de perfil<small>'+(fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+'</small><span>→</span></button>'+
