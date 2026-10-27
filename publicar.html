@@ -852,6 +852,32 @@ function lembretePesagem(lista, cfg, hoje, dispensado, menor){
   if (sem < (+cfg.dia || 0)) return false;
   return !lista.some(x=>x && typeof x.d === "string" && dia(x.d) >= seg);
 }
+function faixaKcal(c){
+  c = c || {};
+  const kg = +c.kg, cm = +c.cm, id = +c.idade;
+  if (c.menor || (c.red && c.red.length) || c.ciclo === "sim" || !(kg > 0) || !(cm > 0) || !(id > 0)) return null;
+  const bmr = 10*kg + 6.25*cm - 5*id + (c.sexo === "f" ? -161 : c.sexo === "m" ? 5 : -78);
+  const manut = bmr*1.35 + (+c.treinoDia > 0 ? +c.treinoDia : 0);
+  let lo = 0.95, hi = 1.05, motivo = "Para manter o peso e treinar bem, perto do que você gasta";
+  if (c.objetivo === "emagrecer"){ lo = 0.80; hi = 0.90; motivo = "Para emagrecer com saúde, um pouco abaixo do que você gasta"; }
+  else if (c.objetivo === "massa"){ lo = 1.05; hi = 1.10; motivo = "Para ganhar massa, um pouco acima do que você gasta"; }
+  let ajuste = 0;
+  const t = c.tendenciaKgSemana, pct = (t === null || t === undefined || !isFinite(+t)) ? null : +t/kg*100, longa = +c.diasTendencia >= 21;
+  if (pct !== null){
+    if (c.objetivo === "emagrecer"){
+      if (pct <= -0.9){ ajuste = 150; motivo = "Você estava perdendo peso rápido demais, então a faixa subiu um pouco"; }
+      else if (pct > -0.1 && longa) motivo += ". O peso parou: converse com o coach antes de mudar a comida";
+    } else if (c.objetivo === "massa"){
+      if (pct >= 0.5){ ajuste = -100; motivo = "Você estava ganhando peso rápido, então a faixa desceu um pouco"; }
+      else if (pct < 0.1 && longa){ ajuste = 150; motivo = "O peso não subiu em 3 semanas, então a faixa subiu um pouco"; }
+    }
+  }
+  const piso = Math.max(bmr, c.sexo === "f" ? 1200 : c.sexo === "m" ? 1500 : 1350);
+  const r50 = v => Math.round(v/50)*50;
+  const min = r50(Math.max(manut*lo + ajuste, piso));
+  const max = r50(Math.max(manut*hi + ajuste, min + 100));
+  return {min, max, manutencao:r50(manut), motivo};
+}
 const fotoValida = s =>typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 

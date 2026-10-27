@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas, motivoAjuste, registrarCorpo, tendenciaPeso, variacaoMedidas, lembretePesagem};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas, motivoAjuste, registrarCorpo, tendenciaPeso, variacaoMedidas, lembretePesagem, faixaKcal};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -503,4 +503,53 @@ test("lembretePesagem só aparece no dia escolhido ou depois, sem registro na se
   assert.equal(F.lembretePesagem([], cfg, "2026-10-27", false, false), false);      // nunca registrou
   assert.equal(F.lembretePesagem(l, null, "2026-10-27", false, false), false);
   assert.equal(F.lembretePesagem(l, cfg, "2026-10-25", false, false), false);       // domingo conta para a semana que passou: segunda 19 a domingo 25 já tem registro em 19
+});
+
+const base = {kg:80, cm:180, idade:30, sexo:"m"};
+const fk = o => F.faixaKcal(Object.assign({}, base, o));
+
+test("faixaKcal por objetivo", () => {
+  const e = fk({objetivo:"emagrecer"});
+  assert.equal(e.min, 1900); assert.equal(e.max, 2150); assert.equal(e.manutencao, 2400);
+  assert.match(e.motivo, /emagrecer/);
+  const t = fk({objetivo:"emagrecer", treinoDia:300});
+  assert.equal(t.min, 2150); assert.equal(t.max, 2450); assert.equal(t.manutencao, 2700);
+  const m = fk({objetivo:"massa"});
+  assert.equal(m.min, 2500); assert.equal(m.max, 2650);
+  const f = fk({objetivo:"forma"});
+  assert.equal(f.min, 2300); assert.equal(f.max, 2500);
+  const o = fk({sexo:"o", objetivo:"forma"});
+  assert.equal(o.min, 2200); assert.equal(o.max, 2400);
+});
+
+test("faixaKcal não existe para menores, alerta de saúde, ciclo irregular ou dados faltando", () => {
+  assert.equal(fk({menor:true}), null);
+  assert.equal(fk({red:["x"]}), null);
+  assert.equal(fk({ciclo:"sim"}), null);
+  assert.equal(fk({kg:0}), null);
+  assert.equal(fk({cm:""}), null);
+  assert.equal(fk({idade:undefined}), null);
+  assert.equal(F.faixaKcal(null), null);
+  assert.notEqual(fk({red:[], ciclo:"nao", objetivo:"forma"}), null);
+});
+
+test("faixaKcal respeita o piso de segurança", () => {
+  const r = F.faixaKcal({kg:45, cm:150, idade:50, sexo:"f", objetivo:"emagrecer"});
+  assert.equal(r.min, 1200); assert.ok(r.max >= 1300);
+  const h = F.faixaKcal({kg:50, cm:165, idade:40, sexo:"m", objetivo:"emagrecer"});
+  assert.ok(h.min >= 1500);
+});
+
+test("faixaKcal ajusta pela tendência do peso sem nunca cortar mais fundo", () => {
+  const rapido = fk({objetivo:"emagrecer", tendenciaKgSemana:-0.8, diasTendencia:28});
+  assert.equal(rapido.min, 2050); assert.equal(rapido.max, 2300); assert.match(rapido.motivo, /rápido/);
+  const parou = fk({objetivo:"emagrecer", tendenciaKgSemana:-0.05, diasTendencia:28});
+  assert.equal(parou.min, 1900); assert.equal(parou.max, 2150); assert.match(parou.motivo, /coach/);
+  const curto = fk({objetivo:"emagrecer", tendenciaKgSemana:-0.05, diasTendencia:14});
+  assert.doesNotMatch(curto.motivo, /coach/);
+  const gp = fk({objetivo:"massa", tendenciaKgSemana:0.5, diasTendencia:28});
+  assert.equal(gp.min, 2400); assert.equal(gp.max, 2550);
+  const mp = fk({objetivo:"massa", tendenciaKgSemana:0, diasTendencia:21});
+  assert.equal(mp.min, 2650); assert.equal(mp.max, 2800);
+  assert.equal(fk({objetivo:"forma", tendenciaKgSemana:-1, diasTendencia:28}).min, 2300);   // outros objetivos não mudam
 });
