@@ -30,7 +30,7 @@ Decisões do usuário (2026-10-27): faixa de calorias só para adultos com piso 
 ## 2. Fotos de progresso
 - Só adultos. Dado: `LOG["fp_<AAAA-MM-DD>"] = {th, at}`, onde `th` é a miniatura (lado maior de 240 px, JPEG qualidade 0,5, cerca de 8 a 15 KB) gerada por `miniatura(file, 240, 0.5)`, com uma segunda tentativa em 200 px e qualidade 0,45. Uma foto nova é recusada se o registro (LOG) passar de 200 KB com ela.
 - No máximo 6 fotos. Ao adicionar a sétima, a sheet avisa e oferece substituir a mais antiga. A pessoa pode apagar cada foto.
-- A poda de rotina (`podarFotos`) não toca em `fp_`. A poda de emergência (acima de 200 KB) só remove `fp_` depois de `ft_` e `ref_`, preservando as duas mais recentes.
+- A poda de rotina (`podarFotos`) não toca em `fp_`. A poda de emergência das miniaturas de refeição usa alvo de 180 KB mais o tamanho das fotos de progresso; acima de 220 KB mantém só as 2 `fp_` mais recentes; acima de 240 KB remove as `fp_` restantes. Quando apaga alguma `fp_`, avisa por toast. Uma foto nova é recusada se o registro passar de 200 KB.
 - Tela Corpo mostra as miniaturas em grade, e "Comparar" mostra a primeira e a última lado a lado, com as datas. Nada de download nem compartilhar nesta fase.
 - O aviso "A foto fica só no seu registro, não aparece para amigos nem vai para a IA" aparece antes de adicionar a primeira.
 

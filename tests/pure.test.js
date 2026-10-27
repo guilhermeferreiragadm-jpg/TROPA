@@ -565,8 +565,8 @@ test("faixaKcal não existe para menores, alerta de saúde, ciclo irregular ou d
 test("faixaKcal respeita o piso de segurança", () => {
   const r = F.faixaKcal({kg:45, cm:150, idade:50, sexo:"f", objetivo:"emagrecer"});
   assert.equal(r.min, 1200); assert.equal(r.max, 1300);
-  const h = F.faixaKcal({kg:58, cm:165, idade:40, sexo:"m", objetivo:"emagrecer"});   // IMC 21,3
-  assert.ok(h.min >= 1500);
+  const h = F.faixaKcal({kg:60, cm:160, idade:60, sexo:"m", objetivo:"emagrecer"});   // IMC 23,4
+  assert.equal(h.min, 1500);
 });
 
 test("faixaKcal: IMC abaixo de 18,5 e dados fora de faixa devolvem null", () => {

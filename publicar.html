@@ -624,6 +624,7 @@ async function salvarLog(k, v){
 }
 // O documento do registro tem limite de 256 KB: miniaturas de foto ficam só nos últimos 10 dias (análises e números ficam para sempre).
 function podarFotos(){
+  const nFp0 = Object.keys(LOG).filter(k=>/^fp_/.test(k)).length;
   const lim = key(addDays(today,-10));
   Object.keys(LOG).forEach(k=>{
     if (k.startsWith("ft_") && k.slice(3,13) < lim) delete LOG[k];
@@ -641,6 +642,7 @@ function podarFotos(){
   if (tam > 220000){ const fp = Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k)).sort(); fp.slice(0, -2).forEach(k=>{ delete LOG[k]; }); }
   try{ tam = JSON.stringify(LOG).length; }catch(e){}
   if (tam > 240000){ Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k)).forEach(k=>{ delete LOG[k]; }); }
+  if (Object.keys(LOG).filter(k=>/^fp_/.test(k)).length < nFp0) setTimeout(()=>toast("Para liberar espaço, algumas fotos de progresso antigas foram apagadas."), 0);
 }
 function enviarResumo(){
   if (!(P && P.perfil && P.perfil.consent2) || DEMO) return;
