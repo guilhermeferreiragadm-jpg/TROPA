@@ -22,7 +22,7 @@ Decisões do usuário (2026-10-27): faixa de calorias só para adultos com piso 
 - Peso válido entre 30 e 300 kg (uma casa decimal); medida válida entre 10 e 250 cm. Variação de mais de 5 kg em menos de 7 dias pede um "Confere?" antes de salvar (aviso, não bloqueio).
 - Ao registrar o peso, o app também atualiza `P.perfil.peso` (e chama `salvarPerfil`) para as metas de comida acompanharem.
 - Funções puras no bloco `@pure`:
-  - `registrarCorpo(lista, reg)`: devolve a lista nova (substitui o mesmo dia, ordena por data, corta em 120, descarta valores fora da faixa, remove `m` quando `menor`).
+  - `registrarCorpo(lista, reg, menor)`: devolve a lista nova (substitui o mesmo dia, ordena por data, corta em 120, descarta valores fora da faixa, remove `m` quando `menor`).
   - `tendenciaPeso(lista, hoje)`: regressão linear dos pesos dos últimos 28 dias. Precisa de pelo menos 3 registros que cubram 14 dias ou mais; senão devolve `null`. Devolve `{kgSemana, pesoAtual, n, dias}` com `kgSemana` arredondado a 0,1.
   - `variacaoMedidas(lista)`: para cada medida, primeira e última marcações e a diferença em cm.
 - Tela **Corpo**, aberta por um botão novo no Perfil ("Peso, medidas e fotos") e pelo cartão de lembrete: campo de peso, medidas (adultos), gráfico simples de peso dos últimos 90 dias (linhas em SVG inline, sem biblioteca), tendência em texto ("Nas últimas 4 semanas: −0,3 kg por semana"), variação das medidas, lista de registros com apagar.
@@ -36,22 +36,22 @@ Decisões do usuário (2026-10-27): faixa de calorias só para adultos com piso 
 
 ## 3. Faixa de calorias (só adultos)
 - Função pura `faixaKcal(ctx)` com `ctx = {kg, cm, idade, sexo, objetivo, menor, red, ciclo, treinoDia, tendenciaKgSemana}`:
-  - Devolve `null` se `menor`, se `red` tem itens, se `ciclo === "sim"`, ou se faltar kg, cm, idade ou sexo.
+  - Devolve `null` se `menor`, se `red` tem itens, se `ciclo === "sim"`, ou se faltar kg, cm, idade ou sexo. A função pura também bloqueia idade menor que 18 e sexo fora de m/f/o. Para sexo "o" (Outro) usa a média das duas fórmulas (deslocamento -78) e piso de 1350 kcal.
   - Taxa basal (Mifflin-St Jeor, a mesma de `gastoDia`) vezes 1,35, mais `treinoDia` (média diária de kcal de treino da semana planejada). É a manutenção estimada.
   - `emagrecer`: faixa de −10% a −20% da manutenção. `massa`: +5% a +10%. Demais objetivos (forma, saúde, correr, provas): manutenção ±5%.
   - **Piso:** a faixa nunca fica abaixo da taxa basal estimada, nem abaixo de 1500 kcal (sexo masculino) ou 1200 kcal (sexo feminino).
-  - **Ajuste pela tendência** (só com `tendenciaKgSemana` não nulo): em `emagrecer`, se a perda passar de 0,9% do peso por semana, sobe a faixa em 150 kcal e o motivo diz que estava perdendo rápido. Se a perda ficar abaixo de 0,1% por semana depois de 3 semanas, a faixa não muda e o motivo sugere conversar com o coach. Em `massa`, se o ganho passar de 0,5% por semana, desce 100 kcal; se ficar abaixo de 0,1% por semana depois de 3 semanas, sobe 150 kcal. Nunca desce para menos que o piso.
+  - **Ajuste pela tendência** (só com `tendenciaKgSemana` não nulo): em `emagrecer`, se a perda passar de 0,9% do peso por semana, sobe a faixa em 150 kcal e o motivo diz que estava perdendo rápido. Se a perda ficar abaixo de 0,1% por semana depois de 3 semanas, a faixa não muda e o motivo ("O peso não está caindo") sugere conversar com o coach. Em `massa`, se o ganho passar de 0,5% por semana, desce 100 kcal; se ficar abaixo de 0,1% por semana depois de 3 semanas, sobe 150 kcal. Nunca desce para menos que o piso.
   - Valores arredondados para múltiplos de 50. Retorna `{min, max, manutencao, motivo}`.
 - Mostrada como "Faixa de calorias estimada: 2.100 a 2.300 kcal" com o motivo em uma frase e a nota "Estimativa, não é prescrição. Para um plano individual, procure um nutricionista". Aparece na tela Comida (acima das metas) e na tela Corpo. Sem faixa, nada aparece e a tela não mostra explicação.
 - O card "Calorias do dia" não muda.
 
 ## 4. Lembrete de pesagem
 - Configuração: `LOG["corpo_cfg"] = {lembrar:true, dia:0..6}` (padrão segunda, `dow` 0). Só existe depois do primeiro registro de peso; adultos apenas. A tela Corpo tem a chave "Lembrar de me pesar" e a escolha do dia.
-- Função pura `lembretePesagem(lista, cfg, hoje, dispensado)`: verdadeiro quando `cfg.lembrar`, hoje é o dia escolhido ou depois (na mesma semana), não houve registro nesta semana e `dispensado` é falso.
-- Cartão na tela Hoje (em `extrasHoje`): "Hora de se pesar" com botões **Registrar** (abre a tela Corpo) e **Hoje não** (grava `LOG["cd_<segunda>"] = true` e some até a semana seguinte). Sem peso obrigatório.
+- Função pura `lembretePesagem(lista, cfg, hoje, dispensado, menor)`: verdadeiro quando `cfg.lembrar`, hoje é o dia escolhido ou depois (na mesma semana), não houve registro nesta semana e `dispensado` é falso.
+- Cartão na tela Hoje (em `extrasHoje`): "Hora de se pesar": o toque no cartão abre a tela Corpo, e **Hoje não** é a ação de dispensa (grava `LOG["cd_<segunda>"] = true` e some até a semana seguinte). Escolher um dia na tela Corpo não liga o lembrete sozinho. Sem peso obrigatório.
 
 ## 5. Contexto do coach
-- Para adultos, o contexto do coach ganha uma linha: `PESO: 74,2 kg, tendência -0,3 kg/semana em 4 semanas` quando há tendência, ou só o peso. Menores não recebem tendência.
+- Para adultos, o contexto do coach ganha uma linha: `PESO: 74,2 kg, tendência -0,3 kg/semana em 4 semanas`, que só aparece quando há tendência (o peso já está na linha do usuário). Menores não recebem tendência.
 
 ## Testes
 - Funções puras no bloco `@pure`: `registrarCorpo`, `tendenciaPeso`, `variacaoMedidas`, `faixaKcal`, `lembretePesagem`. Testes em Node com `node --test tests/*.test.js`, incluindo: menor sem medida e sem faixa, `red` e `ciclo` bloqueiam a faixa, piso respeitado, perda rápida sobe a faixa, estagnação não corta, limites 120, peso fora da faixa descartado.

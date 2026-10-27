@@ -817,7 +817,8 @@ function comprasTexto(lista){
 const CHAVES_MEDIDA = ["cin","qua","pei","bra","cox"];
 function registrarCorpo(lista, reg, menor){
   const ok = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s));
-  const l = Array.isArray(lista) ? lista.filter(x=>x && ok(x.d)) : [];
+  let l = Array.isArray(lista) ? lista.filter(x=>x && ok(x.d) && +x.kg >= 30 && +x.kg <= 300) : [];
+  if (menor) l = l.map(x=>({d:x.d, kg:x.kg}));
   const kg = Math.round(+(reg && reg.kg)*10)/10;
   if (!reg || !ok(reg.d) || !(kg >= 30 && kg <= 300)) return l;
   const novo = {d:reg.d, kg};
@@ -840,7 +841,7 @@ function tendenciaPeso(lista, hoje){
   return {kgSemana:Math.round(sxy/sxx*7*10)/10 || 0, pesoAtual:atual.kg, n, dias};
 }
 function variacaoMedidas(lista){
-  const out = {}, l = Array.isArray(lista) ? lista : [];
+  const out = {}, l = (Array.isArray(lista) ? lista.filter(x=>x && typeof x.d === "string") : []).slice().sort((a,b)=>a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
   CHAVES_MEDIDA.forEach(k=>{
     const v = l.filter(x=>x && x.m && +x.m[k] > 0);
     if (v.length >= 2){ const a = v[0], b = v[v.length-1]; out[k] = {de:a.m[k], para:b.m[k], dif:Math.round((b.m[k]-a.m[k])*10)/10, desde:a.d}; }
@@ -851,24 +852,24 @@ function lembretePesagem(lista, cfg, hoje, dispensado, menor){
   if (menor || dispensado || !cfg || !cfg.lembrar || !Array.isArray(lista) || !lista.length) return false;
   const dia = s => Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10))/864e5, h = dia(hoje);
   const sem = (h + 3) % 7, seg = h - sem;   // 1970-01-01 foi quinta: (dias + 3) % 7 dá segunda = 0
-  if (sem < (+cfg.dia || 0)) return false;
+  if (sem < Math.min(6, Math.max(0, +cfg.dia || 0))) return false;
   return !lista.some(x=>x && typeof x.d === "string" && dia(x.d) >= seg);
 }
 function faixaKcal(c){
   c = c || {};
   const kg = +c.kg, cm = +c.cm, id = +c.idade;
-  if (c.menor || (c.red && c.red.length) || c.ciclo === "sim" || !(kg > 0) || !(cm > 0) || !(id > 0)) return null;
+  if (c.menor || id < 18 || !/^[mfo]$/.test(String(c.sexo)) || (c.red && c.red.length) || c.ciclo === "sim" || !(kg > 0) || !(cm > 0) || !(id > 0)) return null;
   const bmr = 10*kg + 6.25*cm - 5*id + (c.sexo === "f" ? -161 : c.sexo === "m" ? 5 : -78);
   const manut = bmr*1.35 + (+c.treinoDia > 0 ? +c.treinoDia : 0);
   let lo = 0.95, hi = 1.05, motivo = "Para manter o peso e treinar bem, perto do que você gasta";
   if (c.objetivo === "emagrecer"){ lo = 0.80; hi = 0.90; motivo = "Para emagrecer com saúde, um pouco abaixo do que você gasta"; }
   else if (c.objetivo === "massa"){ lo = 1.05; hi = 1.10; motivo = "Para ganhar massa, um pouco acima do que você gasta"; }
   let ajuste = 0;
-  const t = c.tendenciaKgSemana, pct = (t === null || t === undefined || !isFinite(+t)) ? null : +t/kg*100, longa = +c.diasTendencia >= 21;
+  const t = c.tendenciaKgSemana, pct = (t === null || t === undefined || t === "" || !isFinite(+t)) ? null : +t/kg*100, longa = +c.diasTendencia >= 21;
   if (pct !== null){
     if (c.objetivo === "emagrecer"){
       if (pct <= -0.9){ ajuste = 150; motivo = "Você estava perdendo peso rápido demais, então a faixa subiu um pouco"; }
-      else if (pct > -0.1 && longa) motivo += ". O peso parou: converse com o coach antes de mudar a comida";
+      else if (pct > -0.1 && longa) motivo += ". O peso não está caindo: converse com o coach antes de mudar a comida";
     } else if (c.objetivo === "massa"){
       if (pct >= 0.5){ ajuste = -100; motivo = "Você estava ganhando peso rápido, então a faixa desceu um pouco"; }
       else if (pct < 0.1 && longa){ ajuste = 150; motivo = "O peso não subiu em 3 semanas, então a faixa subiu um pouco"; }
@@ -880,7 +881,7 @@ function faixaKcal(c){
   const max = r50(Math.max(manut*hi + ajuste, min + 100));
   return {min, max, manutencao:r50(manut), motivo};
 }
-const fotoValida = s =>typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
+const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 
 /* ===================== PLANO NO DIA A DIA ===================== */
@@ -1808,7 +1809,7 @@ function render(keep){
   if (t==="comida") return telaComida(o);
   if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
   if (t==="chat") return telaChat();
-  if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="corpo") return telaCorpo(); return telaPerfil(); }
+  if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="corpo") return telaCorpo(o); return telaPerfil(); }
   if (t==="painel") return telaPainel();
   telaHoje(o);
 }
@@ -2585,7 +2586,7 @@ function sheetCompras(){
 }
 /* faixa de calorias estimada (só adultos, com piso de segurança): a regra está em faixaKcal */
 function faixaCaloriasHTML(){
-  const p = P && P.perfil || {}; if (p.menor || (+p.idade > 0 && +p.idade < 18)) return "";
+  const p = P && P.perfil || {}; if (ehMenor(p)) return "";
   let n = 0; for (let i = 0; i < 7; i++) treinosDe(addDays(addDays(today, -dow(today)), i)).forEach(t=>{ n += kcalTreino(t, null); });
   const td = tendenciaPeso(LOG.corpo, key(today));
   const f = faixaKcal({kg:p.peso, cm:p.altura, idade:p.idade, sexo:p.sexo, objetivo:p.objetivo, menor:p.menor, red:(p.flags && p.flags.red) || [], ciclo:p.ciclo, treinoDia:Math.round(n/7), tendenciaKgSemana:td ? td.kgSemana : null, diasTendencia:td ? td.dias : 0});
@@ -3128,7 +3129,7 @@ function extrasHoje(){
   const out = [], est = janelaEstado(), ini = semanaDoResumo();
   if (ini){ const rs = LOG["rs_"+key(ini)], atual = +ini === +addDays(today, -dow(today)); if (!(rs && rs.lido) || (atual && !rs.corpo)){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "rsbtn"; b.innerHTML = '<span><b>Resumo da semana pronto</b><small>como foi, o que mudou e o foco da próxima</small></span><span class="n">→</span>'; b.addEventListener("click", ()=>sheetResumo(ini)); out.push(b); } }
   if (est==="aberta"){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "tjbtn"; const sq = janelaSeq(); b.innerHTML = '<span><b>A Tropa está aberta agora</b><small>conte como foi o dia até 21h · +20 XP'+(sq?' · '+sq+(sq===1?' dia':' dias')+' seguidos':'')+'</small></span><span class="n">→</span>'; b.addEventListener("click", sheetTropa); out.push(b); }
-  const menorC = !!(P && P.perfil && P.perfil.menor), segC = key(addDays(today, -dow(today)));
+  const menorC = ehMenor(P && P.perfil), segC = key(addDays(today, -dow(today)));
   if (lembretePesagem(LOG.corpo, LOG.corpo_cfg, key(today), !!LOG["cd_"+segC], menorC)){
     const b = document.createElement("button"); b.type = "button"; b.className = "ci"; b.id = "pesbtn";
     b.innerHTML = '<span><b>Hora de se pesar</b><small>leva 10 segundos · se hoje não der, tudo bem</small></span><span class="n">→</span>';
@@ -3446,7 +3447,7 @@ function contexto(q){
   const p = P && P.perfil || {}, pl = planoAtual(), s = semanaDe(today);
   const perfil = "HOJE: "+DIAS[dow(today)]+", "+key(today)+" (amanhã = o dia seguinte; não confunda).\nUSUÁRIO: "+(p.apelido||"")+", "+(p.idade||"?")+" anos"+((+p.idade>0 && +p.idade<18)?" (MENOR: aplique as regras de MENOR)":"")+", "+(p.peso||"?")+" kg. Objetivo: "+(TPL[p.objetivo]?TPL[p.objetivo].nome:p.objetivo)+(p.dataProva?" em "+p.dataProva:"")+". Hoje corre "+(p.corridasSem||0)+"x/sem, "+(p.kmSemana||0)+" km/sem, maior corrida "+(p.maiorLongao||0)+" km, melhor tempo "+(p.melhorTempo||"?")+", academia "+(p.academiaMeses||0)+" meses. Nível: "+(pl?pl.nivel:"?")+". Alertas: "+((p.flags&&p.flags.red||[]).concat(p.flags&&p.flags.amarelo||[]).join("; ")||"nenhum")+". Restrições: "+((p.restricoes||[]).join(", ")||"nenhuma")+".";
   const plano = pl && s && s.sem ? "SEMANA "+s.w+" ("+faseDaSemana(pl,s.w)+(s.sem.deload?", semana leve":"")+"): "+s.sem.dias.map((d,i)=>d.dia+": "+(treinosDe(addDays(today, i-dow(today))).map(t=>t.t+(t.km?" "+t.km+"km":t.min?" "+t.min+"min":"")).join(" + ")||"descanso")).join(" | ") : "Plano ainda não começou.";
-  const tdc = (p.menor || (+p.idade > 0 && +p.idade < 18)) ? null : tendenciaPeso(LOG.corpo, key(today));
+  const tdc = ehMenor(p) ? null : tendenciaPeso(LOG.corpo, key(today));
   const pesoLinha = tdc ? "PESO: "+num(tdc.pesoAtual,1)+" kg, tendência "+(tdc.kgSemana>0?"+":"")+num(tdc.kgSemana,1)+" kg/semana em "+tdc.dias+" dias.\n" : "";
   const ci = LOG["ci_"+key(today)];
   const cis = ESCALA_DOR+"\n"+(ci ? "Check-in hoje: sono "+ci.sono+"h"+(ci.dormiu?" (dormiu "+ci.dormiu+", acordou "+ci.acordou+")":"")+", energia "+ci.humor+"/5, dor "+ci.dor+"/10, prontidão "+prontidao(ci)+"." : "Sem check-in hoje.")+(LOG["aj_"+key(today)] ? " Ajuste de hoje: "+LOG["aj_"+key(today)].acao+"." : "");
@@ -3572,6 +3573,7 @@ function sheetSair(){
 function sair(){ $("ov").innerHTML = ""; R.tab = "hoje"; R.sub = null; R.arg = null; semOff = 0; telaAbertura(); }
 /* ===================== CORPO: peso, medidas, tendência ===================== */
 const ROTULO_MEDIDA = {cin:"Cintura", qua:"Quadril", pei:"Peito", bra:"Braço", cox:"Coxa"};
+const ehMenor = p => !!(p && (p.menor || (+p.idade > 0 && +p.idade < 18)));
 function graficoPeso(lista){
   const pts = lista.filter(x=>x.d >= key(addDays(today,-90)));
   if (pts.length < 2) return "";
@@ -3599,16 +3601,20 @@ function bindCorpoExtra(){
     const m = $("fpm"); m.className = "msg";
     if (!/^image\//.test(f.type)){ m.textContent = "Escolha uma imagem."; m.className = "msg err"; return; }
     const fs = fotosCorpo(), hojeK = "fp_"+key(today);
+    const guardar = async (f, substituir) => {
+      m.className = "msg"; m.textContent = "Preparando a foto…";
+      let th = await comTempo(miniatura(f, 320, 0.55), 10000).catch(()=>"");
+      if (!fotoValida(th)) th = await comTempo(miniatura(f, 240, 0.5), 10000).catch(()=>"");
+      if (!fotoValida(th)){ m.textContent = "Não consegui usar essa foto. Tente outra."; m.className = "msg err"; return; }
+      if (substituir) await salvarLog(fs[0], null);
+      await salvarLog(hojeK, {th, at:new Date().toISOString()}); toast("Foto guardada."); render(true);
+    };
     if (fs.length >= 6 && !fs.includes(hojeK)){
       m.innerHTML = 'Você já tem 6 fotos. Substituir a mais antiga? <button type="button" class="lk" id="fsub">Substituir</button>';
-      $("fsub").addEventListener("click", async ()=>{ await salvarLog(fs[0], null); m.textContent = "Escolha a foto de novo."; up.value = ""; });
+      $("fsub").addEventListener("click", ()=>guardar(f, true));
       return;
     }
-    m.textContent = "Preparando a foto…";
-    let th = await comTempo(miniatura(f, 320, 0.55), 10000).catch(()=>"");
-    if (!fotoValida(th)) th = await miniatura(f, 240, 0.5);
-    if (!fotoValida(th)){ m.textContent = "Não consegui usar essa foto. Tente outra."; m.className = "msg err"; return; }
-    await salvarLog(hojeK, {th, at:new Date().toISOString()}); toast("Foto guardada."); render(true);
+    await guardar(f, false);
   });
   document.querySelectorAll("[data-fdel]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog(b.dataset.fdel, null); render(true); }));
   const cp = $("fcmp");
@@ -3620,10 +3626,10 @@ function bindCorpoExtra(){
   const lb = $("lbon");
   if (lb) lb.addEventListener("change", ()=>{ const c = Object.assign({dia:0}, LOG.corpo_cfg||{}, {lembrar:lb.checked}); salvarLog("corpo_cfg", c).then(()=>toast(lb.checked ? "Vou lembrar você." : "Lembrete desligado.")); });
   const ld = $("lbdia");
-  if (ld) ld.addEventListener("click", async e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; await salvarLog("corpo_cfg", Object.assign({lembrar:true}, LOG.corpo_cfg||{}, {dia:+b.dataset.v})); render(true); });
+  if (ld) ld.addEventListener("click", async e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; const cf = Object.assign({lembrar:false}, LOG.corpo_cfg||{}, {dia:+b.dataset.v}); await salvarLog("corpo_cfg", cf); if (!cf.lembrar) toast("Dia escolhido. Ligue o lembrete acima para receber o cartão."); render(true); });
 }
-function telaCorpo(){
-  const menor = !!(P.perfil && P.perfil.menor), lista = LOG.corpo || [], hojeK = key(today), hoje = lista.find(x=>x.d === hojeK) || {};
+function telaCorpo(o){
+  const menor = ehMenor(P && P.perfil), lista = LOG.corpo || [], hojeK = key(today), hoje = lista.find(x=>x.d === hojeK) || {};
   const td = menor ? null : tendenciaPeso(lista, hojeK), vm = menor ? {} : variacaoMedidas(lista);
   const campoM = k => '<div class="fld"><label for="cm-'+k+'">'+ROTULO_MEDIDA[k]+' (cm)</label><input class="inp" id="cm-'+k+'" type="number" inputmode="decimal" value="'+esc(hoje.m && hoje.m[k] != null ? hoje.m[k] : "")+'"></div>';
   const app = tela('<button type="button" class="back" data-go="perfil">← Perfil</button><span class="k">'+esc(fmtLongo(today))+'</span><h1 class="h1">Corpo</h1>'+
@@ -3634,8 +3640,8 @@ function telaCorpo(){
       (td ? '<p>Nas últimas 4 semanas: '+(td.kgSemana>0?'+':'')+num(td.kgSemana,1)+' kg por semana.</p><span class="s">É a média de vários dias, não o número de um dia só. O peso oscila com água, sono e comida.</span>' : '<span class="s">'+(menor ? '' : 'Com 3 registros em 2 semanas, mostro a tendência.')+'</span>')+'</div>' : '')+
     (Object.keys(vm).length ? '<div class="box"><b>Medidas</b>'+Object.keys(vm).map(k=>'<div class="between"><span>'+ROTULO_MEDIDA[k]+'</span><b>'+num(vm[k].para,1)+' cm <small class="s">('+(vm[k].dif>0?'+':'')+num(vm[k].dif,1)+' desde '+esc(fmt(parseD(vm[k].desde)))+')</small></b></div>').join("")+'</div>' : '')+
     '<div id="cpx">'+faixaCaloriasHTML()+secaoCorpoExtra(menor)+'</div>'+
-    (lista.length ? '<span class="k">registros</span>'+lista.slice().reverse().slice(0,30).map(x=>'<div class="between"><span>'+esc(fmt(parseD(x.d)))+' · <b>'+num(x.kg,1)+' kg</b>'+(x.m ? ' <small class="s">'+Object.keys(x.m).map(k=>ROTULO_MEDIDA[k].toLowerCase()+' '+num(x.m[k],1)).join(", ")+'</small>' : '')+'</span><button type="button" class="lk" data-del="'+esc(x.d)+'" aria-label="Apagar registro de '+esc(fmt(parseD(x.d)))+'">apagar</button></div>').join("") : '')+
-    '<p class="s">Estimativas e acompanhamento, não diagnóstico. '+esc(BRAND)+' não substitui médico ou nutricionista.</p>', {tabs:true, fab:true});
+    (lista.length ? '<span class="k">registros</span>'+lista.slice().reverse().slice(0,30).map(x=>'<div class="between"><span>'+esc(fmt(parseD(x.d)))+' · <b>'+num(x.kg,1)+' kg</b>'+(x.m ? ' <small class="s">'+Object.keys(x.m).map(k=>ROTULO_MEDIDA[k].toLowerCase()+' '+num(x.m[k],1)).join(", ")+'</small>' : '')+'</span><button type="button" class="lk" data-del="'+esc(x.d)+'" aria-label="Apagar registro de '+esc(fmt(parseD(x.d)))+'">apagar</button></div>').join("")+(lista.length > 30 ? '<p class="s">Mostrando os 30 mais recentes.</p>' : '') : '')+
+    '<p class="s">Estimativas e acompanhamento, não diagnóstico. '+esc(BRAND)+' não substitui médico ou nutricionista.</p>', {tabs:true, fab:true, keepScroll:o && o.keepScroll});
   bindGo(app);
   const salvar = async (ignorarSalto) => {
     const kg = +String($("cp-kg").value).replace(",","."), m = {};
@@ -3648,8 +3654,9 @@ function telaCorpo(){
     }
     const nova = registrarCorpo(LOG.corpo || [], {d:hojeK, kg, m}, menor);
     await salvarLog("corpo", nova);
-    P.perfil.peso = kg; await salvarPerfil();
-    toast("Peso registrado."); render(true);
+    P.perfil.peso = Math.round(kg*10)/10; await salvarPerfil();
+    const salvas = (nova.find(x=>x.d === hojeK) || {}).m || {}, perdeu = Object.keys(m).some(k=>!(k in salvas));
+    toast(perdeu ? "Peso registrado. Algumas medidas estavam fora do esperado e não foram salvas." : "Peso registrado."); render(true);
   };
   $("cp-ok").addEventListener("click", ()=>salvar(false));
   bindCorpoExtra();
