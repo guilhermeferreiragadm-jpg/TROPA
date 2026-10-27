@@ -46,6 +46,7 @@ Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem pap
 - Sugestão de aliviar a próxima semana a partir do "Como foi" (você aceita ou recusa), motivo do treino para qualquer plano, e repetir refeição com favoritos.
 - Foguinho, XP, medalhas, desafios, feed e retrospectiva.
 - Resumo de domingo com pergunta sobre o corpo e sugestão de aliviar a próxima semana, carga da musculação que considera prontidão e dor, e lista de compras da semana montada pela Nutri.
+- Tela Corpo (Perfil): peso, medidas, gráfico e tendência de 4 semanas, fotos de progresso em miniatura (até 6, só adultos), cartão semanal de pesagem na tela Hoje e faixa de calorias estimada com piso de segurança (só adultos, sem alerta de saúde nem ciclo irregular informado).
 
 ## Pendências conhecidas
 - A fase 1 (sugestão da próxima semana, repetir refeição, motivo do treino) foi validada só por testes de funções puras e leitura de código; falta conferir os cards e a sheet dentro do artifact. Planos personalizados com fases (pl.fases) usam textos de motivo específicos do plano de origem; os planos gerados pelo app usam textos genéricos.
@@ -54,3 +55,4 @@ Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem pap
 - A fase 2 (resumo de domingo, carga por prontidão, lista de compras) foi validada só por testes de funções puras e leitura de código; falta conferir dentro do artifact. A meta calórica que se ajusta ficou para a fase 3, junto com peso e medidas.
 - Ids repetidos entre telas (`pt`, `pm`, `pok`) e pequenos textos a ajustar.
 - A foto de perfil só aparece para a própria pessoa; no feed os amigos aparecem com iniciais.
+- A fase 3 (corpo) foi validada só por testes de funções puras e leitura de código; falta conferir dentro do artifact. Menores de 18 anos registram só o peso: sem medidas, foto, tendência, faixa de calorias ou lembrete. A faixa de calorias não substitui nutricionista.

@@ -2504,6 +2504,7 @@ function telaComida(o){
   const regsOntem = LOG["ref_"+key(addDays(today,-1))] || [], favs = LOG["fav_refs"] || [];
   const h = topo(esc(NOMETP[m.tp]+" · "+fmt(today)), "Comida")+
     '<div class="macro"><div><b>'+c.p+'<small class="s">/'+m.prot[0]+'g</small></b><span>proteína</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.p/m.prot[0]))+'%"></i></div></div><div><b>'+c.c+'<small class="s">/'+m.carb[0]+'g</small></b><span>carbo</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.c/m.carb[0]))+'%"></i></div></div><button type="button" style="border:1px solid var(--mist);background:var(--white);padding:9px;text-align:left" id="agua"><b class="n" style="font-size:1.25rem;display:block;line-height:1">'+String(agua).replace(".",",")+'<small class="s">/'+num(m.agua,1)+'L</small></b><span class="k" style="font-size:.56rem">água · toque +250 ml</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*agua/m.agua))+'%"></i></div></button></div>'+
+    faixaCaloriasHTML()+
     '<p class="s">Metas de hoje: proteína '+m.prot[0]+'–'+m.prot[1]+' g · carbo '+m.carb[0]+'–'+m.carb[1]+' g (pelo seu peso e o treino do dia). Os números somam o que você registra.</p>'+
     '<span class="k">refeições</span>'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>'+(candidatasRepetir(regsOntem, favs, r.refeicao).length?'<button type="button" class="btn sm ghost" data-rep="'+esc(r.refeicao)+'">repetir</button>':''))+'</div>').join("")+
     '<p class="msg" id="cmm"></p>'+
@@ -2581,6 +2582,15 @@ function sheetCompras(){
     $("cpre").onclick = ()=>{ const bt = $("cpre"); if (v.itens.some(i=>i.ok) && !bt.dataset.arm){ bt.dataset.arm = "1"; bt.textContent = "Apagar marcações e refazer"; const cn = document.createElement("button"); cn.type = "button"; cn.className = "btn sm ghost"; cn.id = "cpcn"; cn.textContent = "Cancelar"; cn.onclick = pinta; bt.after(cn); return; } montar(); }; $("cpfe").onclick = fecha;
   };
   if (comprasGerando) raiz.innerHTML = '<div class="hint">A Nutri está montando a lista…</div>'; else pinta();
+}
+/* faixa de calorias estimada (só adultos, com piso de segurança): a regra está em faixaKcal */
+function faixaCaloriasHTML(){
+  const p = P && P.perfil || {}; if (p.menor || (+p.idade > 0 && +p.idade < 18)) return "";
+  let n = 0; for (let i = 0; i < 7; i++) treinosDe(addDays(addDays(today, -dow(today)), i)).forEach(t=>{ n += kcalTreino(t, null); });
+  const td = tendenciaPeso(LOG.corpo, key(today));
+  const f = faixaKcal({kg:p.peso, cm:p.altura, idade:p.idade, sexo:p.sexo, objetivo:p.objetivo, menor:p.menor, red:(p.flags && p.flags.red) || [], ciclo:p.ciclo, treinoDia:Math.round(n/7), tendenciaKgSemana:td ? td.kgSemana : null, diasTendencia:td ? td.dias : 0});
+  if (!f) return "";
+  return '<div class="box"><div class="between"><b>Faixa de calorias</b><span class="k">estimativa</span></div><b style="font-size:1.3rem">'+f.min.toLocaleString("pt-BR")+' a '+f.max.toLocaleString("pt-BR")+' kcal por dia</b><p class="s">'+esc(f.motivo)+'.</p><span class="s">Estimativa pela sua rotina e treinos, não é prescrição. Para um plano individual, procure um nutricionista.</span></div>';
 }
 async function analisarRefeicao(ref, f, texto){
   const m = metasDia(today), c = consumido(today), p = P.perfil || {};
@@ -3623,7 +3633,7 @@ function telaCorpo(){
     (lista.length ? '<div class="box"><b>Peso</b>'+graficoPeso(lista)+
       (td ? '<p>Nas últimas 4 semanas: '+(td.kgSemana>0?'+':'')+num(td.kgSemana,1)+' kg por semana.</p><span class="s">É a média de vários dias, não o número de um dia só. O peso oscila com água, sono e comida.</span>' : '<span class="s">'+(menor ? '' : 'Com 3 registros em 2 semanas, mostro a tendência.')+'</span>')+'</div>' : '')+
     (Object.keys(vm).length ? '<div class="box"><b>Medidas</b>'+Object.keys(vm).map(k=>'<div class="between"><span>'+ROTULO_MEDIDA[k]+'</span><b>'+num(vm[k].para,1)+' cm <small class="s">('+(vm[k].dif>0?'+':'')+num(vm[k].dif,1)+' desde '+esc(fmt(parseD(vm[k].desde)))+')</small></b></div>').join("")+'</div>' : '')+
-    '<div id="cpx">'+secaoCorpoExtra(menor)+'</div>'+
+    '<div id="cpx">'+faixaCaloriasHTML()+secaoCorpoExtra(menor)+'</div>'+
     (lista.length ? '<span class="k">registros</span>'+lista.slice().reverse().slice(0,30).map(x=>'<div class="between"><span>'+esc(fmt(parseD(x.d)))+' · <b>'+num(x.kg,1)+' kg</b>'+(x.m ? ' <small class="s">'+Object.keys(x.m).map(k=>ROTULO_MEDIDA[k].toLowerCase()+' '+num(x.m[k],1)).join(", ")+'</small>' : '')+'</span><button type="button" class="lk" data-del="'+esc(x.d)+'" aria-label="Apagar registro de '+esc(fmt(parseD(x.d)))+'">apagar</button></div>').join("") : '')+
     '<p class="s">Estimativas e acompanhamento, não diagnóstico. '+esc(BRAND)+' não substitui médico ou nutricionista.</p>', {tabs:true, fab:true});
   bindGo(app);
