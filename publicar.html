@@ -637,6 +637,8 @@ function podarFotos(){
     try{ tam = JSON.stringify(LOG).length; }catch(e){}
   }
   if (tam > 200000){ Object.keys(LOG).filter(k=>/^(ft_|ref_)/.test(k)).sort().forEach(k=>{ if (JSON.stringify(LOG).length < 180000) return; if (k.startsWith("ft_")) delete LOG[k]; else LOG[k] = LOG[k].map(r=>{ const c = Object.assign({}, r); delete c.thumb; return c; }); }); }
+  try{ tam = JSON.stringify(LOG).length; }catch(e){}
+  if (tam > 220000){ const fp = Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k)).sort(); fp.slice(0, -2).forEach(k=>{ delete LOG[k]; }); }
 }
 function enviarResumo(){
   if (!(P && P.perfil && P.perfil.consent2) || DEMO) return;
@@ -3116,6 +3118,15 @@ function extrasHoje(){
   const out = [], est = janelaEstado(), ini = semanaDoResumo();
   if (ini){ const rs = LOG["rs_"+key(ini)], atual = +ini === +addDays(today, -dow(today)); if (!(rs && rs.lido) || (atual && !rs.corpo)){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "rsbtn"; b.innerHTML = '<span><b>Resumo da semana pronto</b><small>como foi, o que mudou e o foco da próxima</small></span><span class="n">→</span>'; b.addEventListener("click", ()=>sheetResumo(ini)); out.push(b); } }
   if (est==="aberta"){ const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "tjbtn"; const sq = janelaSeq(); b.innerHTML = '<span><b>A Tropa está aberta agora</b><small>conte como foi o dia até 21h · +20 XP'+(sq?' · '+sq+(sq===1?' dia':' dias')+' seguidos':'')+'</small></span><span class="n">→</span>'; b.addEventListener("click", sheetTropa); out.push(b); }
+  const menorC = !!(P && P.perfil && P.perfil.menor), segC = key(addDays(today, -dow(today)));
+  if (lembretePesagem(LOG.corpo, LOG.corpo_cfg, key(today), !!LOG["cd_"+segC], menorC)){
+    const b = document.createElement("button"); b.type = "button"; b.className = "ci"; b.id = "pesbtn";
+    b.innerHTML = '<span><b>Hora de se pesar</b><small>leva 10 segundos · se hoje não der, tudo bem</small></span><span class="n">→</span>';
+    b.addEventListener("click", ()=>ir("perfil","corpo"));
+    const nao = document.createElement("button"); nao.type = "button"; nao.className = "lk"; nao.id = "pesno"; nao.textContent = "Hoje não";
+    nao.addEventListener("click", ()=>{ salvarLog("cd_"+segC, true).then(()=>render(true)); });
+    out.push(b, nao);
+  }
   return out;
 }
 function janelaLinha(){
@@ -3425,6 +3436,8 @@ function contexto(q){
   const p = P && P.perfil || {}, pl = planoAtual(), s = semanaDe(today);
   const perfil = "HOJE: "+DIAS[dow(today)]+", "+key(today)+" (amanhã = o dia seguinte; não confunda).\nUSUÁRIO: "+(p.apelido||"")+", "+(p.idade||"?")+" anos"+((+p.idade>0 && +p.idade<18)?" (MENOR: aplique as regras de MENOR)":"")+", "+(p.peso||"?")+" kg. Objetivo: "+(TPL[p.objetivo]?TPL[p.objetivo].nome:p.objetivo)+(p.dataProva?" em "+p.dataProva:"")+". Hoje corre "+(p.corridasSem||0)+"x/sem, "+(p.kmSemana||0)+" km/sem, maior corrida "+(p.maiorLongao||0)+" km, melhor tempo "+(p.melhorTempo||"?")+", academia "+(p.academiaMeses||0)+" meses. Nível: "+(pl?pl.nivel:"?")+". Alertas: "+((p.flags&&p.flags.red||[]).concat(p.flags&&p.flags.amarelo||[]).join("; ")||"nenhum")+". Restrições: "+((p.restricoes||[]).join(", ")||"nenhuma")+".";
   const plano = pl && s && s.sem ? "SEMANA "+s.w+" ("+faseDaSemana(pl,s.w)+(s.sem.deload?", semana leve":"")+"): "+s.sem.dias.map((d,i)=>d.dia+": "+(treinosDe(addDays(today, i-dow(today))).map(t=>t.t+(t.km?" "+t.km+"km":t.min?" "+t.min+"min":"")).join(" + ")||"descanso")).join(" | ") : "Plano ainda não começou.";
+  const tdc = (p.menor || (+p.idade > 0 && +p.idade < 18)) ? null : tendenciaPeso(LOG.corpo, key(today));
+  const pesoLinha = tdc ? "PESO: "+num(tdc.pesoAtual,1)+" kg, tendência "+(tdc.kgSemana>0?"+":"")+num(tdc.kgSemana,1)+" kg/semana em "+tdc.dias+" dias.\n" : "";
   const ci = LOG["ci_"+key(today)];
   const cis = ESCALA_DOR+"\n"+(ci ? "Check-in hoje: sono "+ci.sono+"h"+(ci.dormiu?" (dormiu "+ci.dormiu+", acordou "+ci.acordou+")":"")+", energia "+ci.humor+"/5, dor "+ci.dor+"/10, prontidão "+prontidao(ci)+"." : "Sem check-in hoje.")+(LOG["aj_"+key(today)] ? " Ajuste de hoje: "+LOG["aj_"+key(today)].acao+"." : "");
   const nomes = new Set(); Object.keys(LOG).filter(k=>k.startsWith("fs_")).forEach(k=>(LOG[k].ex||[]).forEach(e=>nomes.add(e.nome)));
@@ -3438,7 +3451,7 @@ function contexto(q){
   const mem = memoria(); const memTxt = mem.length ? "MEMÓRIA DO ATLETA (aprendizados anteriores; use para personalizar): "+mem.map(m=>m.d+": "+m.t).join(" | ")+"\n" : "";
   const cal = extrasContexto()+"CALORIAS HOJE: comeu ~"+comido(today).kcal+" kcal, gasto estimado ~"+gastoDia(today).total+" kcal.\n";
   const mudar = modo==="treino" ? "MUDAR O CALENDÁRIO: quando ele contar dor, cansaço, imprevisto ou sugestão de amigo e quiser mudar treino: 1) avalie se é seguro e diga sim ou não com o porquê (ex.: dor na lombar/posterior = nada de agachamento, terra ou salto hoje; superiores e core sem carga na coluna podem, se não doer; dor forte, que piora ou irradia = descanso e procurar médico). 2) Se ele pediu ou topar, MUDE DE VERDADE com as ferramentas: ver_semana, depois trocar_treino (monta o treino novo com exercícios e séries) ou ajustar_treino. Se a troca tira um treino importante (ex.: pernas), reencaixe em outro dia da semana quando couber, sem colocar 2 dias fortes seguidos. 3) Diga em 1 linha o que mudou no calendário. Nunca diga que mudou sem chamar a ferramenta.\n" : "";
-  return baseDe(modo)+"\n\n"+mudar+perfil+"\n"+ritmos+memTxt+naoFeitos+cal+pausaTxt()+restricoesTxt()+plano+"\n"+cis+(cargas?"\nCARGAS RECENTES (força):\n"+cargas:"")+"\n"+comida+"\n\nBANCO DE CONHECIMENTO (use para embasar):\n"+kb;
+  return baseDe(modo)+"\n\n"+mudar+pesoLinha+perfil+"\n"+ritmos+memTxt+naoFeitos+cal+pausaTxt()+restricoesTxt()+plano+"\n"+cis+(cargas?"\nCARGAS RECENTES (força):\n"+cargas:"")+"\n"+comida+"\n\nBANCO DE CONHECIMENTO (use para embasar):\n"+kb;
 }
 function ferramentas(){
   if (chatModo!=="nutri") return [
@@ -3558,6 +3571,47 @@ function graficoPeso(lista){
   const d = pts.map((x,i)=>(i?"L":"M")+X(x.d).toFixed(1)+" "+Y(x.kg).toFixed(1)).join(" ");
   return '<svg viewBox="0 0 320 100" role="img" aria-label="Peso nos últimos 90 dias" style="width:100%;height:auto"><path d="'+d+'" fill="none" stroke="var(--ink)" stroke-width="2"/>'+pts.map(x=>'<circle cx="'+X(x.d).toFixed(1)+'" cy="'+Y(x.kg).toFixed(1)+'" r="3" fill="var(--go)"/>').join("")+'</svg><span class="s">'+num(Math.min(...kgs),1)+' a '+num(Math.max(...kgs),1)+' kg nos últimos 90 dias</span>';
 }
+const fotosCorpo = () => Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k) && fotoValida((LOG[k]||{}).th)).sort();
+function secaoCorpoExtra(menor){
+  if (menor) return "";
+  const fs = fotosCorpo(), cfg = LOG.corpo_cfg || {}, tem = (LOG.corpo||[]).length > 0;
+  const dias = [["0","Seg"],["1","Ter"],["2","Qua"],["3","Qui"],["4","Sex"],["5","Sáb"],["6","Dom"]];
+  return '<div class="box"><div class="between"><b>Fotos de progresso</b><span class="s">'+fs.length+' de 6</span></div>'+
+    (fs.length ? '<div class="grid2">'+fs.map(k=>'<div><img alt="Foto de '+esc(fmt(parseD(k.slice(3))))+'" src="'+esc(LOG[k].th)+'" style="width:100%;height:auto;display:block"><div class="between"><span class="s">'+esc(fmt(parseD(k.slice(3))))+'</span><button type="button" class="lk" data-fdel="'+esc(k)+'" aria-label="Apagar foto de '+esc(fmt(parseD(k.slice(3))))+'">apagar</button></div></div>').join("")+'</div>'+(fs.length > 1 ? '<button type="button" class="btn ghost" id="fcmp">Comparar primeira e última</button>' : '') : '<p class="s">A foto fica só no seu registro: não aparece para amigos nem vai para a IA. Guardamos uma cópia pequena, não o arquivo original.</p>')+
+    '<label class="btn" for="fpup" style="display:block;text-align:center">Adicionar foto de hoje</label><input type="file" id="fpup" accept="image/*" hidden><p class="msg" id="fpm"></p></div>'+
+    (tem ? '<div class="box"><b>Lembrete de pesagem</b><label class="between" style="padding:8px 0"><span>Lembrar de me pesar</span><input type="checkbox" id="lbon"'+(cfg.lembrar ? ' checked' : '')+'></label>'+
+      '<div class="chips" id="lbdia" role="group" aria-label="Dia da pesagem">'+dias.map(([v,l])=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(String(cfg.dia != null ? cfg.dia : 0) === v)+'">'+l+'</button>').join("")+'</div><span class="s">Um cartão aparece na tela Hoje no dia escolhido, até você registrar. Não é notificação do celular.</span></div>' : '');
+}
+function bindCorpoExtra(){
+  const up = $("fpup");
+  if (up) up.addEventListener("change", async e=>{
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const m = $("fpm"); m.className = "msg";
+    if (!/^image\//.test(f.type)){ m.textContent = "Escolha uma imagem."; m.className = "msg err"; return; }
+    const fs = fotosCorpo(), hojeK = "fp_"+key(today);
+    if (fs.length >= 6 && !fs.includes(hojeK)){
+      m.innerHTML = 'Você já tem 6 fotos. Substituir a mais antiga? <button type="button" class="lk" id="fsub">Substituir</button>';
+      $("fsub").addEventListener("click", async ()=>{ await salvarLog(fs[0], null); m.textContent = "Escolha a foto de novo."; up.value = ""; });
+      return;
+    }
+    m.textContent = "Preparando a foto…";
+    let th = await comTempo(miniatura(f, 320, 0.55), 10000).catch(()=>"");
+    if (!fotoValida(th)) th = await miniatura(f, 240, 0.5);
+    if (!fotoValida(th)){ m.textContent = "Não consegui usar essa foto. Tente outra."; m.className = "msg err"; return; }
+    await salvarLog(hojeK, {th, at:new Date().toISOString()}); toast("Foto guardada."); render(true);
+  });
+  document.querySelectorAll("[data-fdel]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog(b.dataset.fdel, null); render(true); }));
+  const cp = $("fcmp");
+  if (cp) cp.addEventListener("click", ()=>{
+    const fs = fotosCorpo(), a = fs[0], z = fs[fs.length-1], ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; };
+    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Comparar fotos"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Antes e depois</h2><div class="grid2"><div><img alt="Primeira foto" src="'+esc(LOG[a].th)+'" style="width:100%;height:auto;display:block"><span class="s">'+esc(fmt(parseD(a.slice(3))))+'</span></div><div><img alt="Última foto" src="'+esc(LOG[z].th)+'" style="width:100%;height:auto;display:block"><span class="s">'+esc(fmt(parseD(z.slice(3))))+'</span></div></div><p class="s">Luz, ângulo e roupa mudam o que a foto mostra. Compare com calma.</p><button type="button" class="btn ghost" id="fcx">Fechar</button></div>';
+    $("dim").addEventListener("click", fecha); $("fcx").addEventListener("click", fecha);
+  });
+  const lb = $("lbon");
+  if (lb) lb.addEventListener("change", ()=>{ const c = Object.assign({dia:0}, LOG.corpo_cfg||{}, {lembrar:lb.checked}); salvarLog("corpo_cfg", c).then(()=>toast(lb.checked ? "Vou lembrar você." : "Lembrete desligado.")); });
+  const ld = $("lbdia");
+  if (ld) ld.addEventListener("click", async e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; await salvarLog("corpo_cfg", Object.assign({lembrar:true}, LOG.corpo_cfg||{}, {dia:+b.dataset.v})); render(true); });
+}
 function telaCorpo(){
   const menor = !!(P.perfil && P.perfil.menor), lista = LOG.corpo || [], hojeK = key(today), hoje = lista.find(x=>x.d === hojeK) || {};
   const td = menor ? null : tendenciaPeso(lista, hojeK), vm = menor ? {} : variacaoMedidas(lista);
@@ -3569,7 +3623,7 @@ function telaCorpo(){
     (lista.length ? '<div class="box"><b>Peso</b>'+graficoPeso(lista)+
       (td ? '<p>Nas últimas 4 semanas: '+(td.kgSemana>0?'+':'')+num(td.kgSemana,1)+' kg por semana.</p><span class="s">É a média de vários dias, não o número de um dia só. O peso oscila com água, sono e comida.</span>' : '<span class="s">'+(menor ? '' : 'Com 3 registros em 2 semanas, mostro a tendência.')+'</span>')+'</div>' : '')+
     (Object.keys(vm).length ? '<div class="box"><b>Medidas</b>'+Object.keys(vm).map(k=>'<div class="between"><span>'+ROTULO_MEDIDA[k]+'</span><b>'+num(vm[k].para,1)+' cm <small class="s">('+(vm[k].dif>0?'+':'')+num(vm[k].dif,1)+' desde '+esc(fmt(parseD(vm[k].desde)))+')</small></b></div>').join("")+'</div>' : '')+
-    '<div id="cpx"></div>'+
+    '<div id="cpx">'+secaoCorpoExtra(menor)+'</div>'+
     (lista.length ? '<span class="k">registros</span>'+lista.slice().reverse().slice(0,30).map(x=>'<div class="between"><span>'+esc(fmt(parseD(x.d)))+' · <b>'+num(x.kg,1)+' kg</b>'+(x.m ? ' <small class="s">'+Object.keys(x.m).map(k=>ROTULO_MEDIDA[k].toLowerCase()+' '+num(x.m[k],1)).join(", ")+'</small>' : '')+'</span><button type="button" class="lk" data-del="'+esc(x.d)+'" aria-label="Apagar registro de '+esc(fmt(parseD(x.d)))+'">apagar</button></div>').join("") : '')+
     '<p class="s">Estimativas e acompanhamento, não diagnóstico. '+esc(BRAND)+' não substitui médico ou nutricionista.</p>', {tabs:true, fab:true});
   bindGo(app);
@@ -3588,6 +3642,7 @@ function telaCorpo(){
     toast("Peso registrado."); render(true);
   };
   $("cp-ok").addEventListener("click", ()=>salvar(false));
+  bindCorpoExtra();
   app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog("corpo", (LOG.corpo||[]).filter(x=>x.d !== b.dataset.del)); render(true); }));
 }
 function telaPerfil(){
