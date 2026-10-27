@@ -886,6 +886,40 @@ function faixaKcal(c){
   const max = r50(Math.max(manut*hi + ajuste, min + 100));
   return {min, max, manutencao:r50(manut), motivo};
 }
+/* ---- fase 4: grupos (sem DOM, sem banco) ---- */
+const ALFA_GRUPO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const TIPOS_GRUPO = ["km","treinos","forca","foguinho"], FORMATOS_GRUPO = ["mais","juntos"];
+const FRASES_CUT = ["Bora treinar?","Vi que você treinou, boa!","Não esquece de hoje","Descansa e volta amanhã"];
+const normalizarCodigo = s => { const c = String(s||"").toUpperCase().replace(/[\s-]/g,""); return c.length===8 && c.split("").every(x=>ALFA_GRUPO.includes(x)) ? c : ""; };
+const novoCodigoGrupo = rand => { const r = rand || (()=>crypto.getRandomValues(new Uint32Array(1))[0]/4294967296); let c = ""; for (let i=0;i<8;i++) c += ALFA_GRUPO[Math.min(ALFA_GRUPO.length-1, Math.floor(r()*ALFA_GRUPO.length))]; return c; };
+const dataValida = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s||"")) ? String(s) : "";
+const numLimitado = (v, mx) => { v = +v; return isFinite(v) ? Math.min(mx, Math.max(0, Math.round(v*10)/10)) : 0; };
+const membrosDoGrupo = (docs, gid) => {
+  const out = [];
+  (Array.isArray(docs) ? docs : []).forEach(x => {
+    const d = x && x.data; if (!x || typeof x.id !== "string" || !d || typeof d !== "object" || !Array.isArray(d.gs)) return;
+    const g = d.gs.find(e => e && e.g === gid); if (!g) return;
+    const cut = g.cut && dataValida(g.cut.d) ? {d:g.cut.d, k:[0,1,2,3].includes(g.cut.k) ? g.cut.k : 0} : null;
+    out.push({id:x.id, ap:String(d.ap||"").slice(0,30) || "Atleta", up:typeof d.up === "string" ? d.up.slice(0,30) : "",
+      def:{nome:String(g.nome||"Grupo").slice(0,30), tipo:TIPOS_GRUPO.includes(g.tipo) ? g.tipo : "treinos", formato:FORMATOS_GRUPO.includes(g.formato) ? g.formato : "mais", meta:numLimitado(g.meta,100000) || 100, ini:dataValida(g.ini), fim:dataValida(g.fim), dupla:g.dupla === true},
+      v:numLimitado(g.v,100000), t:Math.round(numLimitado(g.t,100)), f:Math.round(numLimitado(g.f,3650)), cut});
+  });
+  return out;
+};
+const definicaoDoGrupo = membros => { const l = (membros||[]).slice().sort((a,b)=>{ const x = a.def.ini||"9999", y = b.def.ini||"9999"; return x<y ? -1 : x>y ? 1 : String(a.up)<String(b.up) ? -1 : String(a.up)>String(b.up) ? 1 : 0; }); return l.length ? l[0].def : null; };
+const placarGrupo = (membros, eu, def) => {
+  const lista = (membros||[]).map(m=>({id:m.id, ap:m.ap, v:m.v, up:m.up, eu:m.id===eu})).sort((a,b)=>b.v-a.v || (a.ap<b.ap ? -1 : a.ap>b.ap ? 1 : 0));
+  const total = Math.round(lista.reduce((a,x)=>a+x.v,0)*10)/10;
+  return {lista, total, pct: def && def.formato==="juntos" && def.meta>0 ? Math.min(100, Math.round(100*total/def.meta)) : null};
+};
+const podarGrupos = (gs, hoje) => { const h = parseD(hoje); if (!h) return Array.isArray(gs) ? gs.slice() : []; const lim = key(addDays(h,-30)); return (Array.isArray(gs) ? gs : []).filter(g => !g || !g.fim || g.fim >= lim); };
+const cutucadaPermitida = (cut, hoje) => !(cut && cut.d === hoje);
+const cutucadaRecebida = (par, hoje) => par && par.cut && par.cut.d === hoje ? par.cut.k : -1;
+const resumoDupla = (membros, eu) => { const m = (membros||[]).find(x=>x.id===eu), p = (membros||[]).find(x=>x.id!==eu); return {eu:m ? {t:m.t, f:m.f} : {t:0, f:0}, par:p ? {ap:p.ap, t:p.t, f:p.f, cut:p.cut, up:p.up} : null, vazia:!p}; };
+const situacaoEntrada = (membros, eu) => { const l = membros||[]; if (!l.length) return "nao_achei"; if (l.some(m=>m.id===eu)) return "ja"; const lim = l[0].def && l[0].def.dupla ? 2 : 8; return l.length >= lim ? "cheio" : "ok"; };
+const gravarGrupo = (gs, e) => { const l = Array.isArray(gs) ? gs.filter(Boolean) : []; const i = l.findIndex(x=>x.g===e.g); if (i>=0){ l[i] = e; return l; } if (l.length >= 5) return null; return l.concat([e]); };
+const sairDoGrupo = (gs, gid) => (Array.isArray(gs) ? gs : []).filter(x=>x && x.g!==gid);
+const gidDeCodigo = async codigo => { const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("tropa:" + codigo)); return Array.from(new Uint8Array(buf)).slice(0, 8).map(x=>x.toString(16).padStart(2, "0")).join(""); };
 const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 
