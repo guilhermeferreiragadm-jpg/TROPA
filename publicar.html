@@ -738,6 +738,26 @@ function sugerirSemana(feitos){
   if (total >= 3 && f.every(x=>x.rpe==="leve" && x.comoPlano!==false)) return {tipo:"subir", total, pesados:0, motivo:"Você achou os últimos "+total+" treinos leves"};
   return nada;
 }
+const normTxt = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
+function atualizarFavoritas(lista, reg, hoje){
+  const out = (lista||[]).map(x=>Object.assign({}, x));
+  const comeu = String(reg && reg.comeu || "").trim().slice(0,140);
+  if (!reg || reg.pulou || !comeu || comeu === "foto enviada") return out;
+  const chave = normTxt(comeu), i = out.findIndex(x=>normTxt(x.comeu) === chave);
+  const estimativa = String(reg.estimativa||"").slice(0,80), porcao = String(reg.porcao||"").slice(0,80);
+  if (i >= 0){ const x = out[i]; x.usos = (x.usos||0)+1; x.ultimo = hoje; x.estimativa = estimativa || x.estimativa || ""; x.porcao = porcao || x.porcao || ""; x.refeicao = reg.refeicao || x.refeicao || ""; }
+  else out.push({comeu, estimativa, porcao, refeicao:String(reg.refeicao||""), usos:1, ultimo:hoje});
+  out.sort((a,b)=>(b.usos||0)-(a.usos||0) || (a.ultimo < b.ultimo ? 1 : a.ultimo > b.ultimo ? -1 : 0));
+  return out.slice(0,12);
+}
+function candidatasRepetir(ontem, favoritas, refeicao){
+  const out = [], vistos = new Set();
+  const add = (x, origem)=>{ const c = String(x && x.comeu || "").trim(); if (!c || c === "foto enviada") return false; const k = normTxt(c); if (vistos.has(k)) return false; vistos.add(k); out.push({comeu:c, estimativa:String(x.estimativa||""), porcao:String(x.porcao||""), origem}); return true; };
+  (ontem||[]).filter(r=>r && r.refeicao === refeicao && !r.pulou).forEach(r=>add(r, "ontem"));
+  const fav = (favoritas||[]), ordem = fav.filter(f=>f.refeicao === refeicao).concat(fav.filter(f=>f.refeicao !== refeicao));
+  let n = 0; for (const f of ordem){ if (n >= 4) break; if (add(f, "favorita")) n++; }
+  return out;
+}
 const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 

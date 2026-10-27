@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -216,4 +216,41 @@ test("sugerirSemana: subir só com 3 ou mais treinos, todos leves e dentro do pl
 
 test("sugerirSemana ignora registros sem rpe", () => {
   assert.equal(F.sugerirSemana([{}, null, {rpe:"ok"}]).total, 1);
+});
+
+test("atualizarFavoritas soma usos do mesmo prato e ignora foto sem texto e refeição pulada", () => {
+  let l = F.atualizarFavoritas([], {refeicao:"Café da manhã", comeu:"Pão com ovo", estimativa:"~400 kcal"}, "2026-10-26");
+  l = F.atualizarFavoritas(l, {refeicao:"Café da manhã", comeu:"  pão  COM ovo ", estimativa:"~420 kcal"}, "2026-10-27");
+  assert.equal(l.length, 1); assert.equal(l[0].usos, 2); assert.equal(l[0].ultimo, "2026-10-27"); assert.equal(l[0].estimativa, "~420 kcal");
+  assert.equal(F.atualizarFavoritas(l, {refeicao:"Almoço", comeu:"foto enviada"}, "2026-10-27").length, 1);
+  assert.equal(F.atualizarFavoritas(l, {refeicao:"Almoço", comeu:"Arroz", pulou:true}, "2026-10-27").length, 1);
+});
+
+test("atualizarFavoritas guarda no máximo 12, removendo o menos usado e mais antigo", () => {
+  let l = [];
+  for (let i = 0; i < 13; i++) l = F.atualizarFavoritas(l, {refeicao:"Almoço", comeu:"Prato " + i}, "2026-10-" + String(10 + i).padStart(2, "0"));
+  assert.equal(l.length, 12);
+  assert.ok(!l.some(x => x.comeu === "Prato 0"));
+  l = F.atualizarFavoritas(l, {refeicao:"Almoço", comeu:"Prato 5"}, "2026-10-27");
+  assert.equal(l[0].comeu, "Prato 5");
+});
+
+test("atualizarFavoritas não altera a lista original e corta textos longos", () => {
+  const orig = [{comeu:"Arroz", estimativa:"", porcao:"", refeicao:"Almoço", usos:1, ultimo:"2026-10-01"}];
+  F.atualizarFavoritas(orig, {refeicao:"Almoço", comeu:"Arroz"}, "2026-10-02");
+  assert.equal(orig[0].usos, 1);
+  assert.equal(F.atualizarFavoritas([], {refeicao:"Almoço", comeu:"x".repeat(300)}, "2026-10-02")[0].comeu.length, 140);
+});
+
+test("candidatasRepetir: ontem primeiro, depois até 4 favoritas, sem repetidos", () => {
+  const ontem = [{refeicao:"Café da manhã", comeu:"Pão com ovo", estimativa:"~400 kcal"}, {refeicao:"Almoço", comeu:"Arroz e feijão"}, {refeicao:"Café da manhã", comeu:"Café", pulou:true}];
+  const fav = [
+    {comeu:"Pão com ovo", refeicao:"Café da manhã", usos:5}, {comeu:"Tapioca", refeicao:"Café da manhã", usos:4},
+    {comeu:"Iogurte", refeicao:"Lanche", usos:3}, {comeu:"Banana", refeicao:"Lanche", usos:2},
+    {comeu:"Vitamina", refeicao:"Lanche", usos:2}, {comeu:"Ovo", refeicao:"Jantar", usos:1}
+  ];
+  const r = F.candidatasRepetir(ontem, fav, "Café da manhã");
+  assert.deepEqual(r.map(x => x.comeu), ["Pão com ovo", "Tapioca", "Iogurte", "Banana", "Vitamina"]);
+  assert.equal(r[0].origem, "ontem"); assert.equal(r[0].estimativa, "~400 kcal"); assert.equal(r[1].origem, "favorita");
+  assert.deepEqual(F.candidatasRepetir([], [], "Almoço"), []);
 });
