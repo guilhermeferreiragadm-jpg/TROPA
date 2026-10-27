@@ -3018,7 +3018,7 @@ function telaNovoGrupo(){
     const nome = String(draft.ng_nome||"").trim().slice(0,30); if (!nome){ $("ngm2").textContent = "Dê um nome ao grupo."; return; }
     if (!gruposOk() || !gruposEscreve()){ $("ngm2").textContent = "Peça acesso de colaborador ao dono do app."; return; }
     avisoGrupos(async ()=>{
-      const fim = draft.ng_prazo==="dom" ? addDays(today, 6-dow(today)) : addDays(today, +draft.ng_prazo-1);
+      const fim = draft.ng_prazo==="dom" ? addDays(today, (6-dow(today)) || 7) : addDays(today, +draft.ng_prazo-1);
       const g = await criarGrupo({nome, tipo:draft.ng_tipo, formato:draft.ng_formato, meta:draft.ng_formato==="juntos" ? (+draft.ng_meta||100) : 0, ini:key(today), fim:key(fim), dupla:false});
       if (!g) return; ["ng_nome","ng_meta"].forEach(x=>delete draft[x]); ir("perf","grupo",g);
     });
@@ -3107,7 +3107,7 @@ function telaNovoDesafio(){
   bindGo(app); bindForm(app, (n)=>{ if (["nd_formato","nd_val","nd_tipo"].includes(n)) telaNovoDesafio(); });
   $("nok").addEventListener("click", ()=>{
     const membros = [ME()].concat(Array.isArray(draft.nd_amigos)?draft.nd_amigos:[]); if (membros.length<2){ $("nm2").textContent = "Escolha pelo menos 1 amigo."; return; }
-    const fim = draft.nd_prazo==="dom" ? addDays(today, (7-dow(today))%7 || 7) : addDays(today, +draft.nd_prazo-1);
+    const fim = draft.nd_prazo==="dom" ? addDays(today, (6-dow(today)) || 7) : addDays(today, +draft.nd_prazo-1);
     const tit = draft.nd_formato==="juntos" ? "Meta juntos: "+(draft.nd_meta||100)+" "+UNI[draft.nd_tipo] : ({km:"Quem corre mais",treinos:"Quem treina mais",forca:"Quem faz mais força",foguinho:"Quem segura o foguinho"}[draft.nd_tipo])+" até "+fmt(fim);
     const sim = {}; membros.forEach(id=>{ if (id!==ME()){ const p = SOC.people[id]||{}; sim[id] = draft.nd_tipo==="km" ? Math.round((p.kmSem||5)*0.6*10)/10 : draft.nd_tipo==="foguinho" ? Math.min(3, p.streak||0) : 1; } });
     const val = draft.nd_val==="gloria" ? "" : draft.nd_val==="pix" ? "R$ "+(draft.nd_valor||"20")+" de cada (combinado)" : (draft.nd_valor||"prenda");
