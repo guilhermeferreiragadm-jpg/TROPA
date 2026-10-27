@@ -2415,6 +2415,7 @@ function telaComida(o){
     '<span class="k">refeições</span>'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>'+(candidatasRepetir(regsOntem, favs, r.refeicao).length?'<button type="button" class="btn sm ghost" data-rep="'+esc(r.refeicao)+'">repetir</button>':''))+'</div>').join("")+
     '<p class="msg" id="cmm"></p>'+
     '<div class="box"><div class="between"><b>Cardápio do dia</b>'+(cd?'<button type="button" class="lk" id="cg2">refazer</button>':'')+'</div>'+(cd ? cd.refeicoes.map(r=>'<div><b style="font-size:.88rem">'+esc(r.hora||"")+' · '+esc(r.nome)+'</b><p class="s">'+esc((r.itens||[]).join(", "))+' · P ~'+esc(r.prot||"?")+' g</p></div>').join("") : '<p class="s">Opcional. A Nutri conta o que você come e dá dicas. Se você quiser, ela também monta um cardápio com comida brasileira, dentro das suas metas'+((P.perfil.restricoes||[]).length?' e restrições ('+esc(P.perfil.restricoes.join(", "))+')':'')+'.</p><button type="button" class="btn ghost" id="cg">Quero um cardápio para hoje</button>')+'</div>'+
+    '<button type="button" class="btn ghost" id="cpl">Lista de compras da semana</button>'+
     '<p class="s" style="text-align:center">Guia de alimentação com base em consensos (ACSM, ISSN). Não substitui nutricionista.</p>';
   const app = tela(h, o); bindGo(app);
   $("agua").addEventListener("click", ()=>{ salvarLog("agua_"+k, Math.round(((LOG["agua_"+k]||0)+0.25)*100)/100).then(()=>render(true)); });
@@ -2422,6 +2423,7 @@ function telaComida(o){
   app.querySelectorAll("[data-txt]").forEach(b=>b.addEventListener("click", ()=>{ chatModo = "nutri"; chatPre = "No "+b.dataset.txt.toLowerCase()+" comi "; ir("chat"); }));
   app.querySelectorAll("[data-rep]").forEach(b=>b.addEventListener("click", ()=>sheetRepetir(b.dataset.rep)));
   const g = $("cg"), g2 = $("cg2"); [g,g2].forEach(x=>{ if (x) x.addEventListener("click", gerarCardapio); });
+  const cl = $("cpl"); if (cl) cl.addEventListener("click", sheetCompras);
 }
 /* Nutri analisa a refeição (foto ou texto), responde na hora e salva no dia */
 function sheetRepetir(ref){
@@ -2438,6 +2440,43 @@ function sheetRepetir(ref){
     await registrarRefeicao(ref, {comeu:c.comeu, estimativa:c.estimativa, porcao:c.porcao, repetida:true});
     render(true); toast(ref+": repetido.");
   }));
+}
+/* ===== lista de compras da semana (a Nutri monta, você marca o que já tem) ===== */
+function semanaCompras(){ return key(dow(today)===6 ? addDays(today,1) : addDays(today, -dow(today))); }
+async function gerarCompras(ini){
+  const p = P.perfil || {}, m = metasDia(today); let n = 0;
+  for (let i=0;i<7;i++) n += treinosDe(addDays(parseD(ini), i)).length;
+  const pedido = "Você é a Nutri do app (guia de alimentação, não nutricionista). Monte a lista de compras de supermercado para 7 dias a partir de "+ini+", comida brasileira simples e barata, para UMA pessoa. Restrições: "+((p.restricoes||[]).join(", ")||"nenhuma")+". Orçamento: "+(p.orcamento||"normal")+". Metas diárias: proteína "+(m ? m.prot[0]+"–"+m.prot[1] : "?")+" g, carboidrato "+(m ? m.carb[0]+"–"+m.carb[1] : "?")+" g. Treinos na semana: "+n+"."+(p.menor ? " Menor de idade: sem déficit e sem suplemento." : "")+
+    " Use quantidades realistas para a semana (ex.: 1 kg, 2 dúzias, 3 pacotes). No máximo 40 itens. Responda só JSON: {\"itens\":[{\"grupo\":\"Hortifrúti|Carnes e ovos|Laticínios|Grãos e massas|Mercearia|Bebidas|Outros\",\"nome\":\"...\",\"qtd\":\"...\"}]}.";
+  try{
+    const r = await comTempo(sample.json(pedido, {cache:false}), 40000);
+    const itens = normalizarCompras(r && r.itens); if (!itens.length) return null;
+    const v = {itens, at:new Date().toISOString()}; await salvarLog("compras_"+ini, v); return v;
+  }catch(e){ registrarErro("lista de compras", e); return null; }
+}
+function sheetCompras(){
+  const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ ov.innerHTML = ""; };
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
+  $("dim").addEventListener("click", fecha);
+  const montar = async ()=>{
+    if (!sample){ $("cpm").textContent = "A Nutri não está disponível agora."; return; }
+    $("cpb").innerHTML = '<div class="hint">A Nutri está montando a lista…</div>';
+    const v = await gerarCompras(ini);
+    if (!v) $("cpm").textContent = "Não consegui montar agora. Tente de novo."; else $("cpm").textContent = "";
+    pinta();
+  };
+  const pinta = ()=>{
+    const v = LOG["compras_"+ini], b = $("cpb"); if (!b) return;
+    if (!v || !(v.itens||[]).length){ b.innerHTML = '<button type="button" class="btn go" id="cpmk">Montar a lista da semana</button><button type="button" class="lk" id="cpfe">Fechar</button>'; $("cpmk").onclick = montar; $("cpfe").onclick = fecha; return; }
+    const grupos = []; v.itens.forEach(i=>{ if (!grupos.includes(i.g)) grupos.push(i.g); });
+    b.innerHTML = grupos.map(g=>'<span class="k">'+esc(g)+'</span>'+v.itens.map((i,ix)=>i.g===g ? '<label class="chk"><input type="checkbox" data-i="'+ix+'"'+(i.ok?' checked':'')+'><span>'+esc(i.n)+(i.q?' <small class="s">'+esc(i.q)+'</small>':'')+'</span></label>' : '').join("")).join("")+
+      '<div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn sm" id="cpco">Copiar</button><button type="button" class="btn sm" id="cpba">Baixar</button><button type="button" class="btn sm ghost" id="cpre">Refazer a lista</button></div><button type="button" class="lk" id="cpfe">Fechar</button>';
+    b.querySelectorAll("input[data-i]").forEach(c=>c.addEventListener("change", ()=>{ v.itens[+c.dataset.i].ok = c.checked; salvarLog("compras_"+ini, v); }));
+    $("cpco").onclick = ()=>copiar(comprasTexto(v.itens));
+    $("cpba").onclick = ()=>baixar("lista-de-compras-"+ini+".txt", comprasTexto(v.itens), "text/plain");
+    $("cpre").onclick = montar; $("cpfe").onclick = fecha;
+  };
+  pinta();
 }
 async function analisarRefeicao(ref, f, texto){
   const m = metasDia(today), c = consumido(today), p = P.perfil || {};

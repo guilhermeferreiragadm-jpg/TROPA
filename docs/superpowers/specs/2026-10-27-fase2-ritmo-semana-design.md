@@ -27,12 +27,12 @@ Decisão do usuário: a Nutri monta a lista da semana toda.
   - Se `sg.kg == null` ou o contexto não tem `pront` nem `dor`, devolve `sg` igual.
   - Se `dor >= 5` ou `pront < 50`: devolve `{kg: hold, txt}` com texto "Hoje o seu corpo pede calma (prontidão X, dor Y/10). Mantenha a carga da última vez e pare 2 reps antes da falha." quando `sg.kg > hold` (ou seja, a sugestão era subir); se a sugestão já era manter ou reduzir, devolve `sg` igual.
   - Se `dor >= 7`: o texto acrescenta "Pule o movimento que doer."
-- `hold` é a maior carga da última sessão do exercício (já calculada dentro de `sugestao`); `sugestao` passa a expor `hold` no objeto de retorno, sem mudar o que já devolve.
-- `telaForca` aplica `ajustarSugestaoCarga` com a prontidão do check-in de hoje (`prontidao(LOG["ci_"+key(today)])`) e a dor de hoje; sem check-in feito, nada muda.
+- A função `sugestaoAjustada(ex)` calcula `hold` a partir do histórico, aplica `ajustarSugestaoCarga` com a prontidão e a dor do check-in de hoje e é usada em `sessaoDe` (carga inicial dos sets), na exibição da sugestão e no botão Aplicar de `telaForca`. Sem check-in feito, nada muda.
 - O botão **Aplicar** passa a aplicar a carga ajustada (hold).
 
 ## 3. Lista de compras da semana
 - Entrada: na tela Comida, botão **Lista de compras da semana**. Abre uma sheet.
+A semana da lista é a atual; no domingo é a semana seguinte (a chave é a segunda-feira dessa semana).
 - Dados: `LOG["compras_<segunda>"] = {itens:[{g, n, q, ok}], at}`, no máximo 60 itens; `g` grupo, `n` nome (até 60 caracteres), `q` quantidade (até 30 caracteres), `ok` marcado.
 - Geração: um pedido à Nutri (`sample.json`) com restrições, orçamento, metas de proteína e carboidrato, número de treinos da semana e a data da semana, em comida brasileira simples e barata. Responde `{"itens":[{"grupo":"...","nome":"...","qtd":"..."}]}`.
 - Funções puras no bloco `@pure`:
