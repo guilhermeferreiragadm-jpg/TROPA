@@ -706,7 +706,7 @@ function motivoGenerico(t, c){
   const fase = c.fase ? " Fase do plano: "+c.fase+"." : "";
   const alvo = c.prova ? " para "+c.prova : "";
   if (t.k === "run"){
-    if (/longao/.test(nome)) return "Longão de "+km(t.km||"")+" km"+(c.longaoAnt ? " (semana passada: "+km(c.longaoAnt)+" km)" : "")+". É o treino que mais constrói resistência"+alvo+". Sobe no máximo 10% por vez para não machucar."+desc+fase;
+    if (/longa|longao/.test(nome)) return "Longão de "+km(t.km||"")+" km"+(c.longaoAnt ? " (semana passada: "+km(c.longaoAnt)+" km)" : "")+". É o treino que mais constrói resistência"+alvo+"."+(c.longaoAnt && !c.deload ? " Sobe no máximo 10% por vez para não machucar." : "")+desc+fase;
     if (/regenerativ/.test(nome)) return "Corrida bem leve para soltar a perna e somar quilômetros sem cansar. Assim você chega inteiro nos treinos fortes da semana."+desc+fase;
     if (/intervalad|tiro/.test(nome)) return "O treino forte de corrida da semana: deixa seu ritmo mais rápido (VO2 máximo). Fica longe do longão para você chegar descansado nele."+desc+fase;
     if (/limiar|tempo/.test(nome)) return "Treino de ritmo: aumenta o quanto você aguenta correr forte por muito tempo."+desc+fase;
@@ -718,6 +718,7 @@ function motivoGenerico(t, c){
     return "Bike em zona 2: constrói base aeróbica sem impacto na perna."+desc+fase;
   }
   if (t.k === "swim"){
+    if (/tecnic/.test(nome)) return "Natação de técnica: melhora a eficiência na água para gastar menos energia por braçada."+desc+fase;
     if (/css/.test(nome)) return "Natação no seu ritmo de limiar: melhora a velocidade que você sustenta."+desc+fase;
     return "Natação contínua e leve: técnica e resistência para nadar mais sem parar."+desc+fase;
   }
@@ -1228,7 +1229,7 @@ function motivoTreino(t, d){
   if (t.motivo) return t.motivo;
   const pl = planoAtual(), s = semanaDe(d), sem = s && s.sem; if (!pl || !sem) return "";
   if (pl.fases) return motivoPlanoMisto(t, d);   // plano personalizado com fases F0..F8: textos específicos
-  const ant = pl.semanas[s.w-2], tpl = TPL[P && P.perfil && P.perfil.objetivo];
+  const ant = pl.semanas[s.w-2], tpl = TPL[pl.objetivo];
   return motivoGenerico(t, {fase:faseDaSemana(pl, s.w), deload:!!sem.deload, longaoAnt:ant && ant.longao || 0, prova:(!pl.semProva && tpl) ? tpl.nome : ""});
 }
 function motivoPlanoMisto(t, d){

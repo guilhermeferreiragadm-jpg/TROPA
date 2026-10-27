@@ -171,3 +171,20 @@ test("motivoGenerico: treino de força só cita Hyrox se o nome do treino citar"
   assert.doesNotMatch(F.motivoGenerico({k:"gym", t:"Força"}, {}), /Hyrox/);
   assert.match(F.motivoGenerico({k:"gym", t:"Hyrox · estações"}, {}), /resistência/i);
 });
+
+test("motivoGenerico: Corrida longa leve recebe o texto de longão e a regra dos 10% só com longão anterior", () => {
+  const com = F.motivoGenerico({k:"run", t:"Corrida longa leve", km:8}, {longaoAnt:6});
+  assert.match(com, /8 km/);
+  assert.match(com, /semana passada: 6 km/);
+  assert.match(com, /Sobe no máximo/);
+  const sem = F.motivoGenerico({k:"run", t:"Corrida longa leve", km:8}, {});
+  assert.doesNotMatch(sem, /semana passada|Sobe no máximo/);
+  const desc = F.motivoGenerico({k:"run", t:"Corrida longa leve", km:8}, {longaoAnt:6, deload:true});
+  assert.doesNotMatch(desc, /Sobe no máximo/);
+});
+
+test("motivoGenerico: Natação técnica tem texto próprio", () => {
+  const m = F.motivoGenerico({k:"swim", t:"Natação técnica"}, {});
+  assert.ok(m.length > 20);
+  assert.doesNotMatch(m, /contínua/);
+});
