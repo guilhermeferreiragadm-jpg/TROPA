@@ -619,6 +619,7 @@ let logT = null;
 async function salvarLog(k, v){
   if (v==null) delete LOG[k]; else LOG[k] = v;
   if (!db || !me) return;
+  agendarGrupos();
   clearTimeout(logT);
   logT = setTimeout(()=>{ podarFotos(); comTempo(db.collection(base()).doc("log").set({log:LOG}), 15000, "salvar_demorou").catch(e=>{ registrarErro("salvar log", e); toast("Não consegui salvar agora. Verifique a internet e tente de novo."); }); enviarResumo(); }, 300);
 }
@@ -1947,7 +1948,7 @@ function render(keep){
   if (t==="treino"){ if (s==="treino") return telaTreino(R.arg); if (s==="forca") return telaForca(R.arg); if (s==="fim") return telaFim(R.arg); if (s==="ex") return telaExercicio(R.arg); return telaSemana(o); }
   if (t==="feed") return telaFeed(o);
   if (t==="comida") return telaComida(o);
-  if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
+  if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="ngrupo") return telaNovoGrupo(); if (s==="grupo") return telaGrupo(R.arg); if (s==="dupla") return telaDupla(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
   if (t==="chat") return telaChat();
   if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="corpo") return telaCorpo(o); return telaPerfil(); }
   if (t==="painel") return telaPainel();
@@ -2861,6 +2862,126 @@ function telaLiga(){
     l.map((x,i)=>{ const p = pessoa(x.id); return '<div class="rk'+(x.id===ME()?' me':'')+'"><b class="n" style="color:'+(i<3?'var(--done)':i>=n-2&&n>4?'var(--stop)':'var(--graphite)')+'">'+(i+1)+'</b>'+avatar(x.id,32)+'<b style="font-size:.9rem;min-width:0">'+esc(x.id===ME()?"Você":p.nome)+(p.exemplo?' <span class="s">(exemplo)</span>':'')+'</b><b class="n">'+x.xp.toLocaleString("pt-BR")+'</b></div>'; }).join(""), {tabs:true, fab:true});
   bindGo(app); bindMissoesSemana(app);
 }
+/* ---- grupos reais e parceiro de responsa (fase 4) ---- */
+let GRUPOS = [], MEUS_GS = [], gruposOn = false, gruposUlt = "", gruposT = null, gruposEnv = 0;
+const gruposOk = () => !!(realDb && me && !DEMO && !LOCAL);
+const gruposEscreve = () => !(user && typeof user.can === "function" && user.can("data.write") === false);
+const meuApelido = () => String((P && P.perfil && P.perfil.apelido) || meName || "Atleta").slice(0,30);
+const sigGrupos = (ap, gs) => JSON.stringify([ap, gs.map(g=>Object.keys(g).sort().map(k=>[k, g[k]]))]);
+function treinosFeitosSemana(){ let n = 0; const ini0 = addDays(today, -dow(today)); for (let i=0;i<7;i++){ const d = addDays(ini0,i); if (d>today) break; treinosDe(d).forEach((t,j)=>{ if (feito(d,j)) n++; }); } return n; }
+async function escreverGrupos(gs){ const ap = meuApelido(); await realDb.collection("grupos").doc(me).set({ap, up:new Date().toISOString(), gs}); MEUS_GS = gs; gruposUlt = sigGrupos(ap, gs); }
+async function publicarGrupos(){
+  if (!gruposOk() || !MEUS_GS.length) return;
+  const gs = podarGrupos(MEUS_GS, key(today)), t = treinosFeitosSemana(), f = foguinho().n;
+  const novo = gs.map(g=>Object.assign({}, g, {v:g.dupla ? 0 : meuProgresso(g), t:g.dupla ? t : 0, f:g.dupla ? f : 0}));
+  if (sigGrupos(meuApelido(), novo) === gruposUlt) return;
+  gruposEnv = Date.now();
+  try{ await escreverGrupos(novo); }catch(e){}
+}
+function agendarGrupos(){ if (!gruposOk() || !gruposOn || !MEUS_GS.length) return; clearTimeout(gruposT); gruposT = setTimeout(publicarGrupos, Math.max(1500, 30000 - (Date.now() - gruposEnv))); }
+function carregarGrupos(){
+  if (gruposOn || !gruposOk()) return; gruposOn = true;
+  try{ realDb.collection("grupos").onSnapshot(s=>{
+    GRUPOS = s.docs.map(d=>({id:d.id, data:d.data()||{}}));
+    const eu = GRUPOS.find(x=>x.id===me); if (eu && Array.isArray(eu.data.gs)) MEUS_GS = eu.data.gs.filter(Boolean);
+    agendarGrupos();
+    const ov = $("ov"), at = document.activeElement; if ((ov && ov.innerHTML) || (at && at.tagName==="INPUT")) return;
+    if ((R.tab==="perf" && ["desafios","grupo","dupla"].includes(R.sub)) || (R.tab==="hoje" && !R.sub)) render(true);
+  }, ()=>{ gruposOn = false; }); }catch(e){ gruposOn = false; }
+}
+function avisoGrupos(seguir){
+  if (LOG.gaviso){ seguir(); return; }
+  const ov = $("ov");
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">O que os outros veem</h2><p>Quem estiver no grupo vê o seu apelido, o nome do grupo e os seus números do desafio: km, treinos ou dias de foguinho. Na dupla, também os treinos da semana e o foguinho.</p><p class="s">Nunca aparecem peso, fotos, comida, saúde ou trajetos. Quem tem acesso ao app e sabe mexer no banco de dados consegue ler esses mesmos números.</p><button type="button" class="btn go" id="gav">Entendi, continuar</button></div>';
+  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+  $("gav").addEventListener("click", async ()=>{ ov.innerHTML = ""; await salvarLog("gaviso", true); seguir(); });
+}
+async function criarGrupo(def){
+  if (!gruposOk()) return null;
+  const codigo = novoCodigoGrupo(), g = await gidDeCodigo(codigo);
+  const gs = gravarGrupo(MEUS_GS, Object.assign({g, v:0, t:0, f:0, cut:null}, def));
+  if (!gs){ toast("Você já está em 5 grupos. Saia de um antes."); return null; }
+  try{ await escreverGrupos(gs); }catch(e){ toast("Não consegui criar agora. Tente de novo."); return null; }
+  await salvarLog("gcod_"+g, codigo); agendarGrupos(); return g;
+}
+async function entrarComCodigo(txt){
+  if (!gruposOk()) return {erro:"Grupos precisam do app publicado."};
+  const cod = normalizarCodigo(txt); if (!cod) return {erro:"Código inválido. São 8 letras e números."};
+  const gid = await gidDeCodigo(cod); let docs;
+  try{ const s = await comTempo(realDb.collection("grupos").get(), 10000); docs = s.docs.map(d=>({id:d.id, data:d.data()||{}})); }catch(e){ return {erro:"Não consegui falar com o servidor. Tente de novo."}; }
+  const mem = membrosDoGrupo(docs, gid), sit = situacaoEntrada(mem, me), def = definicaoDoGrupo(mem);
+  if (sit==="nao_achei") return {erro:"Não achei esse grupo. Confira o código."};
+  if (sit==="cheio") return {erro:"Esse grupo está cheio."};
+  if (sit==="ok"){
+    const gs = gravarGrupo(MEUS_GS, Object.assign({g:gid, v:0, t:0, f:0, cut:null}, def));
+    if (!gs) return {erro:"Você já está em 5 grupos. Saia de um antes."};
+    try{ await escreverGrupos(gs); }catch(e){ return {erro:"Não consegui entrar agora. Tente de novo."}; }
+  }
+  await salvarLog("gcod_"+gid, cod); agendarGrupos(); return {gid, dupla:!!(def && def.dupla)};
+}
+async function deixarGrupo(gid){ try{ await escreverGrupos(sairDoGrupo(MEUS_GS, gid)); await salvarLog("gcod_"+gid, null); return true; }catch(e){ toast("Não consegui sair agora. Tente de novo."); return false; } }
+const avatarNome = (ap, eu) => '<span class="av" style="width:32px;height:32px;background:'+(eu?'#0B0D10':'#5A626C')+'">'+esc(ini(ap))+'</span>';
+function gruposSecaoHTML(){
+  if (!gruposOk()) return '<span class="k">grupos de verdade</span><p class="s">Grupos só funcionam no app publicado, com a sua conta.</p>';
+  const lista = MEUS_GS.filter(g=>!g.dupla), dp = MEUS_GS.find(g=>g.dupla);
+  return '<span class="k">grupos de verdade</span>'+
+    (lista.length ? lista.map(g=>{ const mem = membrosDoGrupo(GRUPOS, g.g), def = definicaoDoGrupo(mem) || g, pc = placarGrupo(mem, me, def), pos = pc.lista.findIndex(x=>x.eu)+1, acabou = !!def.fim && parseD(def.fim) < today, dias = def.fim ? Math.max(0, Math.ceil((parseD(def.fim)-today)/DAY)+1) : 0;
+      return '<button type="button" class="box" data-go="perf|grupo|'+esc(g.g)+'" style="text-align:left;width:100%"><div class="between"><b>'+esc(def.nome)+'</b><b class="n" style="color:var(--go-ink)">'+(acabou?'encerrado':dias+'d')+'</b></div><span class="s">'+mem.length+' pessoa'+(mem.length===1?'':'s')+' · '+(def.formato==="juntos" ? num(pc.total,1)+'/'+def.meta+' '+UNI[def.tipo] : 'você '+(pos||"-")+'º')+'</span></button>'; }).join("") : '<p class="s">Você não está em nenhum grupo ainda.</p>')+
+    (gruposEscreve() ? '<div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm go" data-go="perf|ngrupo">Criar grupo</button>'+(dp ? '' : '<button type="button" class="btn sm" id="gdupla">Chamar um parceiro</button>')+'</div>'+
+      '<div class="row" style="flex-wrap:nowrap"><input class="inp" id="gcod" maxlength="12" placeholder="Código de 8 letras" autocapitalize="characters" autocomplete="off"><button type="button" class="btn sm" id="gent">Entrar</button></div><p class="msg" id="gmsg"></p>'
+      : '<p class="s">Peça acesso de colaborador ao dono do app para criar ou entrar em grupos.</p>')+
+    (dp ? '<button type="button" class="box" data-go="perf|dupla" style="text-align:left;width:100%"><b>Parceiro de responsa</b><span class="s">ver a dupla e cutucar</span></button>' : '');
+}
+function bindGrupos(app){
+  const gd = $("gdupla"); if (gd) gd.addEventListener("click", ()=>avisoGrupos(async ()=>{ const g = await criarGrupo({nome:"Dupla", tipo:"treinos", formato:"mais", meta:0, ini:"", fim:"", dupla:true}); if (g) ir("perf","dupla"); }));
+  const ge = $("gent"); if (ge) ge.addEventListener("click", ()=>avisoGrupos(async ()=>{ const m = $("gmsg"); m.textContent = "Procurando…"; m.className = "msg"; const r = await entrarComCodigo($("gcod").value); if (r.erro){ m.textContent = r.erro; m.className = "msg err"; return; } if (r.dupla) ir("perf","dupla"); else ir("perf","grupo",r.gid); }));
+}
+function telaNovoGrupo(){
+  draft.ng_tipo = draft.ng_tipo||"km"; draft.ng_formato = draft.ng_formato||"mais"; draft.ng_prazo = draft.ng_prazo||"dom";
+  const app = tela('<button type="button" class="back" data-go="perf|desafios">← Desafios</button><h1 class="h1">Novo grupo</h1>'+
+    '<div class="fld"><label for="ngn">Nome do grupo (até 30 letras)</label><input class="inp" id="ngn" data-f="ng_nome" maxlength="30" placeholder="Tropa da manhã"></div>'+
+    '<span class="k">tipo</span>'+seg("ng_tipo",[["km","Km"],["treinos","Treinos"],["forca","Força"],["foguinho","Foguinho"]])+
+    '<span class="k">formato</span>'+seg("ng_formato",[["mais","Quem faz mais"],["juntos","Meta juntos"]])+
+    (draft.ng_formato==="juntos" ? '<div class="fld"><label for="ngm">Meta do grupo ('+UNI[draft.ng_tipo]+')</label><input class="inp" id="ngm" data-f="ng_meta" type="number" inputmode="numeric" placeholder="100"></div>' : '')+
+    '<span class="k">até</span>'+seg("ng_prazo",[["dom","Domingo"],["7","7 dias"],["30","30 dias"]],3)+
+    '<button type="button" class="btn go" id="ngok">Criar grupo</button><p class="msg" id="ngm2"></p>', {});
+  bindGo(app); bindForm(app, n=>{ if (["ng_formato","ng_tipo"].includes(n)) telaNovoGrupo(); });
+  $("ngok").addEventListener("click", ()=>{
+    const nome = String(draft.ng_nome||"").trim().slice(0,30); if (!nome){ $("ngm2").textContent = "Dê um nome ao grupo."; return; }
+    if (!gruposOk() || !gruposEscreve()){ $("ngm2").textContent = "Peça acesso de colaborador ao dono do app."; return; }
+    avisoGrupos(async ()=>{
+      const fim = draft.ng_prazo==="dom" ? addDays(today, 6-dow(today)) : addDays(today, +draft.ng_prazo-1);
+      const g = await criarGrupo({nome, tipo:draft.ng_tipo, formato:draft.ng_formato, meta:draft.ng_formato==="juntos" ? (+draft.ng_meta||100) : 0, ini:key(today), fim:key(fim), dupla:false});
+      if (!g) return; ["ng_nome","ng_meta"].forEach(x=>delete draft[x]); ir("perf","grupo",g);
+    });
+  });
+}
+function bonusGrupo(gid, def, pc, acabou){
+  if (LOG["gc_"+gid] || pc.lista.length < 2) return;
+  const bateu = def.formato==="juntos" ? pc.pct >= 100 : (acabou && pc.lista[0].eu && pc.lista[0].v > 0);
+  if (!bateu) return;
+  salvarLog("gc_"+gid, true); SOC.desafiosGanhos = (SOC.desafiosGanhos||0)+1; salvarSocial(); if (def.formato==="juntos") toast("Meta batida: +200 XP");
+}
+function telaGrupo(gid){
+  const mine = MEUS_GS.find(x=>x.g===gid && !x.dupla); if (!mine){ ir("perf","desafios"); return; }
+  const mem = membrosDoGrupo(GRUPOS, gid), def = definicaoDoGrupo(mem) || mine, pc = placarGrupo(mem, me, def);
+  const acabou = !!def.fim && parseD(def.fim) < today, rest = def.fim ? Math.max(0, (addDays(parseD(def.fim),1) - new Date())/3600000) : 0, mx = Math.max(1, pc.lista.length ? pc.lista[0].v : 1);
+  const cod = LOG["gcod_"+gid] || "", codTxt = cod ? cod.slice(0,4)+"-"+cod.slice(4) : "";
+  let h = '<button type="button" class="back" data-go="perf|desafios">← Desafios</button><span class="k">grupo · '+(def.formato==="juntos" ? "meta juntos" : "quem faz mais")+'</span><h1 class="h1">'+esc(def.nome)+'</h1>';
+  h += acabou
+    ? '<div class="box strong"><span class="k">grupo encerrado</span><h2 class="h2">'+(def.formato==="juntos" ? (pc.pct>=100 ? "Meta batida!" : "Meta não batida: "+pc.pct+"%") : esc(pc.lista[0] && pc.lista[0].eu ? "Você venceu!" : ((pc.lista[0]||{}).ap||"Alguém")+" venceu."))+'</h2></div>'
+    : '<div class="big3"><div><b>'+Math.floor(rest/24)+'</b><span>dias</span></div><div><b>'+Math.floor(rest%24)+'</b><span>horas</span></div><div><b>'+(def.formato==="juntos" ? pc.pct+'%' : (pc.lista.findIndex(x=>x.eu)+1)+'º')+'</b><span>'+(def.formato==="juntos" ? 'da meta' : 'sua posição')+'</span></div></div>';
+  h += pc.lista.map((x,i)=>{ const velho = !!x.up && Date.now()-Date.parse(x.up) > 7*DAY;
+    return '<div class="rk'+(x.eu?' me':'')+'" style="grid-template-columns:18px 32px minmax(0,1fr) auto'+(velho?';opacity:.55':'')+'"><b class="n">'+(i+1)+'</b>'+avatarNome(x.ap, x.eu)+'<span style="min-width:0"><b style="font-size:.88rem">'+esc(x.eu ? "Você" : x.ap)+'</b><span class="xpbar" style="display:block;height:6px;margin-top:4px"><i style="width:'+Math.round(100*x.v/mx)+'%;background:'+(i===0?'var(--done)':'var(--ink)')+'"></i></span>'+(x.up ? '<span class="s">atualizado '+esc(relTempo(x.up))+'</span>' : '')+'</span><b class="n">'+num(x.v,1)+(def.tipo==="km" ? ' km' : '')+'</b></div>'; }).join("");
+  h += (def.formato==="juntos" ? '<p class="s">Batendo a meta, todo mundo ganha +200 XP.</p>' : '')+
+    (codTxt ? '<span class="k">convide pelo código</span><div class="box"><div class="between"><b class="n" style="font-size:1.2rem">'+esc(codTxt)+'</b><button type="button" class="btn sm" id="gcp">Copiar convite</button></div></div>' : '<p class="s">O código deste grupo não está guardado neste aparelho. Peça a quem criou.</p>')+
+    '<button type="button" class="btn ghost" id="gsai">Sair do grupo</button><p class="s">Sair apaga o seu progresso deste grupo. Os outros continuam vendo o grupo.</p>';
+  const app = tela(h, {tabs:true, fab:true}); bindGo(app);
+  const cp = $("gcp"); if (cp) cp.addEventListener("click", ()=>copiar("Entra no meu grupo da Tropa! Código: "+codTxt+" (Performance, Desafios, Entrar com código)"));
+  $("gsai").addEventListener("click", async e=>{ const b = e.currentTarget; if (b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "Confirmar saída"; return; } if (await deixarGrupo(gid)) ir("perf","desafios"); });
+  bonusGrupo(gid, def, pc, acabou);
+}
+function telaDupla(){ ir("perf","desafios"); }
 /* ---- desafios ---- */
 function meuProgresso(dz){
   const ini2 = parseD(dz.ini), fim = parseD(dz.fim); let v = 0;
@@ -2873,11 +2994,11 @@ function placar(dz){ return dz.membros.map(id=>({id, v: id===ME() ? meuProgresso
 const UNI = {km:"km", treinos:"treinos", forca:"treinos de força", foguinho:"dias"};
 function telaDesafios(){
   const ds = SOC.desafios||[];
-  const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Desafios</h1><button type="button" class="btn go" data-go="perf|novo">Criar desafio</button>'+
+  const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Desafios</h1><button type="button" class="btn go" data-go="perf|novo">Criar desafio</button>'+gruposSecaoHTML()+'<span class="k">desafios com amigos de exemplo (simulados)</span>'+
     (ds.length ? ds.slice().reverse().map(dz=>{ const pc = placar(dz), pos = pc.findIndex(x=>x.id===ME())+1, acabou = parseD(dz.fim)<today, tot = pc.reduce((a,x)=>a+x.v,0);
       return '<button type="button" class="box" data-go="perf|desafio|'+esc(dz.id)+'" style="text-align:left;width:100%"><div class="between"><b>'+esc(dz.titulo)+'</b><b class="n" style="color:var(--go-ink)">'+(acabou?'encerrado':Math.max(0,Math.ceil((parseD(dz.fim)-today)/DAY)+1)+'d')+'</b></div><span class="s">'+dz.membros.length+' pessoas'+(dz.valendo?' · '+esc(dz.valendo):'')+' · '+(dz.formato==="juntos"?num(tot,1)+'/'+dz.meta+' '+UNI[dz.tipo]:'você '+pos+'º')+'</span><div class="xpbar"><i style="width:'+Math.min(100, dz.formato==="juntos" ? Math.round(100*tot/dz.meta) : Math.round(100*(pc.find(x=>x.id===ME()).v)/Math.max(1,pc[0].v)))+'%"></i></div></button>'; }).join("") : '<p class="s">Nenhum desafio ainda. Chame os amigos: quem corre mais até domingo, meta juntos de km no mês ou quem segura o foguinho.</p>')+
     '<p class="s">Fase de teste: o placar dos amigos de exemplo é simulado. No app oficial, cada um vê o progresso real de todos.</p>', {tabs:true, fab:true});
-  bindGo(app);
+  bindGo(app); bindGrupos(app);
 }
 function telaNovoDesafio(){
   const amigos = Object.keys(SOC.people);
@@ -3977,6 +4098,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
     realDb.collection("resumo").onSnapshot(s=>{ s.docs.forEach(d=>{ RES[d.id] = d.data()||{}; }); re(); }, ()=>{});
   }
   carregarPostsDono(realDb);
+  carregarGrupos();
   entrou = !!(P && P.perfil);
   rotear();
 })();
