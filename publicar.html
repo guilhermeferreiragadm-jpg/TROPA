@@ -942,6 +942,57 @@ const lerTCX = texto => {
   const sp = /<Activity\s+Sport="([^"]*)"/.exec(t);
   return {pontos, esporte:sp ? sp[1] : "", sessao:null, parcial:false};
 };
+const CRC_FIT = [0x0000,0xCC01,0xD801,0x1400,0xF001,0x3C00,0x2800,0xE401,0xA001,0x6C00,0x7800,0xB401,0x5000,0x9C01,0x8801,0x4400];
+const crcFIT = (b, ini, fim) => { let crc = 0; for (let i = ini; i < fim; i++){ let tmp = CRC_FIT[crc & 0xF]; crc = (crc >> 4) & 0x0FFF; crc = crc ^ tmp ^ CRC_FIT[b[i] & 0xF]; tmp = CRC_FIT[crc & 0xF]; crc = (crc >> 4) & 0x0FFF; crc = crc ^ tmp ^ CRC_FIT[(b[i] >> 4) & 0xF]; } return crc; };
+const ESPORTE_FIT = {1:"running", 2:"cycling", 4:"fitness", 5:"swimming", 10:"training", 11:"walking", 15:"rowing", 17:"hiking"};
+const lerFIT = bytes => {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []), out = {pontos:[], esporte:"", sessao:null, parcial:false};
+  if (b.length < 14 || String.fromCharCode(b[8], b[9], b[10], b[11]) !== ".FIT") return Object.assign(out, {invalido:true});
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), hs = b[0];
+  if (hs !== 12 && hs !== 14) return Object.assign(out, {invalido:true});
+  if (hs === 14){ const c = dv.getUint16(12, true); if (c !== 0 && c !== crcFIT(b, 0, 12)) return Object.assign(out, {invalido:true}); }
+  const dataSize = dv.getUint32(4, true), fim = Math.min(b.length, hs + dataSize); if (hs + dataSize + 2 > b.length) out.parcial = true;
+  const defs = {}; let i = hs, tsBase = 0;
+  const leCampo = (pos, size, tipo, le) => {
+    const t = tipo & 0x1F;
+    if (t === 1 && size === 1){ const v = dv.getInt8(pos); return v === 0x7F ? null : v; }
+    if ((t === 0 || t === 2 || t === 10 || t === 13) && size === 1){ const v = b[pos]; return v === 0xFF ? null : v; }
+    if (t === 3 && size === 2){ const v = dv.getInt16(pos, le); return v === 0x7FFF ? null : v; }
+    if ((t === 4 || t === 11) && size === 2){ const v = dv.getUint16(pos, le); return v === 0xFFFF ? null : v; }
+    if (t === 5 && size === 4){ const v = dv.getInt32(pos, le); return v === 0x7FFFFFFF ? null : v; }
+    if ((t === 6 || t === 12) && size === 4){ const v = dv.getUint32(pos, le); return v === 0xFFFFFFFF ? null : v; }
+    return null;
+  };
+  const usa = (gnum, c) => {
+    if (gnum === 20){
+      const lat = c[0], lon = c[1], alt = c[78] != null ? c[78] : c[2], ts = c[253];
+      out.pontos.push({t:ts != null ? (ts + 631065600) * 1000 : NaN, lat:lat != null ? lat * 180 / 2147483648 : null, lon:lon != null ? lon * 180 / 2147483648 : null, alt:alt != null ? alt / 5 - 500 : null, dist:c[5] != null ? c[5] / 100 : null, fc:c[3] != null ? c[3] : null});
+    } else if (gnum === 18){
+      out.sessao = {timerS:c[8] != null ? c[8] / 1000 : null, distM:c[9] != null ? c[9] / 100 : null, subidaM:c[22], fcMedia:c[16], fcMax:c[17]};
+      if (c[5] != null) out.esporte = ESPORTE_FIT[c[5]] || "";
+    }
+  };
+  while (i < fim){
+    const h = b[i++]; let loc, d, comp = false, off = 0;
+    if (h & 0x80){ loc = (h >> 5) & 3; comp = true; off = h & 0x1F; d = defs[loc]; }
+    else if (h & 0x40){
+      if (i + 5 > fim){ out.parcial = true; break; }
+      const le = b[i + 1] === 0, gnum = dv.getUint16(i + 2, le), nf = b[i + 4]; let p = i + 5;
+      if (p + nf * 3 > fim){ out.parcial = true; break; }
+      const campos = []; for (let f = 0; f < nf; f++){ campos.push({n:b[p], size:b[p + 1], tipo:b[p + 2]}); p += 3; }
+      let devSize = 0;
+      if (h & 0x20){ if (p >= fim){ out.parcial = true; break; } const nd = b[p++]; if (p + nd * 3 > fim){ out.parcial = true; break; } for (let f = 0; f < nd; f++){ devSize += b[p + 1]; p += 3; } }
+      defs[h & 0x0F] = {le, gnum, campos, devSize}; i = p; continue;
+    } else { loc = h & 0x0F; d = defs[loc]; }
+    if (!d){ out.parcial = true; break; }
+    const tam = d.campos.reduce((a,f)=>a + f.size, 0) + d.devSize; if (i + tam > fim){ out.parcial = true; break; }
+    const c = {}; let p = i; d.campos.forEach(f => { c[f.n] = leCampo(p, f.size, f.tipo, d.le); p += f.size; });
+    if (c[253] != null) tsBase = c[253];
+    if (comp){ let ts = (tsBase & ~0x1F) + off; if (ts < tsBase) ts += 0x20; tsBase = ts; c[253] = ts; }
+    usa(d.gnum, c); i += tam;
+  }
+  return out;
+};
 const esporteDoApp = s => { const n = norm(String(s||"")); if (/run|corrida|trail/.test(n)) return "run"; if (/bik|cycl|ciclis|ride/.test(n)) return "bike"; if (/swim|nata/.test(n)) return "swim"; if (/walk|hik|cami/.test(n)) return "walk"; if (/train|fitness|strength|weight|gym|forca|row/.test(n)) return "gym"; return "outro"; };
 const resumirAtividade = l => {
   const pts = l && Array.isArray(l.pontos) ? l.pontos : [], s = l && l.sessao;
