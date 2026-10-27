@@ -42,9 +42,11 @@ Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem pap
 - Teto de aumento de carga semanal, com explicação visível e opção de manter o plano original.
 - Leitura de laudo de fisioterapia por foto ou PDF, com confirmação da pessoa.
 - Foto de perfil e botão Sair (hoje volta à tela inicial; com login próprio passa a encerrar a sessão).
+- Tema escuro, objetivos extras e metas (ex.: 22 km em dezembro), compromissos fixos no plano, missões da semana, resumo semanal do coach e janela da Tropa (trazidos do artifact do amigo).
 - Foguinho, XP, medalhas, desafios, feed e retrospectiva.
 
 ## Pendências conhecidas
+- A integração das novidades do amigo foi feita por merge de três vias e validada só por teste de sintaxe e testes de funções puras. Falta conferir tema escuro, metas, compromissos fixos e missões dentro do artifact, junto com a pausa nova.
 - A leitura de PDF usa o pdf.js do cdnjs e ainda não foi validada dentro do artifact. Se falhar, o app pede uma foto.
 - Ids repetidos entre telas (`pt`, `pm`, `pok`) e pequenos textos a ajustar.
 - A foto de perfil só aparece para a própria pessoa; no feed os amigos aparecem com iniciais.
