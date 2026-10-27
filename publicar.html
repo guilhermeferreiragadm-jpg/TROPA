@@ -2140,7 +2140,7 @@ function telaForca(a){
     '<div class="row"><span class="badge">'+esc(t.ef||"")+'</span><span class="badge">'+(t.min||"")+' min</span><span class="badge">pare 2 reps antes da falha</span></div>'+
     notas.map(x=>'<p class="s">'+esc(x)+'</p>').join("")+detalheHTML(t);
   S.ex.forEach((e,ei)=>{
-    const sg = sugestaoAjustada(e), h0 = historicoEx(e.nome), last = h0.length ? h0[h0.length-1].sets : [];
+    const sg = sugestaoAjustada(e, d), h0 = historicoEx(e.nome), last = h0.length ? h0[h0.length-1].sets : [];
     h += '<div class="box"><div class="exh"><button type="button" class="demo" data-go="treino|ex|'+esc(e.nome)+'" aria-label="Ver como fazer '+esc(e.nome)+'">'+demoSVG(e.nome)+'</button><div style="min-width:0"><b>'+esc(e.nome)+'</b><small>'+e.series+' × '+e.reps+(e.seg?' s':' reps')+' · '+esc(POSES[poseDe(e.nome)].mus)+'</small><small><button type="button" class="lk" style="padding:0;font-size:.78rem" data-go="treino|ex|'+esc(e.nome)+'">como fazer e histórico</button></small></div></div>'+
       '<div class="sugg"><span>'+esc(sg.txt)+'</span>'+(sg.kg!=null?'<button type="button" data-apl="'+ei+'">Aplicar</button>':'')+'</div>'+
       '<table class="sets"><thead><tr><th>Série</th><th>Anterior</th><th>'+(e.seg?'—':'kg')+'</th><th>'+(e.seg?'seg':'reps')+'</th><th>✓</th></tr></thead><tbody>'+
@@ -2425,7 +2425,7 @@ function bindFeed(app){
 }
 function convite(){ const c = meuCodigo(); return "Bora treinar junto? Tô usando o "+BRAND+", app de treino com IA que monta o plano pro seu objetivo. Entra pelo link com sua conta do Claude (é grátis)"+(c?" e usa meu código "+c:"")+": https://claude.ai/artifact/"+ARTIFACT_ID; }
 async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Copiado. Cole no WhatsApp."); }catch(e){ const ov = $("ov"), aberta = ov.querySelector(".sheet");
-    if (aberta){ const w = document.createElement("div"); w.innerHTML = '<b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5"></textarea>'; aberta.appendChild(w); const ta = w.querySelector("textarea"); ta.value = t; ta.select(); toast("Não consegui copiar sozinho. Copie o texto abaixo."); return; }   // já tem uma sheet aberta (ex.: lista de compras): não substitui nem fecha
+    if (aberta){ let ta = aberta.querySelector("#cpt"); if (!ta){ const w = document.createElement("div"); w.innerHTML = '<b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5"></textarea>'; aberta.appendChild(w); ta = w.querySelector("textarea"); } ta.value = t; ta.select(); toast("Não consegui copiar sozinho. Copie o texto abaixo."); return; }   // já tem uma sheet aberta (ex.: lista de compras): não substitui nem fecha
     ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpx").onclick = ()=>{ ov.innerHTML = ""; }; } }
 
 /* ===================== COMIDA ===================== */
@@ -2480,7 +2480,7 @@ async function gerarCompras(ini){
     const v = {itens, at:new Date().toISOString()}; await salvarLog("compras_"+ini, v); return v;
   }catch(e){ registrarErro("lista de compras", e); return null; }
 }
-let comprasGerando = false;
+let comprasGerando = false, comprasAoTerminar = null;   // comprasAoTerminar: repinta a sheet aberta quando a geração acaba
 function sheetCompras(){
   const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ ov.innerHTML = ""; };
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
@@ -2489,14 +2489,17 @@ function sheetCompras(){
   const montar = async ()=>{
     if (comprasGerando) return;
     if (!sample){ $("cpm").textContent = "A Nutri não está disponível agora."; return; }
-    comprasGerando = true;
+    comprasGerando = true; let ok = false;
     try{
       $("cpb").innerHTML = '<div class="hint">A Nutri está montando a lista…</div>';
       const v = await gerarCompras(ini);
-      const m = $("cpm"); if (!m || !raiz.isConnected || $("cpb") !== raiz) return;   // a sheet foi fechada (ou refeita) durante a espera: não pinta na antiga
-      m.textContent = v ? "" : "Não consegui montar agora. Tente de novo.";
-      pinta();
-    } finally { comprasGerando = false; }
+      ok = !!v;
+    } finally { comprasGerando = false; if (comprasAoTerminar) comprasAoTerminar(ok); }
+  };
+  comprasAoTerminar = ok=>{   // só a sheet atualmente aberta pinta; se foi fechada, não faz nada
+    const m = $("cpm"); if (!m || !raiz.isConnected || $("cpb") !== raiz) return;
+    m.textContent = ok ? "" : "Não consegui montar agora. Tente de novo.";
+    pinta();
   };
   const pinta = ()=>{
     const v = LOG["compras_"+ini], b = $("cpb"); if (!b) return;
@@ -2507,9 +2510,9 @@ function sheetCompras(){
     b.querySelectorAll("input[data-i]").forEach(c=>c.addEventListener("change", ()=>{ v.itens[+c.dataset.i].ok = c.checked; salvarLog("compras_"+ini, v); }));
     $("cpco").onclick = ()=>copiar(comprasTexto(v.itens));
     $("cpba").onclick = ()=>baixar("lista-de-compras-"+ini+".txt", comprasTexto(v.itens), "text/plain");
-    $("cpre").onclick = ()=>{ if ((LOG["compras_"+ini]||{}).itens && LOG["compras_"+ini].itens.some(i=>i.ok) && !confirm("Refazer a lista apaga as marcações. Continuar?")) return; montar(); }; $("cpfe").onclick = fecha;
+    $("cpre").onclick = ()=>{ const bt = $("cpre"); if (v.itens.some(i=>i.ok) && !bt.dataset.arm){ bt.dataset.arm = "1"; bt.textContent = "Apagar marcações e refazer"; const cn = document.createElement("button"); cn.type = "button"; cn.className = "btn sm ghost"; cn.id = "cpcn"; cn.textContent = "Cancelar"; cn.onclick = pinta; bt.after(cn); return; } montar(); }; $("cpfe").onclick = fecha;
   };
-  pinta();
+  if (comprasGerando) raiz.innerHTML = '<div class="hint">A Nutri está montando a lista…</div>'; else pinta();
 }
 async function analisarRefeicao(ref, f, texto){
   const m = metasDia(today), c = consumido(today), p = P.perfil || {};
