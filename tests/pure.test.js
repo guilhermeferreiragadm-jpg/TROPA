@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -320,4 +320,34 @@ test("sugerirSemana: cansado nunca sugere subir; bem e ausente mantêm o comport
   assert.equal(F.sugerirSemana(leves, "cansado").tipo, null);
   assert.equal(F.sugerirSemana([{rpe:"pesado"}, {rpe:"ok"}], "bem").tipo, "aliviar");
   assert.equal(F.sugerirSemana([{rpe:"ok"}, {rpe:"ok"}], "bem").tipo, null);
+});
+
+test("ajustarSugestaoCarga não mexe sem contexto ruim ou sem aumento sugerido", () => {
+  const sg = {kg:52.5, txt:"Suba para 52,5 kg"};
+  assert.equal(F.ajustarSugestaoCarga(sg, {}), sg);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:80, dor:2, hold:50}), sg);
+  assert.equal(F.ajustarSugestaoCarga(sg, {pront:30, dor:6}), sg);               // sem hold
+  const manter = {kg:50, txt:"Mantenha 50 kg"};
+  assert.equal(F.ajustarSugestaoCarga(manter, {pront:30, dor:6, hold:50}), manter); // não era aumento
+  const semKg = {kg:null, txt:"Primeira vez"};
+  assert.equal(F.ajustarSugestaoCarga(semKg, {pront:30, dor:6, hold:50}), semKg);
+  assert.equal(F.ajustarSugestaoCarga(null, {pront:30}), null);
+});
+
+test("ajustarSugestaoCarga segura a carga com prontidão baixa ou dor 5 ou mais", () => {
+  const sg = {kg:52.5, txt:"Suba para 52,5 kg"};
+  const a = F.ajustarSugestaoCarga(sg, {pront:40, dor:2, hold:50});
+  assert.equal(a.kg, 50);
+  assert.match(a.txt, /prontidão 40/); assert.match(a.txt, /dor 2\/10/); assert.match(a.txt, /Mantenha 50 kg/);
+  assert.doesNotMatch(a.txt, /Pule/);
+  const b = F.ajustarSugestaoCarga({kg:52.5, txt:""}, {dor:5, hold:50});
+  assert.equal(b.kg, 50); assert.doesNotMatch(b.txt, /prontidão/); assert.match(b.txt, /dor 5\/10/);
+  const c = F.ajustarSugestaoCarga({kg:52.5, txt:""}, {pront:49, hold:52.5 - 2.5});
+  assert.equal(c.kg, 50); assert.doesNotMatch(c.txt, /dor /);
+});
+
+test("ajustarSugestaoCarga com dor 7 ou mais manda pular o movimento que doer", () => {
+  const r = F.ajustarSugestaoCarga({kg:22.5, txt:""}, {dor:7, hold:20});
+  assert.equal(r.kg, 20); assert.match(r.txt, /Mantenha 20 kg/); assert.match(r.txt, /Pule o movimento que doer/);
+  assert.match(F.ajustarSugestaoCarga({kg:22.5, txt:""}, {dor:5, pront:45, hold:17.5}).txt, /Mantenha 17,5 kg/);
 });

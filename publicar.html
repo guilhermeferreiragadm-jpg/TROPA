@@ -766,6 +766,16 @@ function candidatasRepetir(ontem, favoritas, refeicao){
   let n = 0; for (const f of ordem){ if (n >= 4) break; if (add(f, "favorita")) n++; }
   return out;
 }
+function ajustarSugestaoCarga(sg, ctx){
+  ctx = ctx || {};
+  const n = v => (v === null || v === undefined || v === "" || !isFinite(+v)) ? null : +v;
+  const dor = n(ctx.dor), pront = n(ctx.pront), hold = n(ctx.hold);
+  if (!sg || sg.kg == null || hold == null) return sg;
+  const ruim = (dor != null && dor >= 5) || (pront != null && pront < 50);
+  if (!ruim || !(sg.kg > hold)) return sg;
+  const estado = (pront != null ? "prontidão "+pront : "") + (pront != null && dor != null ? ", " : "") + (dor != null ? "dor "+dor+"/10" : "");
+  return {kg:hold, txt:"Hoje o seu corpo pede calma ("+estado+"). Mantenha "+String(hold).replace(".",",")+" kg, a carga da última vez, e pare 2 reps antes da falha."+(dor != null && dor >= 7 ? " Pule o movimento que doer." : "")};
+}
 const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 
@@ -839,6 +849,12 @@ function sugestao(ex){
   if (todas) return {kg:kg+inc, txt:"Você fechou "+top+" reps em todas com "+num(kg,1)+" kg. Suba para "+num(kg+inc,1)+" kg e volte a mirar "+bot+"–"+top+"."};
   if (h.length>=3){ const tres = h.slice(-3).map(s=>Math.max(...s.sets.map(x=>+x.kg||0))); const vol = h.slice(-3).map(s=>s.sets.reduce((a,x)=>a+(+x.reps||0),0)); if (tres[0]===tres[2] && vol[2]<=vol[0]) return {kg:kg, txt:"Platô em "+num(kg,1)+" kg há 3 treinos. Mude o estímulo: faça "+(top+2)+"–"+(top+4)+" reps por 2 semanas ou uma semana leve."}; }
   return {kg:kg, txt:"Mantenha "+num(kg,1)+" kg até fechar "+top+" reps em todas as séries."};
+}
+/* sugestão de carga ajustada pelo check-in de hoje: com prontidão baixa ou dor, segura a carga em vez de subir */
+function sugestaoAjustada(ex){
+  const sg = sugestao(ex), h = historicoEx(ex.nome), c = LOG["ci_"+key(today)];
+  const hold = h.length ? Math.max(...h[h.length-1].sets.map(x=>+x.kg||0)) : null;
+  return ajustarSugestaoCarga(sg, {pront: c ? prontidao(c) : null, dor: c ? +c.dor : null, hold});
 }
 /* animação do movimento: boneco em SVG que alterna entre duas posições */
 function anim(at, a, b, dur){ return '<animate attributeName="'+at+'" values="'+a+';'+b+';'+b+';'+a+'" keyTimes="0;.4;.6;1" dur="'+(dur||2.4)+'s" repeatCount="indefinite" calcMode="spline" keySplines=".4 0 .2 1;0 0 1 1;.4 0 .2 1"/>'; }
@@ -2071,7 +2087,7 @@ function sessaoDe(a){
   const {k,i,t} = argTreino(a); const sk = "fs_"+k+"_"+i;
   if (SESS && SESS.sk===sk) return SESS;
   const salvo = LOG[sk];
-  const ex = parseEx(t.passos).map(e=>{ const sv = salvo && (salvo.ex||[]).find(x=>norm(x.nome)===norm(e.nome)); const sg = sugestao(e); const h = historicoEx(e.nome); const last = h.length ? h[h.length-1].sets : null;
+  const ex = parseEx(t.passos).map(e=>{ const sv = salvo && (salvo.ex||[]).find(x=>norm(x.nome)===norm(e.nome)); const sg = sugestaoAjustada(e); const h = historicoEx(e.nome); const last = h.length ? h[h.length-1].sets : null;
     return Object.assign({}, e, {sets: sv ? sv.sets : Array.from({length:e.series},(_,j)=>({kg: sg.kg!=null ? sg.kg : (last && last[j] ? +last[j].kg : ""), reps: e.reps, ok:false}))}); });
   SESS = {sk, a, ex, ini:(salvo&&salvo.ini)||new Date().toISOString()};
   return SESS;
@@ -2085,7 +2101,7 @@ function telaForca(a){
     '<div class="row"><span class="badge">'+esc(t.ef||"")+'</span><span class="badge">'+(t.min||"")+' min</span><span class="badge">pare 2 reps antes da falha</span></div>'+
     notas.map(x=>'<p class="s">'+esc(x)+'</p>').join("")+detalheHTML(t);
   S.ex.forEach((e,ei)=>{
-    const sg = sugestao(e), h0 = historicoEx(e.nome), last = h0.length ? h0[h0.length-1].sets : [];
+    const sg = sugestaoAjustada(e), h0 = historicoEx(e.nome), last = h0.length ? h0[h0.length-1].sets : [];
     h += '<div class="box"><div class="exh"><button type="button" class="demo" data-go="treino|ex|'+esc(e.nome)+'" aria-label="Ver como fazer '+esc(e.nome)+'">'+demoSVG(e.nome)+'</button><div style="min-width:0"><b>'+esc(e.nome)+'</b><small>'+e.series+' × '+e.reps+(e.seg?' s':' reps')+' · '+esc(POSES[poseDe(e.nome)].mus)+'</small><small><button type="button" class="lk" style="padding:0;font-size:.78rem" data-go="treino|ex|'+esc(e.nome)+'">como fazer e histórico</button></small></div></div>'+
       '<div class="sugg"><span>'+esc(sg.txt)+'</span>'+(sg.kg!=null?'<button type="button" data-apl="'+ei+'">Aplicar</button>':'')+'</div>'+
       '<table class="sets"><thead><tr><th>Série</th><th>Anterior</th><th>'+(e.seg?'—':'kg')+'</th><th>'+(e.seg?'seg':'reps')+'</th><th>✓</th></tr></thead><tbody>'+
@@ -2097,7 +2113,7 @@ function telaForca(a){
   app.querySelectorAll("[data-kg]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.kg.split("~").map(Number); S.ex[x].sets[y].kg = parseFloat(String(inp.value).replace(",","."))||""; salvarSessao(); }));
   app.querySelectorAll("[data-rp]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.rp.split("~").map(Number); S.ex[x].sets[y].reps = parseInt(inp.value)||""; salvarSessao(); }));
   app.querySelectorAll("[data-ok]").forEach(b=>b.addEventListener("click", ()=>{ const [x,y] = b.dataset.ok.split("~").map(Number); const s2 = S.ex[x].sets[y]; s2.ok = !s2.ok; salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); if (s2.ok) iniciarDescanso(90); }));
-  app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestao(e); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); }));
+  app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); }));
   const f = $("fim"); if (f) f.addEventListener("click", ()=>terminarForca(a));
   desenharDescanso(); crono();
 }
