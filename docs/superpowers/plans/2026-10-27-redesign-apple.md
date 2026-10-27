@@ -270,7 +270,7 @@ test("a velocidade inicial é herdada: partir de v alta passa mais longe no come
 test("o resultado não depende do tamanho do quadro", () => {
   const um = F.molaPasso({x:0, v:0}, 100, F.MOLAS.suave, 0.1).x;
   let e = {x:0, v:0}; for (let i = 0; i < 10; i++) e = F.molaPasso(e, 100, F.MOLAS.suave, 0.01);
-  assert.ok(Math.abs(um - e.x) < 0.01, um + " vs " + e.x);
+  assert.ok(Math.abs(um - e.x) < 0.5, um + " vs " + e.x);   // passo fixo de 1/120 s: a diferença é só o arredondamento do último passo
 });
 
 test("molaParada exige posição e velocidade pequenas", () => {
@@ -286,9 +286,9 @@ test("projetar usa a taxa de desaceleração (0,998 por padrão)", () => {
   assert.equal(Math.round(F.projetar(300, -1000)), -199);
 });
 
-test("elástico: segue o dedo no começo e satura longe", () => {
-  assert.ok(Math.abs(F.elastico(10, 400) - 10) < 1);
-  assert.ok(F.elastico(1000, 400) < 400 * 0.55 * 1.001);
+test("elástico: inclinação inicial de 0,55 e nunca passa da dimensão", () => {
+  assert.ok(Math.abs(F.elastico(1, 400) - 0.55) < 0.01);
+  assert.ok(F.elastico(100000, 400) < 400);
   assert.equal(F.elastico(0, 400), 0);
   assert.equal(F.elastico(-10, 400), -F.elastico(10, 400));
   assert.ok(F.elastico(200, 400) < 200);
@@ -296,7 +296,7 @@ test("elástico: segue o dedo no começo e satura longe", () => {
 
 test("velocidade usa só os últimos ~100 ms", () => {
   const am = [{t:0, x:0}, {t:100, x:500}, {t:200, x:510}, {t:260, x:516}];
-  assert.equal(Math.round(F.velocidade(am)), 60);   // (516-510)/(260-200)*1000
+  assert.equal(Math.round(F.velocidade(am)), 100);   // (516-510)/(260-200)*1000
   assert.equal(F.velocidade([{t:0, x:0}]), 0);
   assert.equal(F.velocidade([]), 0);
   assert.equal(F.velocidade([{t:5, x:0}, {t:5, x:9}]), 0);
@@ -428,7 +428,7 @@ const PARES = [
   ["done-ink","surface",4.5], ["done-ink","done-soft",4.5],
   ["stop-ink","surface",4.5], ["stop-ink","stop-soft",4.5],
   ["warn-ink","surface",4.5], ["warn-ink","caution-soft",4.5],
-  ["go","surface",3], ["done","surface",3], ["stop","surface",3], ["caution","surface",3]
+  ["go","surface",3], ["done","surface",3], ["stop","surface",3]   // --caution é só filete decorativo ao lado de texto; o texto de aviso usa --warn-ink
 ];
 const cor = (t, nome) => t[nome] || (nome.startsWith("#") ? nome : null);
 
@@ -459,7 +459,7 @@ Linhas 1 a 3 do `publicar.html` passam a ser:
 
 - [ ] **Step 3: Reescrever `:root`, tema escuro e base**
 
-Substituir as linhas 5 a 51 (do comentário `/* Layout: ...` até o fim do `.wm i{...}`) por:
+Substituir as linhas 5 a 50 (do comentário `/* Layout: ...` até o fim da regra `.wm{...}`; a linha 51, `.wm i{...}` com o logo, fica) por:
 
 ```css
 /* Layout: app de celular numa coluna de até 480px sobre fundo agrupado; barra de abas de vidro flutuante com o botão Coach · Nutri ao lado; sheets arrastáveis.
@@ -469,7 +469,7 @@ Substituir as linhas 5 a 51 (do comentário `/* Layout: ...` até o fim do `.wm 
   --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:#F2F2F7; --tx:#0B0D10; --tx-2:#5A626C; --sep:rgba(60,60,67,.14);
   --go:#FF5A00; --go-fill:#CF4500; --go-press:#B53B00; --go-ink:#C23E00; --go-soft:#FFF1EC; --go-line:#FFC9B6;
   --done:#13A150; --done-ink:#0F7A3E; --done-soft:#EAF7EF; --done-line:#BFE6CE;
-  --caution:#E5A100; --caution-soft:#FFF7E0; --warn-ink:#9A6B00;
+  --caution:#E5A100; --caution-soft:#FFF7E0; --warn-ink:#8A5F00;
   --stop:#E0362B; --stop-ink:#C62A20; --stop-soft:#FDECEA;
   --run:#FF5A00; --swim:#1E88E5; --bike:#E39A06; --gym:#6E56CF; --noite:#0B0D10;
   --r1:10px; --r2:14px; --r3:20px; --r4:28px;
@@ -766,18 +766,20 @@ Substituir as regras de `/* tabs */` (`.tabs`, `.tabs button`, `.tabs button i`,
 .tabs{position:fixed;left:0;right:0;margin:0 auto;width:min(480px,100%);bottom:calc(8px + var(--safe-b));padding:0 12px;display:flex;gap:8px;align-items:center;z-index:30}
 .tabs-pill{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-radius:999px;padding:4px;position:relative;box-shadow:var(--sh2)}
 .tabs-ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--go-soft);z-index:0;will-change:transform}
-.tabs button{position:relative;z-index:1;border:0;background:none;padding:6px 0 5px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.625rem;line-height:1.2;font-weight:600;color:var(--tx-2);min-height:48px;transition:color .15s}
-.tabs button:active{transform:scale(.97)}
-.tabs .tico{width:24px;height:24px;display:grid;place-content:center}
-.tabs .tico svg{width:22px;height:22px}
-.tabs button[aria-selected="true"]{color:var(--go-ink)}
-.tabs em{position:absolute;top:3px;left:calc(50% + 6px);background:var(--go-fill);color:#fff;font-style:normal;font-size:.625rem;font-weight:600;min-width:16px;height:16px;border-radius:8px;display:grid;place-content:center;padding:0 4px}
+.tabs-pill button{position:relative;z-index:1;border:0;background:none;padding:6px 0 5px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.625rem;line-height:1.2;font-weight:600;color:var(--tx-2);min-height:48px;transition:color .15s}
+.tabs-pill button:active{transform:scale(.97)}
+.tabs-pill .tico{width:24px;height:24px;display:grid;place-content:center}
+.tabs-pill .tico svg{width:22px;height:22px}
+.tabs-pill button[aria-selected="true"]{color:var(--go-ink)}
+.tabs-pill em{position:absolute;top:3px;left:calc(50% + 6px);background:var(--go-fill);color:#fff;font-style:normal;font-size:.625rem;font-weight:600;min-width:16px;height:16px;border-radius:8px;display:grid;place-content:center;padding:0 4px}
 .fab{flex:none;width:56px;height:56px;border-radius:50%;padding:0;display:grid;place-content:center;color:var(--go-ink);box-shadow:var(--sh2);transition:transform .1s ease-out}
 .fab:active{transform:scale(.95)}
 .fab svg{width:26px;height:26px}
 ```
 
 Apagar as regras antigas `.tabs .t-hoje i{...}` a `.tabs .t-perf i{...}` (ícones de CSS), porque `montarIcones()` já troca cada `<i>` por SVG.
+
+**Importante (o botão `#fab` agora é irmão da pílula dentro de `#tabs`):** os seletores `.tabs button` foram trocados por `.tabs-pill button` acima, para o botão Coach não herdar o estilo das abas. Pelo mesmo motivo, no JS trocar os três seletores `"#tabs button"` por `"#tabs .tabs-pill button"`: em `render()` (o `forEach` que define `aria-selected`), em `montarIcones()` e no `addEventListener("click", ...)` das abas (perto de `$("fab").addEventListener("click", ()=>ir("chat"))`). Sem isso, clicar no Coach dispara também `ir(undefined)`.
 
 - [ ] **Step 4: Mostrar o cabeçalho de título em `tela()` (só estrutura; o comportamento vem na Task 7)**
 
