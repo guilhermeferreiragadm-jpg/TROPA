@@ -920,6 +920,56 @@ const situacaoEntrada = (membros, eu) => { const l = membros||[]; if (!l.length)
 const gravarGrupo = (gs, e) => { const l = Array.isArray(gs) ? gs.filter(Boolean) : []; const i = l.findIndex(x=>x.g===e.g); if (i>=0){ l[i] = e; return l; } if (l.length >= 5) return null; return l.concat([e]); };
 const sairDoGrupo = (gs, gid) => (Array.isArray(gs) ? gs : []).filter(x=>x && x.g!==gid);
 const gidDeCodigo = async codigo => { const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("tropa:" + codigo)); return Array.from(new Uint8Array(buf)).slice(0, 8).map(x=>x.toString(16).padStart(2, "0")).join(""); };
+/* ---- fase 4: importar treino (GPX, TCX, FIT), sem DOM ---- */
+const atributosXML = s => { const o = {}; String(s||"").replace(/([\w:]+)="([^"]*)"/g, (_, k, v) => { o[k] = v; return ""; }); return o; };
+const lerGPX = texto => {
+  const t = String(texto||""), pontos = [], re = /<trkpt\b([^>]*?)(?:\/>|>([\s\S]*?)<\/trkpt>)/g; let m;
+  while ((m = re.exec(t))){
+    const a = atributosXML(m[1]), corpo = m[2] || "", lat = parseFloat(a.lat), lon = parseFloat(a.lon); if (!isFinite(lat) || !isFinite(lon)) continue;
+    const ele = /<ele>\s*([-+\d.eE]+)\s*<\/ele>/.exec(corpo), tm = /<time>\s*([^<\s]+)\s*<\/time>/.exec(corpo), hr = /<(?:\w+:)?hr>\s*(\d+)\s*<\/(?:\w+:)?hr>/i.exec(corpo);
+    pontos.push({t:tm ? Date.parse(tm[1]) : NaN, lat, lon, alt:ele && isFinite(+ele[1]) ? +ele[1] : null, dist:null, fc:hr ? +hr[1] : null});
+  }
+  const ty = /<trk>[\s\S]*?<type>\s*([^<]+?)\s*<\/type>/.exec(t);
+  return {pontos, esporte:ty ? ty[1] : "", sessao:null, parcial:false};
+};
+const lerTCX = texto => {
+  const t = String(texto||""), pontos = [], re = /<Trackpoint>([\s\S]*?)<\/Trackpoint>/g; let m;
+  const campo = (c, n) => { const r = new RegExp("<"+n+">\\s*([^<]+?)\\s*</"+n+">").exec(c); return r && isFinite(+r[1]) ? +r[1] : null; };
+  while ((m = re.exec(t))){
+    const c = m[1], tm = /<Time>\s*([^<\s]+)\s*<\/Time>/.exec(c), hr = /<HeartRateBpm[^>]*>\s*<Value>\s*(\d+)/.exec(c);
+    pontos.push({t:tm ? Date.parse(tm[1]) : NaN, lat:campo(c,"LatitudeDegrees"), lon:campo(c,"LongitudeDegrees"), alt:campo(c,"AltitudeMeters"), dist:campo(c,"DistanceMeters"), fc:hr ? +hr[1] : null});
+  }
+  const sp = /<Activity\s+Sport="([^"]*)"/.exec(t);
+  return {pontos, esporte:sp ? sp[1] : "", sessao:null, parcial:false};
+};
+const esporteDoApp = s => { const n = norm(String(s||"")); if (/run|corrida|trail/.test(n)) return "run"; if (/bik|cycl|ciclis|ride/.test(n)) return "bike"; if (/swim|nata/.test(n)) return "swim"; if (/walk|hik|cami/.test(n)) return "walk"; if (/train|fitness|strength|weight|gym|forca|row/.test(n)) return "gym"; return "outro"; };
+const resumirAtividade = l => {
+  const pts = l && Array.isArray(l.pontos) ? l.pontos : [], s = l && l.sessao;
+  const ts = pts.map(p=>p.t).filter(t=>isFinite(t));
+  const rad = x => x * Math.PI / 180, hav = (a, b) => { const dLa = rad(b.lat - a.lat), dLo = rad(b.lon - a.lon), q = Math.sin(dLa/2)**2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLo/2)**2; return 12742000 * Math.asin(Math.min(1, Math.sqrt(q))); };
+  const movido = (a, b) => a.dist != null && b.dist != null ? Math.abs(b.dist - a.dist) : a.lat != null && a.lon != null && b.lat != null && b.lon != null ? hav(a, b) : 0;
+  let ms = 0; const comT = pts.filter(p=>isFinite(p.t));
+  for (let i = 1; i < comT.length; i++){ const dt = comT[i].t - comT[i-1].t; if (dt > 0 && (dt <= 120000 || movido(comT[i-1], comT[i]) / (dt / 1000) > 0.5)) ms += dt; }
+  const acum = pts.map(p=>p.dist).filter(v=>v != null && isFinite(v));
+  let m = 0;
+  if (acum.length > 1) m = Math.max.apply(null, acum) - Math.min.apply(null, acum);
+  else { const g = pts.filter(p=>p.lat != null && p.lon != null); for (let i = 1; i < g.length; i++){ const seg = hav(g[i-1], g[i]), dt = (g[i].t - g[i-1].t) / 1000; if (seg < 1) continue; if (isFinite(dt) && dt > 0 && seg / dt > 50) continue; m += seg; } }
+  let sub = 0, ref = null; pts.forEach(p => { if (p.alt == null) return; if (ref == null) ref = p.alt; else if (p.alt - ref >= 3){ sub += p.alt - ref; ref = p.alt; } else if (ref - p.alt >= 3) ref = p.alt; });
+  const fcs = pts.map(p=>p.fc).filter(v=>v != null && v > 0);
+  let min = Math.round(ms / 60000), km = Math.round(m / 10) / 100, subidaM = Math.round(sub), fcMedia = fcs.length ? Math.round(fcs.reduce((a,v)=>a+v,0) / fcs.length) : null, fcMax = fcs.length ? Math.max.apply(null, fcs) : null;
+  if (s){ if (s.timerS) min = Math.round(s.timerS / 60); if (s.distM) km = Math.round(s.distM / 10) / 100; if (s.subidaM) subidaM = s.subidaM; if (s.fcMedia) fcMedia = s.fcMedia; if (s.fcMax) fcMax = s.fcMax; }
+  return {esporte:esporteDoApp(l && l.esporte), data:ts.length ? key(new Date(ts[0])) : "", min, km, paceMinKm:km > 0 && min > 0 ? Math.round(min / km * 100) / 100 : null, subidaM, fcMedia, fcMax, parcial:!!(l && l.parcial), pontos:pts.length};
+};
+const validarAtividade = (r, hoje) => {
+  if (!r || !(r.pontos > 0)) return "Não achei pontos de treino nesse arquivo.";
+  if (r.pontos > 60000) return "Arquivo grande demais (mais de 60.000 pontos).";
+  if (!(r.min > 0)) return "Não consegui calcular a duração do treino.";
+  if (r.min > 1440) return "Duração acima de 24 horas, confira o arquivo.";
+  if (r.km > 500) return "Distância acima de 500 km, confira o arquivo.";
+  if (r.data){ const h = parseD(hoje), d = parseD(r.data); if (!h || !d || d < addDays(h,-365) || d > addDays(h,1)) return "A data do treino está fora do período aceito (até 1 ano atrás)."; }
+  return "";
+};
+const paceTexto = v => { const s = Math.round(v * 60); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 
