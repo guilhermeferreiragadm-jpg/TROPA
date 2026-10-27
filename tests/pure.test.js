@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -187,4 +187,33 @@ test("motivoGenerico: Natação técnica tem texto próprio", () => {
   const m = F.motivoGenerico({k:"swim", t:"Natação técnica"}, {});
   assert.ok(m.length > 20);
   assert.doesNotMatch(m, /contínua/);
+});
+
+test("sugerirSemana: precisa de pelo menos 2 treinos", () => {
+  assert.equal(F.sugerirSemana([]).tipo, null);
+  assert.equal(F.sugerirSemana([{rpe:"limite", comoPlano:true}]).tipo, null);
+});
+
+test("sugerirSemana: aliviar quando metade ou mais foi pesado ou no limite", () => {
+  const r = F.sugerirSemana([{rpe:"pesado", comoPlano:true}, {rpe:"ok", comoPlano:true}]);
+  assert.equal(r.tipo, "aliviar"); assert.equal(r.pesados, 1); assert.equal(r.total, 2);
+  assert.match(r.motivo, /1 de 2/);
+  assert.equal(F.sugerirSemana([{rpe:"pesado"}, {rpe:"ok"}, {rpe:"ok"}]).tipo, null);
+  assert.equal(F.sugerirSemana([{rpe:"limite"}, {rpe:"ok"}, {rpe:"limite"}]).tipo, "aliviar");
+});
+
+test("sugerirSemana: aliviar com 2 treinos abaixo do plano e algum pesado", () => {
+  const r = F.sugerirSemana([{rpe:"pesado", comoPlano:false}, {rpe:"ok", comoPlano:false}, {rpe:"ok", comoPlano:true}, {rpe:"ok", comoPlano:true}]);
+  assert.equal(r.tipo, "aliviar");
+  assert.equal(F.sugerirSemana([{rpe:"ok", comoPlano:false}, {rpe:"ok", comoPlano:false}, {rpe:"ok"}]).tipo, null);
+});
+
+test("sugerirSemana: subir só com 3 ou mais treinos, todos leves e dentro do plano", () => {
+  assert.equal(F.sugerirSemana([{rpe:"leve", comoPlano:true}, {rpe:"leve", comoPlano:true}]).tipo, null);
+  assert.equal(F.sugerirSemana([{rpe:"leve", comoPlano:true}, {rpe:"leve"}, {rpe:"leve", comoPlano:true}]).tipo, "subir");
+  assert.equal(F.sugerirSemana([{rpe:"leve", comoPlano:true}, {rpe:"leve", comoPlano:false}, {rpe:"leve"}]).tipo, null);
+});
+
+test("sugerirSemana ignora registros sem rpe", () => {
+  assert.equal(F.sugerirSemana([{}, null, {rpe:"ok"}]).total, 1);
 });
