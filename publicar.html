@@ -917,7 +917,7 @@ const podarGrupos = (gs, hoje) => { const h = parseD(hoje); if (!h) return Array
 const cutucadaPermitida = (cut, hoje) => !(cut && cut.d === hoje);
 const cutucadaRecebida = (par, hoje) => par && par.cut && par.cut.d === hoje ? par.cut.k : -1;
 const resumoDupla = (membros, eu) => { const m = (membros||[]).find(x=>x.id===eu), p = (membros||[]).find(x=>x.id!==eu); return {eu:m ? {t:m.t, f:m.f} : {t:0, f:0}, par:p ? {ap:p.ap, t:p.t, f:p.f, cut:p.cut, up:p.up} : null, vazia:!p}; };
-const situacaoEntrada = (membros, eu) => { const l = membros||[]; if (!l.length) return "nao_achei"; if (l.some(m=>m.id===eu)) return "ja"; const lim = l[0].def && l[0].def.dupla ? 2 : 8; return l.length >= lim ? "cheio" : "ok"; };
+const situacaoEntrada = (membros, eu) => { const l = membros||[]; if (!l.length) return "nao_achei"; if (l.some(m=>m.id===eu)) return "ja"; const def = definicaoDoGrupo(l), lim = def && def.dupla ? 2 : 8; return l.length >= lim ? "cheio" : "ok"; };
 const gravarGrupo = (gs, e) => { const l = Array.isArray(gs) ? gs.filter(Boolean) : []; const i = l.findIndex(x=>x.g===e.g); if (i>=0){ l[i] = e; return l; } if (l.length >= 5) return null; return l.concat([e]); };
 const sairDoGrupo = (gs, gid) => (Array.isArray(gs) ? gs : []).filter(x=>x && x.g!==gid);
 const gidDeCodigo = async codigo => { const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("tropa:" + codigo)); return Array.from(new Uint8Array(buf)).slice(0, 8).map(x=>x.toString(16).padStart(2, "0")).join(""); };
@@ -2326,7 +2326,7 @@ async function lerArquivoTreino(file){
   if (/<TrainingCenterDatabase/.test(txt)) return lerTCX(txt);
   throw new Error("Não reconheci o formato. Use GPX, TCX ou FIT.");
 }
-function jaImportado(r, k){ const dd = parseD(r.data || k); return !!dd && treinosDe(dd).some((_,j)=>{ const c = feito(dd,j); return c && c.imp && c.imp.km===r.km && c.min===r.min; }); }
+function jaImportado(r, k){ return Array.from(new Set([r.data, k].filter(Boolean))).some(s=>{ const dd = parseD(s); return !!dd && treinosDe(dd).some((_,j)=>{ const c = feito(dd,j); return c && c.imp && c.imp.km===r.km && c.min===r.min; }); }); }
 async function importarTreino(a, file){
   const {k} = argTreino(a); let leit;
   try{ leit = await lerArquivoTreino(file); }catch(e){ toast(e.message || "Não consegui ler o arquivo."); return; }
@@ -2913,15 +2913,23 @@ function telaLiga(){
   bindGo(app); bindMissoesSemana(app);
 }
 /* ---- grupos reais e parceiro de responsa (fase 4) ---- */
-let GRUPOS = [], MEUS_GS = [], gruposOn = false, gruposUlt = "", gruposT = null, gruposEnv = 0;
+let GRUPOS = [], MEUS_GS = [], gruposOn = false, gruposUlt = "", gruposT = null, gruposEnv = 0, gruposCarregado = false, gruposSigVista = "", gruposFila = Promise.resolve(), gruposPend = 0;
+let PODE_ESCREVER = null; /* null = não sei ainda: mantém os controles */
 const gruposOk = () => !!(realDb && me && !DEMO && !LOCAL);
-const gruposEscreve = () => !(user && typeof user.can === "function" && user.can("data.write") === false);
-const meuApelido = () => String((P && P.perfil && P.perfil.apelido) || meName || "Atleta").slice(0,30);
+const gruposEscreve = () => PODE_ESCREVER !== false;
+const meuApelido = () => String((P && P.perfil && P.perfil.apelido) || "Atleta").slice(0,30);
 const sigGrupos = (ap, gs) => JSON.stringify([ap, gs.map(g=>Object.keys(g).sort().map(k=>[k, g[k]]))]);
 function treinosFeitosSemana(){ let n = 0; const ini0 = addDays(today, -dow(today)); for (let i=0;i<7;i++){ const d = addDays(ini0,i); if (d>today) break; treinosDe(d).forEach((t,j)=>{ if (feito(d,j)) n++; }); } return n; }
-async function escreverGrupos(gs){ const ap = meuApelido(); await realDb.collection("grupos").doc(me).set({ap, up:new Date().toISOString(), gs}); MEUS_GS = gs; gruposUlt = sigGrupos(ap, gs); }
+/* Escritas em fila; MEUS_GS muda antes de gravar. Dois aparelhos da mesma conta ainda podem se sobrescrever (aceito). */
+async function escreverGrupos(gs){
+  const ap = meuApelido(), antes = MEUS_GS, antesSig = gruposUlt; gruposPend++;
+  MEUS_GS = gs; gruposUlt = sigGrupos(ap, gs);
+  const w = gruposFila = gruposFila.catch(()=>{}).then(()=>comTempo(realDb.collection("grupos").doc(me).set({ap, up:new Date().toISOString(), gs}), 15000, "gravar_demorou"));
+  try{ await w; }catch(e){ if (MEUS_GS === gs){ MEUS_GS = antes; gruposUlt = antesSig; } throw e; }finally{ gruposPend--; }
+}
 async function publicarGrupos(){
   if (!gruposOk() || !MEUS_GS.length) return;
+  if (gruposPend > 0){ agendarGrupos(); return; }
   const gs = podarGrupos(MEUS_GS, key(today)), t = treinosFeitosSemana(), f = foguinho().n;
   const novo = gs.map(g=>Object.assign({}, g, {v:g.dupla ? 0 : meuProgresso(g), t:g.dupla ? t : 0, f:g.dupla ? f : 0}));
   if (sigGrupos(meuApelido(), novo) === gruposUlt) return;
@@ -2933,11 +2941,14 @@ function carregarGrupos(){
   if (gruposOn || !gruposOk()) return; gruposOn = true;
   try{ realDb.collection("grupos").onSnapshot(s=>{
     GRUPOS = s.docs.map(d=>({id:d.id, data:d.data()||{}}));
-    const eu = GRUPOS.find(x=>x.id===me); if (eu && Array.isArray(eu.data.gs)) MEUS_GS = eu.data.gs.filter(Boolean);
+    const eu = GRUPOS.find(x=>x.id===me); if (eu && Array.isArray(eu.data.gs) && gruposPend === 0) MEUS_GS = eu.data.gs.filter(Boolean);
+    gruposCarregado = true;
     agendarGrupos();
-    const ov = $("ov"), at = document.activeElement; if ((ov && ov.innerHTML) || (at && at.tagName==="INPUT")) return;
-    if ((R.tab==="perf" && ["desafios","grupo","dupla"].includes(R.sub)) || (R.tab==="hoje" && !R.sub)) render(true);
-  }, ()=>{ gruposOn = false; }); }catch(e){ gruposOn = false; }
+    const sig = JSON.stringify(MEUS_GS.map(g=>[g.g, membrosDoGrupo(GRUPOS, g.g).map(m=>[m.id,m.ap,m.v,m.t,m.f,m.cut&&m.cut.d,m.cut&&m.cut.k])]));
+    if (sig === gruposSigVista) return;
+    const ov = $("ov"), at = document.activeElement; if ((ov && ov.innerHTML) || (at && (at.tagName==="INPUT" || at.tagName==="TEXTAREA" || at.isContentEditable)) || document.querySelector('[data-armed="1"]')) return;
+    if ((R.tab==="perf" && ["desafios","grupo","dupla"].includes(R.sub)) || (R.tab==="hoje" && !R.sub)){ gruposSigVista = sig; render(true); }
+  }, e=>{ gruposOn = false; if (!(e && (e.code==="permission_denied" || e.code==="revoked"))) setTimeout(carregarGrupos, 8000); }); }catch(e){ gruposOn = false; }
 }
 function avisoGrupos(seguir){
   if (LOG.gaviso){ seguir(); return; }
@@ -2948,6 +2959,7 @@ function avisoGrupos(seguir){
 }
 async function criarGrupo(def){
   if (!gruposOk()) return null;
+  if (!gruposCarregado){ toast("Carregando os grupos, tente de novo em instantes."); return null; }
   const codigo = novoCodigoGrupo(), g = await gidDeCodigo(codigo);
   const gs = gravarGrupo(MEUS_GS, Object.assign({g, v:0, t:0, f:0, cut:null}, def));
   if (!gs){ toast("Você já está em 5 grupos. Saia de um antes."); return null; }
@@ -2956,20 +2968,26 @@ async function criarGrupo(def){
 }
 async function entrarComCodigo(txt){
   if (!gruposOk()) return {erro:"Grupos precisam do app publicado."};
+  if (!gruposCarregado) return {erro:"Carregando os grupos, tente de novo em instantes."};
   const cod = normalizarCodigo(txt); if (!cod) return {erro:"Código inválido. São 8 letras e números."};
   const gid = await gidDeCodigo(cod); let docs;
   try{ const s = await comTempo(realDb.collection("grupos").get(), 10000); docs = s.docs.map(d=>({id:d.id, data:d.data()||{}})); }catch(e){ return {erro:"Não consegui falar com o servidor. Tente de novo."}; }
   const mem = membrosDoGrupo(docs, gid), sit = situacaoEntrada(mem, me), def = definicaoDoGrupo(mem);
   if (sit==="nao_achei") return {erro:"Não achei esse grupo. Confira o código."};
   if (sit==="cheio") return {erro:"Esse grupo está cheio."};
+  let velha = null;
   if (sit==="ok"){
-    const gs = gravarGrupo(MEUS_GS, Object.assign({g:gid, v:0, t:0, f:0, cut:null}, def));
+    let base = MEUS_GS;
+    if (def && def.dupla){ velha = MEUS_GS.find(x=>x && x.dupla && x.g!==gid);
+      if (velha){ if (membrosDoGrupo(GRUPOS, velha.g).filter(m=>m.id!==me).length===0) base = sairDoGrupo(MEUS_GS, velha.g); else return {erro:"Você já tem um parceiro. Saia da dupla atual antes."}; } }
+    const gs = gravarGrupo(base, Object.assign({g:gid, v:0, t:0, f:0, cut:null}, def));
     if (!gs) return {erro:"Você já está em 5 grupos. Saia de um antes."};
     try{ await escreverGrupos(gs); }catch(e){ return {erro:"Não consegui entrar agora. Tente de novo."}; }
   }
+  if (velha) await salvarLog("gcod_"+velha.g, null);
   await salvarLog("gcod_"+gid, cod); agendarGrupos(); return {gid, dupla:!!(def && def.dupla)};
 }
-async function deixarGrupo(gid){ try{ await escreverGrupos(sairDoGrupo(MEUS_GS, gid)); await salvarLog("gcod_"+gid, null); return true; }catch(e){ toast("Não consegui sair agora. Tente de novo."); return false; } }
+async function deixarGrupo(gid){ if (!gruposCarregado){ toast("Carregando os grupos, tente de novo em instantes."); return false; } try{ await escreverGrupos(sairDoGrupo(MEUS_GS, gid)); await salvarLog("gcod_"+gid, null); return true; }catch(e){ toast("Não consegui sair agora. Tente de novo."); return false; } }
 const avatarNome = (ap, eu) => '<span class="av" style="width:32px;height:32px;background:'+(eu?'#0B0D10':'#5A626C')+'">'+esc(ini(ap))+'</span>';
 function gruposSecaoHTML(){
   if (!gruposOk()) return '<span class="k">grupos de verdade</span><p class="s">Grupos só funcionam no app publicado, com a sua conta.</p>';
@@ -3049,6 +3067,7 @@ function telaDupla(){
   const app = tela(h, {tabs:true, fab:true}); bindGo(app);
   const cp = $("dcp"); if (cp) cp.addEventListener("click", ()=>copiar("Vamos ser parceiros de responsa na Tropa! Código: "+codTxt+" (Performance, Desafios, Entrar com código)"));
   app.querySelectorAll("#cuts [data-k]").forEach(b=>b.addEventListener("click", async ()=>{
+    if (!gruposCarregado){ toast("Carregando os grupos, tente de novo em instantes."); return; }
     const gs = MEUS_GS.map(x=>x.g===g.g ? Object.assign({}, x, {cut:{d:hoje, k:+b.dataset.k}}) : x);
     try{ await escreverGrupos(gs); toast("Cutucada enviada."); render(true); }catch(e){ toast("Não consegui enviar agora. Tente de novo."); }
   }));
@@ -3472,6 +3491,12 @@ function extrasHoje(){
     out.push(b, nao);
   }
   const dp = gruposOk() ? duplaAtual() : null;
+  if (dp && dp.rd.vazia){
+    const b = document.createElement("button"); b.type = "button"; b.className = "ci"; b.id = "dpbtn";
+    b.innerHTML = '<span><b>Parceiro: convide alguém</b><small>mande o código da dupla</small></span><span class="n">→</span>';
+    b.addEventListener("click", ()=>ir("perf","dupla"));
+    out.push(b);
+  }
   if (dp && !dp.rd.vazia){
     const rec = cutucadaRecebida(dp.rd.par, key(today)), kd = "cdp_"+dp.g.g+"_"+key(today);
     if (rec >= 0 && !LOG[kd]){
@@ -3481,7 +3506,7 @@ function extrasHoje(){
       out.push(b);
     }
     const b2 = document.createElement("button"); b2.type = "button"; b2.className = "ci"; b2.id = "dpbtn";
-    b2.innerHTML = '<span><b>Parceiro: '+esc(dp.rd.par.ap)+'</b><small>você '+dp.rd.eu.t+' · '+esc(dp.rd.par.ap)+' '+dp.rd.par.t+' treinos na semana</small></span><span class="n">→</span>';
+    b2.innerHTML = '<span><b>Parceiro: '+esc(dp.rd.par.ap)+'</b><small>você '+dp.rd.eu.t+' treinos · foguinho '+dp.rd.eu.f+' · '+esc(dp.rd.par.ap)+' '+dp.rd.par.t+' treinos · foguinho '+dp.rd.par.f+'</small></span><span class="n">→</span>';
     b2.addEventListener("click", ()=>ir("perf","dupla"));
     out.push(b2);
   }
@@ -4158,6 +4183,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
   db = wrapDb(db);
   window.claude.use("sample").then(s=>{ sample = s; }).catch(()=>{});
   if (user){ try{ const v = await user.me(); me = v.id; meName = v.name; meAv = v.avatarUrl; isOwner = !!v.isOwner; }catch(e){} }
+  if (user && typeof user.can === "function"){ try{ PODE_ESCREVER = await comTempo(user.can("data.write"), 4000); }catch(e){} }
   if (!db || !me){ telaAbertura(); return; }
   realDb = db;
   if (!isOwner){ let ok = false; try{ await Promise.race([db.collection(base()).doc("ping").set({at:new Date().toISOString()}), new Promise((_,rej)=>setTimeout(()=>rej({code:"timeout"}), 6000))]); ok = true; }catch(e){} if (!ok){ LOCAL = true; db = hybrid(realDb); } }

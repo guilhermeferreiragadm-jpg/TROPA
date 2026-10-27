@@ -108,3 +108,9 @@ test("gravarGrupo limita a 5 grupos e substitui o mesmo gid; sairDoGrupo remove"
   assert.equal(F.sairDoGrupo(gs, "g2").length, 4);
   assert.equal(F.sairDoGrupo(undefined, "g2").length, 0);
 });
+
+test("situacaoEntrada usa a definição mais antiga (dupla) mesmo se o primeiro doc não for dupla", () => {
+  const dupla = Object.assign({}, gA, {dupla: true, ini: "2026-10-01"});
+  const mistos = F.membrosDoGrupo([doc("u1", [gA], "Ana"), doc("u2", [dupla], "Beto")], "abc");
+  assert.equal(F.situacaoEntrada(mistos, "u9"), "cheio");
+});

@@ -58,7 +58,7 @@ Documento `grupos/<id>`:
   - `resumoDupla(membros, eu)`: devolve `{eu:{t,f}, par:{ap,t,f,cut,up}|null, vazia}`.
 
 ## 3. Grupos reais por código
-- Fluxo "Criar grupo" (aba Performance, Desafios): mesma tela de "Novo desafio" (tipo, formato, prazo, meta), sem "quem entra" e sem o valendo/pix (continuam só nos desafios locais). Ao confirmar, gera o código e o gid, grava a entrada em `grupos/<eu>` e mostra o código com botões "Copiar" e "Compartilhar" (usa `copiar`; `navigator.share` quando existir).
+- Fluxo "Criar grupo" (aba Performance, Desafios): mesma tela de "Novo desafio" (tipo, formato, prazo, meta), sem "quem entra" e sem o valendo/pix (continuam só nos desafios locais). Ao confirmar, gera o código e o gid, grava a entrada em `grupos/<eu>` e mostra o código com o botão "Copiar" (usa `copiar`; sem "Compartilhar"). Na dupla vazia, o cartão da tela Hoje mostra "Parceiro: convide alguém" e abre a tela da dupla, onde está o código.
 - Fluxo "Entrar com código": campo de 8 caracteres. Lê a coleção `grupos`, calcula `membrosDoGrupo`. Sem membros, "Não achei esse grupo". Com 8 membros, "Grupo cheio". Do contrário copia a definição e grava a própria entrada.
 - Tela do grupo: reaproveita o placar de `telaDesafio` (barra por pessoa, "Meta juntos" com percentual, contagem regressiva), sem o bloco de provocações e sem pagamento. Mostra o código para convidar mais gente (só depois de entrar), "Sair do grupo" com confirmação inline e a data da última atualização de cada pessoa ("atualizado há 2 dias"). Nome de alguém sem atualização há mais de 7 dias aparece em cinza.
 - Lista em **Desafios**: seção "Grupos de verdade" acima dos desafios locais, que ganham o rótulo "Exemplo (simulado)".
