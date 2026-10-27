@@ -2981,7 +2981,29 @@ function telaGrupo(gid){
   $("gsai").addEventListener("click", async e=>{ const b = e.currentTarget; if (b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "Confirmar saída"; return; } if (await deixarGrupo(gid)) ir("perf","desafios"); });
   bonusGrupo(gid, def, pc, acabou);
 }
-function telaDupla(){ ir("perf","desafios"); }
+function duplaAtual(){ const g = MEUS_GS.find(x=>x.dupla); if (!g) return null; const mem = membrosDoGrupo(GRUPOS, g.g); return {g, mem, rd:resumoDupla(mem, me)}; }
+function telaDupla(){
+  const dp = duplaAtual(); if (!dp){ ir("perf","desafios"); return; }
+  const {g, rd} = dp, hoje = key(today), cod = LOG["gcod_"+g.g] || "", codTxt = cod ? cod.slice(0,4)+"-"+cod.slice(4) : "";
+  const jaCut = !cutucadaPermitida(g.cut, hoje);
+  let h = '<button type="button" class="back" data-go="perf|desafios">← Desafios</button><span class="k">parceiro de responsa</span><h1 class="h1">'+esc(rd.par ? rd.par.ap : "Dupla")+'</h1>';
+  if (rd.vazia){
+    h += '<div class="box"><b>Chame alguém para treinar com você</b><span class="s">A dupla tem 2 pessoas e cada um vê só os treinos da semana e o foguinho do outro.</span>'+
+      (codTxt ? '<div class="between" style="margin-top:8px"><b class="n" style="font-size:1.2rem">'+esc(codTxt)+'</b><button type="button" class="btn sm" id="dcp">Copiar convite</button></div>' : '<span class="s">O código desta dupla não está guardado neste aparelho.</span>')+'</div>';
+  } else {
+    const col = (tit, x, extra) => '<div class="box"><span class="k">'+esc(tit)+'</span><b class="n" style="font-size:1.4rem">'+x.t+' treino'+(x.t===1?'':'s')+'</b><span class="s">foguinho '+x.f+(extra||'')+'</span></div>';
+    h += '<div class="grid2">'+col("você", rd.eu)+col(rd.par.ap, rd.par, rd.par.up ? ' · atualizado '+relTempo(rd.par.up) : '')+'</div>'+
+      '<span class="k">cutucada de hoje</span>'+(jaCut ? '<p class="s">Você já cutucou hoje. Amanhã tem outra.</p>' : '<div class="chips" id="cuts">'+FRASES_CUT.map((f,k)=>'<button type="button" class="chip" data-k="'+k+'">'+esc(f)+'</button>').join("")+'</div>');
+  }
+  h += '<button type="button" class="btn ghost" id="dsai">Sair da dupla</button><p class="s">Sair apaga o seu lado da dupla. O parceiro continua com a dupla e pode chamar outra pessoa.</p>';
+  const app = tela(h, {tabs:true, fab:true}); bindGo(app);
+  const cp = $("dcp"); if (cp) cp.addEventListener("click", ()=>copiar("Vamos ser parceiros de responsa na Tropa! Código: "+codTxt+" (Performance, Desafios, Entrar com código)"));
+  app.querySelectorAll("#cuts [data-k]").forEach(b=>b.addEventListener("click", async ()=>{
+    const gs = MEUS_GS.map(x=>x.g===g.g ? Object.assign({}, x, {cut:{d:hoje, k:+b.dataset.k}}) : x);
+    try{ await escreverGrupos(gs); toast("Cutucada enviada."); render(true); }catch(e){ toast("Não consegui enviar agora. Tente de novo."); }
+  }));
+  $("dsai").addEventListener("click", async e=>{ const b = e.currentTarget; if (b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "Confirmar saída"; return; } if (await deixarGrupo(g.g)) ir("perf","desafios"); });
+}
 /* ---- desafios ---- */
 function meuProgresso(dz){
   const ini2 = parseD(dz.ini), fim = parseD(dz.fim); let v = 0;
@@ -3398,6 +3420,20 @@ function extrasHoje(){
     const nao = document.createElement("button"); nao.type = "button"; nao.className = "lk"; nao.id = "pesno"; nao.textContent = "Hoje não";
     nao.addEventListener("click", ()=>{ salvarLog("cd_"+segC, true).then(()=>render(true)); });
     out.push(b, nao);
+  }
+  const dp = gruposOk() ? duplaAtual() : null;
+  if (dp && !dp.rd.vazia){
+    const rec = cutucadaRecebida(dp.rd.par, key(today)), kd = "cdp_"+dp.g.g+"_"+key(today);
+    if (rec >= 0 && !LOG[kd]){
+      const b = document.createElement("button"); b.type = "button"; b.className = "ci hot"; b.id = "cutbtn";
+      b.innerHTML = '<span><b>'+esc(dp.rd.par.ap)+' te cutucou</b><small>'+esc(FRASES_CUT[rec] || FRASES_CUT[0])+'</small></span><span class="n">→</span>';
+      b.addEventListener("click", ()=>{ salvarLog(kd, true).then(()=>ir("perf","dupla")); });
+      out.push(b);
+    }
+    const b2 = document.createElement("button"); b2.type = "button"; b2.className = "ci"; b2.id = "dpbtn";
+    b2.innerHTML = '<span><b>Parceiro: '+esc(dp.rd.par.ap)+'</b><small>você '+dp.rd.eu.t+' · '+esc(dp.rd.par.ap)+' '+dp.rd.par.t+' treinos na semana</small></span><span class="n">→</span>';
+    b2.addEventListener("click", ()=>ir("perf","dupla"));
+    out.push(b2);
   }
   return out;
 }
