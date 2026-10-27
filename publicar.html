@@ -776,6 +776,22 @@ function ajustarSugestaoCarga(sg, ctx){
   const estado = (pront != null ? "prontidão "+pront : "") + (pront != null && dor != null ? ", " : "") + (dor != null ? "dor "+dor+"/10" : "");
   return {kg:hold, txt:"Hoje o seu corpo pede calma ("+estado+"). Mantenha "+String(hold).replace(".",",")+" kg, a carga da última vez, e pare 2 reps antes da falha."+(dor != null && dor >= 7 ? " Pule o movimento que doer." : "")};
 }
+const GRUPOS_COMPRAS = ["Hortifrúti","Carnes e ovos","Laticínios","Grãos e massas","Mercearia","Bebidas","Outros"];
+function normalizarCompras(itens){
+  const vistos = new Set(), out = [];
+  (Array.isArray(itens) ? itens : []).forEach(x=>{
+    if (out.length >= 60 || !x) return;
+    const n = String(x.nome || x.n || "").trim().slice(0,60); if (!n) return;
+    const k = normTxt(n); if (vistos.has(k)) return; vistos.add(k);
+    const bruto = normTxt(x.grupo || x.g || ""), g = GRUPOS_COMPRAS.find(y=>normTxt(y) === bruto) || "Outros";
+    out.push({g, n, q:String(x.qtd || x.q || "").trim().slice(0,30), ok:false});
+  });
+  return out.sort((a,b)=>GRUPOS_COMPRAS.indexOf(a.g) - GRUPOS_COMPRAS.indexOf(b.g));
+}
+function comprasTexto(lista){
+  const l = lista || [], grupos = []; l.forEach(i=>{ if (!grupos.includes(i.g)) grupos.push(i.g); });
+  return grupos.map(g=>g+"\n"+l.filter(i=>i.g === g).map(i=>"["+(i.ok ? "x" : " ")+"] "+i.n+(i.q ? " ("+i.q+")" : "")).join("\n")).join("\n\n");
+}
 const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 

@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -350,4 +350,34 @@ test("ajustarSugestaoCarga com dor 7 ou mais manda pular o movimento que doer", 
   const r = F.ajustarSugestaoCarga({kg:22.5, txt:""}, {dor:7, hold:20});
   assert.equal(r.kg, 20); assert.match(r.txt, /Mantenha 20 kg/); assert.match(r.txt, /Pule o movimento que doer/);
   assert.match(F.ajustarSugestaoCarga({kg:22.5, txt:""}, {dor:5, pront:45, hold:17.5}).txt, /Mantenha 17,5 kg/);
+});
+
+test("normalizarCompras limpa a resposta da IA", () => {
+  const r = F.normalizarCompras([
+    {grupo:"Hortifrúti", nome:"Banana", qtd:"2 dúzias"},
+    {grupo:"hortifruti", nome:"  banana ", qtd:"3"},            // duplicado (ignora acento, caixa e espaço)
+    {grupo:"Laticínios", nome:"Leite", qtd:"6 L"},
+    {grupo:"Marcianos", nome:"Pão", qtd:""},                      // grupo desconhecido vira Outros
+    {grupo:"Mercearia", nome:"   "}, null, {nome:"Arroz", grupo:"Grãos e massas", qtd:"5 kg"}
+  ]);
+  assert.deepEqual(r.map(x => x.n), ["Banana", "Leite", "Arroz", "Pão"]);
+  assert.deepEqual(r.map(x => x.g), ["Hortifrúti", "Laticínios", "Grãos e massas", "Outros"]);
+  assert.equal(r[0].q, "2 dúzias"); assert.equal(r[0].ok, false);
+});
+
+test("normalizarCompras limita tamanho e quantidade e aceita lixo", () => {
+  assert.deepEqual(F.normalizarCompras(null), []);
+  assert.deepEqual(F.normalizarCompras("x"), []);
+  const grande = Array.from({length: 80}, (_, i) => ({grupo:"Mercearia", nome:"Item " + i, qtd:"y".repeat(50)}));
+  const r = F.normalizarCompras(grande);
+  assert.equal(r.length, 60); assert.equal(r[0].q.length, 30);
+  assert.equal(F.normalizarCompras([{nome:"n".repeat(100)}])[0].n.length, 60);
+});
+
+test("comprasTexto agrupa por grupo e marca os itens", () => {
+  const t = F.comprasTexto([
+    {g:"Hortifrúti", n:"Banana", q:"2 dúzias", ok:true}, {g:"Hortifrúti", n:"Tomate", q:"", ok:false}, {g:"Laticínios", n:"Leite", q:"6 L", ok:false}
+  ]);
+  assert.equal(t, "Hortifrúti\n[x] Banana (2 dúzias)\n[ ] Tomate\n\nLaticínios\n[ ] Leite (6 L)");
+  assert.equal(F.comprasTexto([]), "");
 });
