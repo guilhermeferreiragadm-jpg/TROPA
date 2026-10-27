@@ -2296,9 +2296,10 @@ function telaTreino(a){
     (motivoTreino(t,d) ? '<div class="rcard"><span class="k">por que esse treino</span><span>'+esc(motivoTreino(t,d))+'</span></div>' : '')+detalheHTML(t)+
     (!ok ? '<div class="rcard"><span class="k">alguma observação?</span><textarea class="inp" id="obtx" rows="2" placeholder="Ex.: tô me sentindo bem, posso fazer mais? / dormi mal / tô com a perna pesada"></textarea><button type="button" class="btn" id="obsv">Perguntar ao coach</button><div id="obres">'+obsHTML(LOG["ob_"+k+"_"+i], k, i)+'</div></div>' : '')+
     (ok ? '<div class="flag ok">Feito'+(ok.km?' · '+num(ok.km,1)+' km':'')+(ok.min?' · '+ok.min+' min':'')+(ok.rpe?' · esforço '+ok.rpe:'')+'</div><button type="button" class="btn" id="desf">Desmarcar</button>' :
-      (suspenso() && +d===+today ? '<div class="flag red">Plano pausado hoje pelo seu check-in.</div>' : '<button type="button" class="btn go" id="fiz">Fiz o treino</button>')), {fab:true});
+      (suspenso() && +d===+today ? '<div class="flag red">Plano pausado hoje pelo seu check-in.</div>' : '<button type="button" class="btn go" id="fiz">Fiz o treino</button><button type="button" class="btn" id="imp">Importar do relógio ou Strava</button><input type="file" id="impf" accept=".gpx,.tcx,.fit,.gz,application/gzip" hidden><p class="s">GPX, TCX ou FIT, também compactado (.gz). Só guardo km, tempo, ritmo, subida e batimentos, nunca o trajeto. No Strava: abra a atividade, menu de três pontos, Exportar GPX.</p>')), {fab:true});
   bindGo(app);
   const f = $("fiz"); if (f) f.addEventListener("click", ()=>sheetFeito(a));
+  const ib = $("imp"), inf = $("impf"); if (ib && inf){ ib.addEventListener("click", ()=>inf.click()); inf.addEventListener("change", ()=>{ const fl = inf.files && inf.files[0]; inf.value = ""; if (fl) importarTreino(a, fl); }); }
   const ds = $("desf"); if (ds) ds.addEventListener("click", ()=>salvarLog("ck_"+k+"_"+i, null).then(()=>render()));
   const bindObs = ()=>{
     const tr = $("obtroca"); if (tr) tr.addEventListener("click", async ()=>{ const v = LOG["ob_"+k+"_"+i]; await salvarLog("tr_"+k+"_"+i, {treino:Object.assign({}, v.novo), de:t.t, at:new Date().toISOString()}); await lembrar("Pediu ajuste em "+t.t+" ("+k+"): "+v.txt.slice(0,60)+" → trocou por "+v.novo.t); toast("Treino trocado."); render(true); });
@@ -2306,6 +2307,55 @@ function telaTreino(a){
   };
   bindObs();
   const ob = $("obsv"); if (ob) ob.addEventListener("click", async ()=>{ const tx = $("obtx").value.trim(); if (!tx){ toast("Escreva sua observação."); return; } ob.disabled = true; ob.textContent = "O coach está pensando…"; const v = await coachObs(k, i, tx); ob.disabled = false; ob.textContent = "Perguntar ao coach"; if (!v){ toast("Não consegui falar com o coach agora. Tente de novo."); return; } $("obtx").value = ""; $("obres").innerHTML = obsHTML(v, k, i); bindObs(); });
+}
+async function lerArquivoTreino(file){
+  const MAX = 10*1024*1024;
+  if (file.size > 25*1024*1024) throw new Error("Arquivo grande demais.");
+  let buf = new Uint8Array(await file.arrayBuffer());
+  if (buf[0]===0x1f && buf[1]===0x8b){
+    if (typeof DecompressionStream === "undefined") throw new Error("Seu navegador não abre .gz. Descompacte o arquivo antes.");
+    const rd = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip")).getReader(), partes = []; let tot = 0;
+    for (;;){ const {done, value} = await rd.read(); if (done) break; tot += value.length; if (tot > MAX){ rd.cancel(); throw new Error("Arquivo grande demais (mais de 10 MB descompactado)."); } partes.push(value); }
+    buf = new Uint8Array(tot); let o = 0; partes.forEach(p=>{ buf.set(p, o); o += p.length; });
+  }
+  if (!buf.length) throw new Error("O arquivo está vazio.");
+  if (buf.length > MAX) throw new Error("Arquivo grande demais (mais de 10 MB).");
+  if (buf.length >= 12 && String.fromCharCode(buf[8], buf[9], buf[10], buf[11]) === ".FIT") return lerFIT(buf);
+  const txt = new TextDecoder("utf-8").decode(buf);
+  if (/<gpx[\s>]/i.test(txt)) return lerGPX(txt);
+  if (/<TrainingCenterDatabase/.test(txt)) return lerTCX(txt);
+  throw new Error("Não reconheci o formato. Use GPX, TCX ou FIT.");
+}
+function jaImportado(r, k){ const dd = parseD(r.data || k); return !!dd && treinosDe(dd).some((_,j)=>{ const c = feito(dd,j); return c && c.imp && c.imp.km===r.km && c.min===r.min; }); }
+async function importarTreino(a, file){
+  const {k} = argTreino(a); let leit;
+  try{ leit = await lerArquivoTreino(file); }catch(e){ toast(e.message || "Não consegui ler o arquivo."); return; }
+  if (leit.invalido){ toast("Esse arquivo FIT está inválido ou corrompido."); return; }
+  const r = resumirAtividade(leit), erro = validarAtividade(r, key(today));
+  if (erro){ toast(erro); return; }
+  if (jaImportado(r, k)){ toast("Esse treino já foi importado."); return; }
+  sheetPreviaImport(a, r);
+}
+function sheetPreviaImport(a, r){
+  const {d,k,i,t} = argTreino(a), ov = $("ov"), st = {rpe:"ok"};
+  const esp = {run:"corrida", bike:"bike", swim:"natação", walk:"caminhada", gym:"força", outro:"outro esporte"}[r.esporte] || "outro esporte";
+  const dif = !!r.data && r.data !== k, difEsp = r.esporte !== "outro" && r.esporte !== t.k;
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Treino importado</h2>'+
+    '<div class="big3"><div><b>'+(r.km ? num(r.km,1) : "—")+'</b><span>km</span></div><div><b>'+r.min+'</b><span>min</span></div><div><b>'+(r.paceMinKm && (r.esporte==="run" || r.esporte==="walk") ? paceTexto(r.paceMinKm) : "—")+'</b><span>/km</span></div></div>'+
+    '<p class="s">'+esc(esp)+(r.data ? ' · '+esc(fmt(parseD(r.data))) : '')+(r.subidaM ? ' · subida '+r.subidaM+' m' : '')+(r.fcMedia ? ' · FC média '+r.fcMedia+(r.fcMax ? ' (máx '+r.fcMax+')' : '') : '')+'</p>'+
+    (r.parcial ? '<div class="flag">O arquivo parece cortado, os números podem estar incompletos.</div>' : '')+
+    (dif ? '<div class="flag red">O arquivo é de '+esc(fmt(parseD(r.data)))+' e este treino é de '+esc(fmt(d))+'.</div>' : '')+
+    (difEsp ? '<div class="flag">O arquivo parece ser de '+esc(esp)+' e este treino é de '+esc(NOMEK[t.k] || t.k)+'.</div>' : '')+
+    '<span class="k">como foi?</span><div class="seg" style="--c:4" id="rp">'+[["leve","Leve"],["ok","Ok"],["pesado","Pesado"],["limite","No limite"]].map(([v,l])=>'<button type="button" data-v="'+v+'" aria-pressed="'+(v===st.rpe)+'">'+l+'</button>').join("")+'</div>'+
+    '<p class="s">O trajeto não é guardado, só estes números.</p><button type="button" class="btn go" id="svi">'+(dif || difEsp ? "Registrar mesmo assim" : "Registrar neste treino")+'</button></div>';
+  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+  $("rp").addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; st.rpe = b.dataset.v; $("rp").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); });
+  $("svi").addEventListener("click", async ()=>{
+    const antes = nivelAntes(), swim = t.k==="swim", km = swim ? 0 : r.km, metros = swim ? Math.round(r.km*1000) : 0;
+    const comoPlano = swim ? (!t.m || metros>=t.m*0.85) : (!t.km || (km>=t.km*0.9 && km<=t.km*1.15));
+    await salvarLog("ck_"+k+"_"+i, {at:new Date().toISOString(), rpe:st.rpe, km, m:metros||null, min:r.min, comoPlano, teste:false, junto:null, imp:{km:r.km, fc:r.fcMedia, sub:r.subidaM, pace:r.paceMinKm}});
+    ov.innerHTML = ""; ir("treino","fim",a); checarNivel(antes);
+  });
 }
 function sheetFeito(a){
   const {d,k,i,t} = argTreino(a); const st = {rpe:"", junto:[]};
