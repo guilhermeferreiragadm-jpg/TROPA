@@ -29,6 +29,7 @@ O código chama `window.claude.use("db" | "user" | "sample" | "downloads")`. For
 
 ### Regras do banco (`db`)
 Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem papel de admin lê e grava tudo. Cada pessoa grava só o próprio documento (`<coleção>/{self}`), e em `aprovados` só o admin grava. Dados pessoais ficam em `data/users/{self}`.
+Coleção `grupos` (fase 4): todos com acesso leem (`read: view`), só o dono grava a coleção, e cada pessoa grava só o próprio documento (`grupos/{self}`, `write: interact`). Lá vão apenas apelido, nome do grupo e números da semana (nunca peso, foto, comida, saúde ou trajeto). A declaração `capabilities` do publish precisa restaurar todas as regras acima junto com essas duas.
 
 ## Como trabalhar em dupla
 - Cada um trabalha numa branch e abre um pull request para `main`.
