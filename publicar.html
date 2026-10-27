@@ -1709,7 +1709,7 @@ function telaHoje(o){
     '<div class="fire-hero'+(f.n?'':' off')+'" style="grid-template-columns:96px 1fr"><div class="flame" style="width:96px;height:108px">'+flameSVG(f.n>0)+'</div><div class="streak"><span class="k" style="color:var(--go-ink)">foguinho</span><b>'+f.n+'</b><span class="n" style="font-size:.95rem">'+(f.n===1?'dia seguido':'dias seguidos')+'</span><div class="row" style="margin-top:6px;gap:14px"><span><b class="n" style="font-size:1.3rem;display:block;line-height:1">'+(ts.length?feitos+"/"+ts.length:"—")+'</b><span class="k">feito hoje</span></span><span><b class="n" style="font-size:1.3rem;display:block;line-height:1">'+(dd!=null?dd:"Nv "+nivelXP().n)+'</b><span class="k">'+(dd!=null?"dias p/ prova":esc(nivelXP().faixa))+'</span></span></div></div>'+
       '<div class="wkstrip">'+DIAS.map((dn,i)=>{ const dx = addDays(today,i-dow(today)), on = dx<=today && ativoNoDia(key(dx)); return '<span><i class="'+(on?'on':'')+(+dx===+today?' td':'')+'">'+(on?'✓':'')+'</i>'+dn[0]+'</span>'; }).join("")+'</div></div>'+
     (f.estado==="risco" ? '<div class="flag">Seu foguinho de '+f.n+' dias está em risco. Faça o check-in ou marque um treino até 23h59.'+(f.protetorLivre?' (Protetor da semana disponível: perder 1 dia não apaga.)':'')+'</div>' : '')+
-    '<div class="recado"><b>Recado do coach</b>'+esc(recadoCoach())+'</div>'+
+    sugestaoHTML(sugestaoSemana())+'<div class="recado"><b>Recado do coach</b>'+esc(recadoCoach())+'</div>'+
     (pausaAtiva() ? '<div class="flag"><b>Plano em pausa</b> desde '+esc(fmt(parseD(pausaAtiva().inicio)))+' · '+esc(NOMEPAUSA[pausaAtiva().tipo]||"pausa")+'<br><button type="button" class="btn go" id="pv" style="margin-top:8px">Voltar a treinar</button></div>' : '<button type="button" class="lk" id="pz">Doente ou machucado? Pausar o plano</button>')+
     (suspenso() ? '<div class="flag red"><b>Plano pausado hoje.</b> Dor no peito, desmaio ou dor forte: procure atendimento médico. Se for agora, SAMU 192.</div>' : '')+
     (aj && !pausaCobre(PAUSAS(), k) ? '<div class="flag">'+rotuloAj(aj)+': '+esc({pular:"treino de hoje cancelado",descanso:"hoje virou descanso",leve:"treino na versão leve"}[aj.acao]||"ajuste")+(aj.motivo?' · '+esc(aj.motivo):'')+' <button type="button" class="lk" id="undo" style="padding:0">desfazer</button></div>' : '')+
@@ -1725,7 +1725,8 @@ function telaHoje(o){
   if (sample && !reanalisando){ const pend = []; [0,1].forEach(x=>{ const dk = key(addDays(today,-x)); Object.keys(LOG).filter(c=>c.startsWith("nf_"+dk+"_") && !LOG["an_"+c.slice(3)]).forEach(c=>pend.push(c.slice(3))); });
     if (pend.length){ reanalisando = true; (async ()=>{ for (const p of pend){ const [dk, ix] = [p.slice(0,10), +p.slice(11)]; const v = await analisarTreino(dk, ix); if (v){ const t = treinosDe(parseD(dk))[ix]; toast("O coach analisou: "+(t?t.t:"treino")+(v.status==="fora_do_plano"?" · fora do plano":v.status==="justificado"?" · justificado":"")); } } reanalisando = false; if (R.tab==="hoje" && !R.sub) render(true); })(); } }
   $("ci").addEventListener("click", ()=>{ if (!c) sheetCheckin(); else sheetCheckin(true); });
-  const u = $("undo"); if (u) u.addEventListener("click", ()=>{ if (aj && aj.por==="teto") return manterPlanoOriginal(addDays(today, -dow(today))); return salvarLog("aj_"+k, null).then(()=>{ render(true); toast("Treino de hoje voltou ao plano."); }); });
+  bindSugestao();
+  const u = $("undo"); if (u) u.addEventListener("click", ()=>{ if (aj && aj.por==="teto") return manterPlanoOriginal(addDays(today, -dow(today))); if (aj && aj.por==="feedback") return manterOriginalFeedback(addDays(today, -dow(today))); return salvarLog("aj_"+k, null).then(()=>{ render(true); toast("Treino de hoje voltou ao plano."); }); });
   if ($("pz")) $("pz").addEventListener("click", sheetPausar);
   if ($("pv")) $("pv").addEventListener("click", sheetRetomar);
   const b = $("bau"); if (b) b.addEventListener("click", ()=>{ celebrar(); const antes = nivelAntes(); const xp = [40,60,80,100,150][Math.floor(Math.random()*5)]; const selos = ["XP em dobro amanhã? Não: XP extra hoje.","Selo 'Dia completo'","Selo 'Sem desculpa'","Selo 'Disciplina'"]; salvarLog("bau_"+k, {xp, selo:selos[Math.floor(Math.random()*selos.length)], at:new Date().toISOString()}).then(()=>{ render(true); toast("Baú: +"+xp+" XP"); checarNivel(antes); }); });
@@ -1904,11 +1905,58 @@ function aplicarTeto(){
     salvarLog("teto_"+wk, {base:ct.base, teto:ct.teto, de:antes, para:r.total, cortes:r.cortes.length, excedeu:r.excedeu, fonte:doFisio?"fisio":"teto", at});
   });
 }
-function rotuloAj(aj){ const por = aj && aj.por; return por==="teto" ? "Ajustado pelo teto de carga" : por==="dor" ? "Ajustado pela sua dor" : por==="prontidao" ? "Ajustado pela sua prontidão" : "Ajustado pelo coach"; }
+function rotuloAj(aj){ const por = aj && aj.por; return por==="teto" ? "Ajustado pelo teto de carga" : por==="dor" ? "Ajustado pela sua dor" : por==="prontidao" ? "Ajustado pela sua prontidão" : por==="feedback" ? "Ajustado pelo seu feedback" : "Ajustado pelo coach"; }
 async function manterPlanoOriginal(ini){
   for (let i=0;i<7;i++){ const k = key(addDays(ini,i)), a = LOG["aj_"+k]; if (a && a.por==="teto") await salvarLog("aj_"+k, null); }
   await salvarLog("teto_"+key(ini), null); await salvarLog("teto_off_"+key(ini), true);
   render(true); toast("Plano original mantido nesta semana.");
+}
+
+/* ===================== SUGESTÃO DA PRÓXIMA SEMANA (a partir do "Como foi") ===================== */
+function feitosSemana(ini){
+  const out = [];
+  for (let i=0;i<7;i++){ const d = addDays(ini,i); if (d > today) break; treinosDe(d).forEach((t,j)=>{ const c = feito(d,j); if (c && c.rpe) out.push({rpe:c.rpe, comoPlano:c.comoPlano}); }); }
+  return out;
+}
+function sugestaoSemana(){
+  if (!P || !P.perfil || !planoAtual() || pausaAtiva()) return null;
+  const seg0 = addDays(today, -dow(today)), next = addDays(seg0, 7), nk = key(next);
+  const res = sugerirSemana(feitosSemana(seg0));
+  if (res.tipo === "subir") return LOG["fbs_"+key(seg0)] ? null : res;
+  if (res.tipo !== "aliviar" || LOG["fb_"+nk]) return null;
+  const dias = [];
+  for (let i=0;i<7;i++){
+    const d = addDays(next,i), k = key(d), ts = treinosDe(d);
+    dias.push({id:k, min:ts.reduce((s,t)=>s+minutosPlan(t),0), prio:ts.length?Math.max(...ts.map(prioridadeTreino)):0, fixo:!!LOG["aj_"+k]});
+  }
+  const de = dias.reduce((s,d)=>s+d.min,0); if (!(de > 0)) return null;
+  const r = reduzirParaTeto(dias, Math.round(de*0.85)); if (!r.cortes.length) return null;
+  return Object.assign({}, res, {next:nk, de, para:r.total, cortes:r.cortes});
+}
+function sugestaoHTML(sug){
+  if (!sug) return "";
+  if (sug.tipo === "aliviar") return '<div class="flag"><b>Quer aliviar a próxima semana?</b> '+esc(sug.motivo)+'. Posso passar '+sug.cortes.length+(sug.cortes.length===1?' dia':' dias')+' da próxima semana para a versão leve ('+sug.de+' para '+sug.para+' min). Nada muda sem o seu aceite.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="sgok">Aliviar a próxima semana</button><button type="button" class="btn sm ghost" id="sgno">Manter como está</button></div></div>';
+  return '<div class="flag ok"><b>'+esc(sug.motivo)+'.</b> Se quiser mais desafio, converse com o coach: o plano só sobe se você pedir.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="sgco">Falar com o coach</button><button type="button" class="btn sm ghost" id="sgnn">Agora não</button></div></div>';
+}
+async function aceitarSugestao(sug){
+  const at = new Date().toISOString();
+  for (const c of sug.cortes) await salvarLog("aj_"+c.id, {acao:"leve", por:"feedback", motivo:"Você sentiu a semana pesada ("+sug.pesados+" de "+sug.total+" treinos): aliviei a semana de "+sug.de+" para "+sug.para+" min", at});
+  await salvarLog("fb_"+sug.next, {estado:"aceito", de:sug.de, para:sug.para, cortes:sug.cortes.length, at});
+  render(true); toast("Próxima semana aliviada.");
+}
+async function recusarSugestao(sug){ await salvarLog("fb_"+sug.next, {estado:"recusado", at:new Date().toISOString()}); render(true); }
+async function manterOriginalFeedback(ini){
+  for (let i=0;i<7;i++){ const k = key(addDays(ini,i)), a = LOG["aj_"+k]; if (a && a.por==="feedback") await salvarLog("aj_"+k, null); }
+  await salvarLog("fb_"+key(ini), {estado:"recusado", at:new Date().toISOString()});
+  render(true); toast("Plano original mantido nesta semana.");
+}
+function bindSugestao(){
+  const sug = sugestaoSemana(); if (!sug) return;
+  const ok = $("sgok"), no = $("sgno"), co = $("sgco"), nn = $("sgnn");
+  if (ok) ok.addEventListener("click", ()=>aceitarSugestao(sug));
+  if (no) no.addEventListener("click", ()=>recusarSugestao(sug));
+  if (co) co.addEventListener("click", ()=>{ chatModo = "coach"; chatPre = "Os últimos treinos estavam leves. Dá para aumentar a carga da próxima semana?"; ir("chat"); });
+  if (nn) nn.addEventListener("click", ()=>salvarLog("fbs_"+key(addDays(today, -dow(today))), true).then(()=>render(true)));
 }
 
 /* ===================== SEMANA ===================== */
@@ -1918,6 +1966,8 @@ function telaSemana(o){
   const fase = s && s.sem ? faseDaSemana(pl, s.w) : "";
   let h = topo(s && s.sem ? 'semana '+s.w+' de '+pl.semanas.length+' · '+fase : esc(pl.nome), semOff===0 ? "Sua semana" : semOff<0 ? "Semana passada" : "Próxima semana")+
     (LOG["teto_"+key(base0)] ? (tt=>'<div class="flag"><b>Carga reduzida por segurança.</b> Esta semana passava de '+tt.de+' min e '+(tt.fonte==='fisio' ? 'o limite do seu fisioterapeuta é '+tt.teto+' min' : 'o limite é '+tt.teto+' min (+10% do que você vem fazendo)')+'. Passei '+tt.cortes+(tt.cortes===1?' dia':' dias')+' para a versão leve.'+(tt.excedeu?' Ainda ficou acima do limite: fale com o coach.':'')+(tt.fonte==='fisio' ? '' : ' <button type="button" class="lk" id="toff" style="padding:0">manter o plano original</button>')+'</div>')(LOG["teto_"+key(base0)]) : '')+
+    (semOff===0 ? sugestaoHTML(sugestaoSemana()) : '')+
+    (LOG["fb_"+key(base0)] && LOG["fb_"+key(base0)].estado==="aceito" ? '<div class="flag"><b>Semana aliviada pelo seu feedback.</b> Passei '+LOG["fb_"+key(base0)].cortes+(LOG["fb_"+key(base0)].cortes===1?' dia':' dias')+' para a versão leve ('+LOG["fb_"+key(base0)].de+' para '+LOG["fb_"+key(base0)].para+' min). <button type="button" class="lk" id="fboff" style="padding:0">manter o plano original</button></div>' : '')+
     '<div class="phase">'+fasesDe(pl).map(f=>'<span style="flex:'+f[1]+';background:'+(f[0]===fase?f[2]:"#c9ced4")+'">'+esc(f[0])+'</span>').join("")+'</div>'+
     '<div class="between"><button type="button" class="btn sm ghost" id="wp">← anterior</button><span class="k">'+fmt(base0)+' – '+fmt(addDays(base0,6))+'</span><button type="button" class="btn sm ghost" id="wn">próxima →</button></div><div>';
   for (let i=0;i<7;i++){
@@ -1932,6 +1982,8 @@ function telaSemana(o){
   $("wp").addEventListener("click", ()=>{ semOff--; render(); }); $("wn").addEventListener("click", ()=>{ semOff++; render(); });
   $("mob").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
   if ($("toff")) $("toff").addEventListener("click", ()=>manterPlanoOriginal(base0));
+  if ($("fboff")) $("fboff").addEventListener("click", ()=>manterOriginalFeedback(base0));
+  if (semOff===0) bindSugestao();
 }
 function argTreino(a){ const [k,i] = String(a).split("~"); const d = parseD(k); return {d, k, i:+i, t:treinosDe(d)[+i]}; }
 
