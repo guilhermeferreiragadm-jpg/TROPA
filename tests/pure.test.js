@@ -11,7 +11,7 @@ const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;"
 const puro = trecho("/* @pure:start */", "/* @pure:end */");
 // new Function (mesmo realm do teste) em vez de vm.createContext: objetos criados em outro realm
 // têm outro Object.prototype e falham no deepEqual estrito.
-const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas, motivoAjuste};")();
+const F = new Function(ajudas + "\n" + puro + "\nreturn {diasPausa, semanasDeslocadas, rampaRetorno, pausaCobre, deslocamentoEm, fatorRetornoEm, semanaEm, semanasAtrasoProva, escalarTreino, minutosPlan, prioridadeTreino, calcularTeto, reduzirParaTeto, fotoValida, motivoGenerico, sugerirSemana, atualizarFavoritas, candidatasRepetir, ajustarSugestaoCarga, normalizarCompras, comprasTexto, comprasObsoletas, motivoAjuste, registrarCorpo, tendenciaPeso, variacaoMedidas, lembretePesagem};")();
 
 test("diasPausa conta o primeiro e o último dia", () => {
   assert.equal(F.diasPausa("2026-10-05", "2026-10-05"), 1);
@@ -444,4 +444,63 @@ test("motivoAjuste usa a causa real e não diz pesada quando a causa é o corpo"
 test("normalizarCompras só aceita qtd texto ou número", () => {
   const r = F.normalizarCompras([{nome:"A", qtd:{x:1}}, {nome:"B", qtd:["1"]}, {nome:"C", qtd:2}, {nome:"D", qtd:" 1 kg "}, {nome:"E", qtd:true}, {nome:"F", q:"3 pct"}]);
   assert.deepEqual(r.map(x=>x.q), ["", "", "2", "1 kg", "", "3 pct"]);
+});
+
+test("registrarCorpo substitui o mesmo dia, ordena e valida", () => {
+  let l = F.registrarCorpo([], {d:"2026-10-20", kg:80.04, m:{cin:90, qua:300, pei:"x"}}, false);
+  assert.deepEqual(l, [{d:"2026-10-20", kg:80, m:{cin:90}}]);
+  l = F.registrarCorpo(l, {d:"2026-10-13", kg:81}, false);
+  l = F.registrarCorpo(l, {d:"2026-10-20", kg:79.5}, false);
+  assert.deepEqual(l, [{d:"2026-10-13", kg:81}, {d:"2026-10-20", kg:79.5}]);
+  assert.deepEqual(F.registrarCorpo(l, {d:"2026-10-21", kg:20}, false), l);       // peso fora da faixa
+  assert.deepEqual(F.registrarCorpo(l, {d:"hoje", kg:80}, false), l);              // data inválida
+  assert.deepEqual(F.registrarCorpo(null, {d:"2026-10-21", kg:80}, false), [{d:"2026-10-21", kg:80}]);
+});
+
+test("registrarCorpo tira as medidas de menores e limita a 120 entradas", () => {
+  const m = F.registrarCorpo([], {d:"2026-10-20", kg:60, m:{cin:70}}, true);
+  assert.deepEqual(m, [{d:"2026-10-20", kg:60}]);
+  let l = [];
+  for (let i = 0; i < 130; i++){ const d = new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10); l = F.registrarCorpo(l, {d, kg:70}, false); }
+  assert.equal(l.length, 120); assert.equal(l[0].d, new Date(Date.UTC(2026, 0, 11)).toISOString().slice(0, 10));
+});
+
+test("tendenciaPeso usa regressão e exige 3 registros em 14 dias", () => {
+  const l = [["2026-09-29",80],["2026-10-06",79.5],["2026-10-13",79],["2026-10-20",78.5],["2026-10-27",78]].map(([d,kg]) => ({d, kg}));
+  assert.deepEqual(F.tendenciaPeso(l, "2026-10-27"), {kgSemana:-0.5, pesoAtual:78, n:5, dias:28});
+  assert.equal(F.tendenciaPeso(l.slice(0, 2), "2026-10-27"), null);                 // poucos registros
+  assert.equal(F.tendenciaPeso(l.slice(3), "2026-10-27"), null);                    // 2 registros
+  const curto = [["2026-10-20",80],["2026-10-24",80.1],["2026-10-27",80.2]].map(([d,kg]) => ({d, kg}));
+  assert.equal(F.tendenciaPeso(curto, "2026-10-27"), null);                         // cobre só 7 dias
+  const velho = [["2026-08-01",90],["2026-08-15",89],["2026-08-29",88]].map(([d,kg]) => ({d, kg}));
+  assert.equal(F.tendenciaPeso(velho, "2026-10-27"), null);                         // fora dos 28 dias
+  assert.equal(F.tendenciaPeso(null, "2026-10-27"), null);
+});
+
+test("variacaoMedidas compara a primeira e a última marcação", () => {
+  const l = [
+    {d:"2026-09-01", kg:80, m:{cin:92, qua:100}}, {d:"2026-09-15", kg:79, m:{cin:90}},
+    {d:"2026-10-01", kg:78, m:{cin:88.5, bra:34}}
+  ];
+  const v = F.variacaoMedidas(l);
+  assert.deepEqual(v.cin, {de:92, para:88.5, dif:-3.5, desde:"2026-09-01"});
+  assert.equal(v.qua, undefined); assert.equal(v.bra, undefined);                   // só uma marcação
+  assert.deepEqual(F.variacaoMedidas([]), {});
+  assert.deepEqual(F.variacaoMedidas(null), {});
+});
+
+test("lembretePesagem só aparece no dia escolhido ou depois, sem registro na semana", () => {
+  const cfg = {lembrar:true, dia:0};                                                // segunda
+  const l = [{d:"2026-10-19", kg:80}];                                              // semana anterior
+  assert.equal(F.lembretePesagem(l, cfg, "2026-10-26", false, false), true);        // segunda
+  assert.equal(F.lembretePesagem(l, cfg, "2026-10-27", false, false), true);        // terça
+  assert.equal(F.lembretePesagem(l, {lembrar:true, dia:2}, "2026-10-27", false, false), false);   // quarta ainda não
+  assert.equal(F.lembretePesagem(l, {lembrar:true, dia:2}, "2026-10-28", false, false), true);
+  assert.equal(F.lembretePesagem(l.concat([{d:"2026-10-26", kg:79}]), cfg, "2026-10-27", false, false), false);  // já pesou
+  assert.equal(F.lembretePesagem(l, cfg, "2026-10-27", true, false), false);        // dispensado
+  assert.equal(F.lembretePesagem(l, cfg, "2026-10-27", false, true), false);        // menor
+  assert.equal(F.lembretePesagem(l, {lembrar:false, dia:0}, "2026-10-27", false, false), false);
+  assert.equal(F.lembretePesagem([], cfg, "2026-10-27", false, false), false);      // nunca registrou
+  assert.equal(F.lembretePesagem(l, null, "2026-10-27", false, false), false);
+  assert.equal(F.lembretePesagem(l, cfg, "2026-10-25", false, false), false);       // domingo conta para a semana que passou: segunda 19 a domingo 25 já tem registro em 19
 });

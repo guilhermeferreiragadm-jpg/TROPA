@@ -812,7 +812,47 @@ function comprasTexto(lista){
   const l = lista || [], grupos = []; l.forEach(i=>{ if (!grupos.includes(i.g)) grupos.push(i.g); });
   return grupos.map(g=>g+"\n"+l.filter(i=>i.g === g).map(i=>"["+(i.ok ? "x" : " ")+"] "+i.n+(i.q ? " ("+i.q+")" : "")).join("\n")).join("\n\n");
 }
-const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
+const CHAVES_MEDIDA = ["cin","qua","pei","bra","cox"];
+function registrarCorpo(lista, reg, menor){
+  const ok = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s));
+  const l = Array.isArray(lista) ? lista.filter(x=>x && ok(x.d)) : [];
+  const kg = Math.round(+(reg && reg.kg)*10)/10;
+  if (!reg || !ok(reg.d) || !(kg >= 30 && kg <= 300)) return l;
+  const novo = {d:reg.d, kg};
+  if (!menor){
+    const m = {};
+    CHAVES_MEDIDA.forEach(k=>{ const v = Math.round(+(reg.m && reg.m[k])*10)/10; if (v >= 10 && v <= 250) m[k] = v; });
+    if (Object.keys(m).length) novo.m = m;
+  }
+  return l.filter(x=>x.d !== reg.d).concat([novo]).sort((a,b)=>a.d < b.d ? -1 : a.d > b.d ? 1 : 0).slice(-120);
+}
+function tendenciaPeso(lista, hoje){
+  const dia = s => Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10))/864e5, h = dia(hoje);
+  const pts = (Array.isArray(lista) ? lista : []).filter(x=>x && typeof x.d === "string" && +x.kg > 0).map(x=>({t:dia(x.d)-h, kg:+x.kg})).filter(p=>p.t >= -28 && p.t <= 0);
+  if (pts.length < 3) return null;
+  const ts = pts.map(p=>p.t), dias = Math.max(...ts) - Math.min(...ts);
+  if (dias < 14) return null;
+  const n = pts.length, mt = pts.reduce((a,p)=>a+p.t,0)/n, mk = pts.reduce((a,p)=>a+p.kg,0)/n;
+  const sxx = pts.reduce((a,p)=>a+(p.t-mt)*(p.t-mt),0), sxy = pts.reduce((a,p)=>a+(p.t-mt)*(p.kg-mk),0);
+  const atual = pts.reduce((a,p)=>p.t > a.t ? p : a);
+  return {kgSemana:Math.round(sxy/sxx*7*10)/10 || 0, pesoAtual:atual.kg, n, dias};
+}
+function variacaoMedidas(lista){
+  const out = {}, l = Array.isArray(lista) ? lista : [];
+  CHAVES_MEDIDA.forEach(k=>{
+    const v = l.filter(x=>x && x.m && +x.m[k] > 0);
+    if (v.length >= 2){ const a = v[0], b = v[v.length-1]; out[k] = {de:a.m[k], para:b.m[k], dif:Math.round((b.m[k]-a.m[k])*10)/10, desde:a.d}; }
+  });
+  return out;
+}
+function lembretePesagem(lista, cfg, hoje, dispensado, menor){
+  if (menor || dispensado || !cfg || !cfg.lembrar || !Array.isArray(lista) || !lista.length) return false;
+  const dia = s => Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10))/864e5, h = dia(hoje);
+  const sem = (h + 3) % 7, seg = h - sem;   // 1970-01-01 foi quinta: (dias + 3) % 7 dá segunda = 0
+  if (sem < (+cfg.dia || 0)) return false;
+  return !lista.some(x=>x && typeof x.d === "string" && dia(x.d) >= seg);
+}
+const fotoValida = s =>typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
 
 /* ===================== PLANO NO DIA A DIA ===================== */
