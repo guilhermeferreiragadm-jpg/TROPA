@@ -33,7 +33,7 @@
 @media (prefers-reduced-transparency:reduce){.mat,.mat-reg{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){:root{--sep:rgba(0,0,0,.4);--tx-2:#3F464E}:root[data-tema="escuro"]{--sep:rgba(255,255,255,.4);--tx-2:#D2D8DE}.mat,.mat-reg{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 [hidden]{display:none!important}
-html,body{background:var(--bg);color:var(--tx);-webkit-text-size-adjust:100%}
+html,body{background:var(--bg);color:var(--tx);-webkit-text-size-adjust:100%;height:100%;overflow:hidden}   /* uma tela só: o documento nunca cresce, quem rola é o .wrap, e a barra de abas fica presa na borda de baixo */
 body{font-family:var(--f);font-size:1rem;line-height:1.45;margin:0;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
@@ -41,7 +41,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manip
 :root[data-tema="escuro"] :focus-visible{outline-color:var(--go)}
 .lst>:focus-visible,.dia-sec>summary:focus-visible,.grp>:focus-visible,.rkl :focus-visible,.post :focus-visible{outline-offset:-2px}   /* dentro de contêineres com overflow:hidden o anel de fora seria cortado */
 img{max-width:100%}
-.wrap{max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow:clip;padding-bottom:calc(112px + var(--safe-b))}
+.wrap{max-width:480px;margin:0 auto;height:100%;position:relative;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:calc(112px + var(--safe-b))}
 #app{display:flex;flex-direction:column;gap:12px;padding-inline:16px;padding-block:calc(12px + env(safe-area-inset-top,0px)) 24px;transform-origin:50% 0}
 #app.full{padding-inline:0;padding-block:0;gap:0}
 .wrap:has(#app.full){padding-bottom:0}   /* telas cheias não têm barra de abas: sem folga embaixo (o chat rolava 112px e escondia a primeira mensagem sob o cabeçalho) */
@@ -116,7 +116,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .pv8{padding-block:8px}
 .mt8{margin-top:8px}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-warn{color:var(--warn-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.as0{align-self:flex-start}.ae{align-self:flex-end}.h2.lg{font-size:1.7rem}.mw0{min-width:0}.grow{flex:1;min-width:0}
 /* abertura */
-.open{min-height:100vh;background:var(--noite);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px calc(34px + var(--safe-b));gap:14px;overflow:hidden}
+.open{min-height:100vh;min-height:100dvh;background:var(--noite);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px calc(34px + var(--safe-b));gap:14px;overflow:hidden}
 .open .photo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,16,.1),rgba(11,13,16,.25) 40%,rgba(11,13,16,.95) 80%),repeating-linear-gradient(115deg,#2a2f36 0 2px,#23272d 2px 9px)}
 .open>*{position:relative}
 .open .wm{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));left:20px;color:#fff;font-size:1.9rem}.open .wm i{width:44px;height:31px}
@@ -126,7 +126,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .open .btn.go{background:var(--go-fill)}
 .open .s,.open .lead{color:rgba(255,255,255,.78)}.open .lead{font-size:.9375rem}.open .msg{color:#fff}
 /* match */
-.dark{background:var(--noite);color:#fff;min-height:100vh;padding:calc(24px + env(safe-area-inset-top,0px)) 20px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px}
+.dark{background:var(--noite);color:#fff;min-height:100vh;min-height:100dvh;padding:calc(24px + env(safe-area-inset-top,0px)) 20px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px}
 .dark .s,.dark .k{color:rgba(255,255,255,.7)}
 .mline{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:.9375rem;opacity:.2;transition:opacity .4s}
 .mline.on{opacity:1}
@@ -387,7 +387,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .sbars b{text-align:right;font-variant-numeric:tabular-nums}
 .sbars>div>span+span{display:flex;flex-direction:column;gap:4px}
 /* chat */
-.chat{display:flex;flex-direction:column;min-height:100vh}
+.chat{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
 .chat-h{position:sticky;top:env(safe-area-inset-top,0px);padding:4px 16px 12px;display:flex;flex-direction:column;gap:10px;z-index:5;border-width:0 0 1px}
 .chat-h .grab{margin:0 -16px -4px}
 .msgs{display:flex;flex-direction:column;gap:8px;padding:14px 18px;flex:1}
@@ -518,9 +518,11 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 @keyframes ring{from{stroke-dasharray:.01 364.4}}
 </style>
 <div class="wrap">
-  <header class="cab mat" id="cab" aria-hidden="true"><span></span></header>
   <div id="ban"></div>
   <main id="app" aria-live="polite"></main>
+</div>
+<!-- fora do .wrap, que rola: ficam presos na tela -->
+  <header class="cab mat" id="cab" aria-hidden="true"><span></span></header>
   <nav class="tabs" id="tabs" hidden aria-label="Abas">
     <div class="tabs-pill mat">
       <span class="tabs-ind" id="tabs-ind" aria-hidden="true"></span>
@@ -532,8 +534,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
     </div>
     <button type="button" class="fab mat" id="fab" hidden aria-label="Coach · Nutri" title="Coach · Nutri"></button>
   </nav>
-  <div id="ov"></div>
-</div>
+<div id="ov"></div>
 
 <script>
 (function(){
@@ -544,6 +545,7 @@ const TERMOS_VERSAO = "2026-10-21";
 const ARTIFACT_ID = "Su8kaFAaifinor4vQ4mZeq";
 const DAY = 864e5;
 const $ = id => document.getElementById(id);
+const rolagem = () => document.querySelector(".wrap");   // o contêiner que rola (o documento não rola)
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const today = (()=>{ const d = new Date(); d.setHours(0,0,0,0); return d; })();
 const key = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
@@ -1234,7 +1236,7 @@ function montarSheet(ov, s, instante){
   const dim = ov.querySelector(".dim"), h = () => s.offsetHeight || 400, m = Mov.estado(s);
   m.alAplicar = () => { if (dim) dim.style.opacity = String(Math.max(0, Math.min(1, m.y > 0 ? 1 - m.y/h() : 1))); };
   if (dim && !dim.dataset.m){ dim.dataset.m = "1"; dim.addEventListener("click", () => fecharSheet()); }
-  document.documentElement.style.setProperty("--sy", (window.scrollY || 0) + "px");   // origem do recuo da página: o centro do que está visível
+  document.documentElement.style.setProperty("--sy", rolagem().scrollTop + "px");   // origem do recuo da página: o centro do que está visível
   document.documentElement.classList.remove("sheet-saindo"); document.documentElement.classList.add("sheet-aberta");
   if (instante){ m.y = 0; Mov.aplicar(s); }   // redesenho no lugar de um sheet já aberto: sem repetir a entrada
   else if (Mov.reduz()){ m.y = 0; m.o = 0; Mov.aplicar(s); void s.offsetWidth; Mov.para(s, {o:1}); }
@@ -1290,7 +1292,7 @@ function haptica(tipo){ try{ if (navigator.vibrate) navigator.vibrate(tipo==="co
 
 /* voltar arrastando da borda esquerda: a tela acompanha o dedo; soltar projeta o ponto de repouso e confirma pelo mesmo botão "←" da tela */
 function voltarPorGesto(){
-  const app = $("app"), borda = document.createElement("div"); borda.id = "borda"; borda.setAttribute("aria-hidden","true"); document.querySelector(".wrap").appendChild(borda);
+  const app = $("app"), borda = document.createElement("div"); borda.id = "borda"; borda.setAttribute("aria-hidden","true"); document.body.appendChild(borda);
   let ativo = false, pid = null, decidido = false, x0 = 0, y0 = 0, off0 = 0, am = [];
   const botao = () => app.querySelector(".back");
   const tel = () => { borda.hidden = !botao(); };
@@ -1971,7 +1973,7 @@ function tela(html, opts){
   opts = opts || {};
   $("tabs").hidden = !opts.tabs; $("fab").hidden = !opts.fab;
   const app = $("app"); app.className = opts.full ? "full" : ""; delete app.dataset.fechando; app.innerHTML = html;
-  if (!opts.keepScroll) window.scrollTo(0,0);
+  if (!opts.keepScroll) rolagem().scrollTop = 0;
   $("ban").innerHTML = DEMO ? '<div class="demo-ban"><b>Modo demonstração: você está vendo o app como um amigo. Nada é salvo.</b><button type="button" class="btn sm ink" id="demo-out">Sair da demonstração</button></div>' : "";
   if (DEMO){ const o = $("demo-out"); if (o) o.addEventListener("click", ()=>location.reload()); }
   const tipo = proxTransicao; proxTransicao = "nenhuma";
@@ -2734,8 +2736,8 @@ function telaForca(a){
   bindGo(app);
   app.querySelectorAll("[data-kg]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.kg.split("~").map(Number); S.ex[x].sets[y].kg = parseFloat(String(inp.value).replace(",","."))||""; salvarSessao(); }));
   app.querySelectorAll("[data-rp]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.rp.split("~").map(Number); S.ex[x].sets[y].reps = parseInt(inp.value)||""; salvarSessao(); }));
-  app.querySelectorAll("[data-ok]").forEach(b=>b.addEventListener("click", ()=>{ const [x,y] = b.dataset.ok.split("~").map(Number); const s2 = S.ex[x].sets[y]; s2.ok = !s2.ok; salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); if (s2.ok) iniciarDescanso(90); }));
-  app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e, d); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = window.scrollY; telaForca(a); window.scrollTo(0, sc); }));
+  app.querySelectorAll("[data-ok]").forEach(b=>b.addEventListener("click", ()=>{ const [x,y] = b.dataset.ok.split("~").map(Number); const s2 = S.ex[x].sets[y]; s2.ok = !s2.ok; salvarSessao(); const sc = rolagem().scrollTop; telaForca(a); rolagem().scrollTop = sc; if (s2.ok) iniciarDescanso(90); }));
+  app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e, d); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = rolagem().scrollTop; telaForca(a); rolagem().scrollTop = sc; }));
   const f = $("fim"); if (f) f.addEventListener("click", ()=>terminarForca(a));
   desenharDescanso(); crono();
 }
@@ -3505,7 +3507,7 @@ function telaCal(){
   bindGo(app);
   $("cp").addEventListener("click", ()=>{ calOff--; calSel = null; telaCal(); });
   $("cn").addEventListener("click", ()=>{ if (calOff<0){ calOff++; calSel = null; telaCal(); } });
-  app.querySelectorAll("[data-dia]").forEach(b=>b.addEventListener("click", ()=>{ if (calSel===b.dataset.dia){ ir("perf","dia",calSel); return; } calSel = b.dataset.dia; const sc = window.scrollY; telaCal(); window.scrollTo(0, sc); }));
+  app.querySelectorAll("[data-dia]").forEach(b=>b.addEventListener("click", ()=>{ if (calSel===b.dataset.dia){ ir("perf","dia",calSel); return; } calSel = b.dataset.dia; const sc = rolagem().scrollTop; telaCal(); rolagem().scrollTop = sc; }));
 }
 function telaDiaCompleto(k){
   const inf = diaInfo(k), race = inf.it.find(x=>x.race), Z = zonas();
@@ -4126,7 +4128,7 @@ function telaChat(){
   app.querySelectorAll("[data-th]").forEach(b=>b.addEventListener("click", ()=>{ const [i,v] = b.dataset.th.split("~").map(Number); const m = L[i]; m.av = v; const pg = L[i-1]; salvarLog("av_"+Date.now(), {modo:chatModo, pergunta:pg?String(pg.content).slice(0,300):"", resposta:String(m.content).slice(0,600), boa:v===1}); telaChat(); toast(v?"Valeu! Isso ensina o coach.":"Anotado. Essa resposta vai virar caso de teste."); }));
   $("cs").addEventListener("click", enviarChat);
   const ta = $("cin"); ta.addEventListener("keydown", e=>{ if (e.key==="Enter" && !e.shiftKey){ e.preventDefault(); enviarChat(); } });
-  window.scrollTo(0, document.body.scrollHeight); if (ta.value) ta.focus();
+  rolagem().scrollTop = rolagem().scrollHeight; if (ta.value) ta.focus();
 }
 async function enviarChat(){
   const inp = $("cin"), q = inp.value.trim(); if (!q) return;
