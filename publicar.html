@@ -1163,7 +1163,7 @@ const CATS_POR_PAPEL = {personal:["treino","perf","corpo","feed"], nutri:["comid
 const permissoesValidas = (papel, perm) => { const o = {}; (CATS_POR_PAPEL[papel]||[]).forEach(c=>{ o[c] = !!(perm && perm[c]); }); return o; };
 const vincId = (alunoId, papel) => alunoId+"~"+papel;
 const podeVer = (v, cat) => !!(v && v.estado==="ativo" && v.perm && v.perm[cat] && (CATS_POR_PAPEL[v.papel]||[]).includes(cat));
-const conviteValido = (c, agora) => !!(c && !c.usado && c.expira > agora && PAPEIS_PRO.includes(c.papel));
+const conviteValido = (c, agora) => !!(c && !c.usado && Number.isFinite(c.expira) && c.expira > agora && PAPEIS_PRO.includes(c.papel));
 const novoConvite = (profId, papel, agora, cod) => ({cod, profId, papel, criado:agora, expira:agora+7*864e5, usado:false});
 const conflitoVinculo = (existente, profId) => existente && existente.estado==="ativo" && existente.profId!==profId ? "ja_vinculado" : null;
 const proximoEstadoProposta = (estado, evento) => estado!=="pendente" ? estado : ({aceitar:"aceita", recusar:"recusada", invalidar:"desatualizada"})[evento] || estado;
@@ -1175,17 +1175,22 @@ function criarPatch(a, b, p = []){
     const ks = Array.isArray(a) ? a.map((_, i)=>i) : [...new Set([...Object.keys(a), ...Object.keys(b)])];
     return ks.flatMap(k=>criarPatch(a[k], b[k], p.concat(k)));
   }
-  return [{p, v: b === undefined ? null : b}];
+  if (b === undefined) return [{p, del:true}];
+  return [{p, v: b}];
 }
 const caminhoSeguro = p => Array.isArray(p) && p.every(k=>(Number.isInteger(k) && k >= 0) || (typeof k === "string" && !["__proto__","constructor","prototype"].includes(k)));
 function aplicarPatch(obj, ops){
   let r = JSON.parse(JSON.stringify(obj));
   for (const op of ops){
     if (!caminhoSeguro(op.p)) throw new Error("caminho inválido");
+    if (op.del && !op.p.length) throw new Error("caminho inválido");
     if (!op.p.length){ r = JSON.parse(JSON.stringify(op.v)); continue; }
     let c = r;
     for (let i = 0; i < op.p.length-1; i++){ if (!ehObj(c[op.p[i]])) throw new Error("caminho inexistente"); c = c[op.p[i]]; }
-    c[op.p[op.p.length-1]] = JSON.parse(JSON.stringify(op.v));
+    const ult = op.p[op.p.length-1];
+    if (Array.isArray(c) && (ult === "length" || !Number.isInteger(+ult) || +ult > c.length)) throw new Error("caminho inválido");
+    if (op.del){ if (Array.isArray(c)) throw new Error("caminho inválido"); delete c[ult]; continue; }
+    c[ult] = JSON.parse(JSON.stringify(op.v));
   }
   return r;
 }

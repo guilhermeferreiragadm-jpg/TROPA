@@ -90,3 +90,30 @@ test("itemInboxValido: estrutura mínima, tipo conhecido, ref curta", () => {
   assert.equal(F.itemInboxValido(null), false);
   assert.ok(F.TIPOS_INBOX.includes("convite"));
 });
+
+test("patch: remoção de chave vira del e ida e volta reproduz o destino", () => {
+  const a = {x: 1, y: 2};
+  const b = {x: 1};
+  assert.deepEqual(F.criarPatch(a, b), [{p: ["y"], del: true}]);
+  assert.deepEqual(F.aplicarPatch(a, F.criarPatch(a, b)), b);
+  const a2 = {n: {x: 1, y: 2}, z: 3};
+  const b2 = {n: {x: 1}, z: 3};
+  const r = F.aplicarPatch(a2, F.criarPatch(a2, b2));
+  assert.deepEqual(r, b2);
+  assert.equal("y" in r.n, false);
+});
+
+test("aplicarPatch rejeita del com caminho vazio", () => {
+  assert.throws(() => F.aplicarPatch({a: 1}, [{p: [], del: true}]), /caminho inválido/);
+});
+
+test("aplicarPatch rejeita length e índice além do tamanho em array", () => {
+  assert.throws(() => F.aplicarPatch({l: [1, 2]}, [{p: ["l", "length"], v: 0}]), /caminho inválido/);
+  assert.throws(() => F.aplicarPatch({l: [1, 2]}, [{p: ["l", 5], v: 9}]), /caminho inválido/);
+  assert.deepEqual(F.aplicarPatch({l: [1, 2]}, [{p: ["l", 2], v: 9}]), {l: [1, 2, 9]});
+});
+
+test("conviteValido exige expira numérico finito", () => {
+  const c = F.novoConvite("p1", "personal", 1000, "ABCD2345");
+  assert.equal(F.conviteValido({...c, expira: String(c.expira)}, 1000), false);
+});
