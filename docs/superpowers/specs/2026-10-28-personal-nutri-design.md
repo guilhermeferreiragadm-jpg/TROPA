@@ -51,7 +51,8 @@ Qualquer usuário pode ser **Personal** e/ou **Nutri**. O profissional convida a
 - Chave do vínculo: ECDH entre aluno e profissional, derivada para AES-GCM 256 (HKDF com o id do vínculo).
 - O aluno publica **resumos cifrados** só das categorias liberadas, em documentos por categoria. O banco guarda só texto cifrado, mais um cabeçalho em claro (versão, data).
 - Propostas, respostas e comentários também são cifrados com a chave do vínculo.
-- Revogar uma categoria ou desvincular: o aluno gera par de chaves novo para aquele vínculo (rotação), apaga os resumos da categoria revogada e republica o restante com a chave nova.
+- Cada vínculo tem um par de chaves do aluno próprio. O profissional usa um único par dele.
+- Revogar uma categoria: o aluno apaga o resumo daquela categoria e deixa de publicá-la. Desvincular: apaga todos os resumos do vínculo. **Não há rotação de chave:** o profissional consegue derivar qualquer chave futura a partir da chave pública do aluno, então rotacionar não o excluiria. Quem controla o acesso é o que o aluno publica, e a cifragem protege contra terceiros.
 - O sino usa uma caixa de entrada por usuário. Qualquer pessoa pode gravar nela, então cada item guarda só tipo e ponteiro. O app descarta item que não corresponda a um vínculo ou proposta real.
 - Limite: o que o profissional já leu pode ter sido copiado. A cifragem impede leitura futura.
 
