@@ -193,11 +193,17 @@ textarea.inp{resize:vertical;min-height:88px}
 .ti .cam{width:34px;height:34px;flex:none;border:1px dashed var(--tx-2);display:grid;place-content:center;font-size:.6rem;font-weight:800;color:var(--tx-2);background:var(--surface)}
 .ti.big .tc b{font-family:var(--f);font-weight:900;font-size:1.25rem;text-transform:uppercase}
 .ti.next .dot{box-shadow:0 0 0 4px rgba(255,90,0,.2);border-color:var(--go-ink)}
-/* folha (sheet) */
-.dim{position:fixed;inset:0;background:rgba(11,13,16,.45);z-index:40}
-.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(480px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);padding:16px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;z-index:41}
+/* folha (sheet): material grosso, topo arredondado, alça com área de toque de 44px */
+.dim{position:fixed;inset:0;background:rgba(11,13,16,.4);z-index:40}
+.sheet{position:fixed;left:0;right:0;margin:0 auto;bottom:0;width:min(480px,100%);max-height:92vh;overflow-y:auto;overscroll-behavior:contain;background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);border-radius:var(--r4) var(--r4) 0 0;box-shadow:var(--sh3);padding:8px 16px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px;z-index:41;will-change:transform}
+.sheet .box,.sheet .opt{background:var(--surface)}
+.grab{position:relative;display:block;height:44px;margin:-8px -16px -16px;flex:none;cursor:grab}
+.grab::after{content:"";position:absolute;left:50%;top:14px;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--sep);filter:brightness(.8)}
 #rsb,#rsx{display:flex;flex-direction:column;gap:12px}
-.grab{width:38px;height:4px;background:var(--sep);margin:0 auto 2px;flex:none}
+.sheet-aberta #app{transform:scale(.97);transition:transform .4s cubic-bezier(.32,.72,0,1)}
+@media (prefers-reduced-motion:reduce){.sheet-aberta #app{transform:none}}
+@media (prefers-reduced-transparency:reduce){.sheet{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){.sheet{background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh3)}}
 .pain{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:2px}
 .pain button{height:34px;border:0;font-family:var(--f);font-weight:700;font-size:.86rem;padding:0;color:var(--tx)}
 .pain button[aria-pressed="true"]{background:var(--ink)!important;color:#fff}
@@ -1091,6 +1097,91 @@ function tipoTransicao(a, b){
 }
 /* @movimento:end */
 
+/* ===================== MOVIMENTO (DOM) ===================== */
+const Mov = (() => {
+  const reduz = () => { try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } };
+  const estado = el => el._m || (el._m = {x:0, y:0, s:1, o:1, vx:0, vy:0, vs:0, vo:0, raf:0, alAplicar:null});
+  // no repouso o elemento fica sem transform nem opacity, para não criar contexto de empilhamento à toa
+  function aplicar(el){
+    const m = estado(el), repouso = !m.x && !m.y && m.s===1 && m.o===1;
+    el.style.transform = repouso ? "" : "translate3d("+m.x+"px,"+m.y+"px,0) scale("+m.s+")";
+    el.style.opacity = m.o===1 ? "" : String(m.o);
+    if (m.alAplicar) m.alAplicar(m);
+  }
+  // Anima rumo ao alvo a partir do valor VIVO (m.x, m.y...), herdando a velocidade em px/s. Cada eixo tem a sua mola.
+  function para(el, alvo, preset, vel){
+    const m = estado(el), mola = MOLAS[preset || "suave"], eixos = ["x","y","s","o"].filter(k => alvo[k]!=null);
+    cancelAnimationFrame(m.raf);
+    if (vel) for (const k in vel) m["v"+k] = vel[k];
+    if (reduz()){
+      el.style.transition = "opacity 200ms ease";
+      eixos.forEach(k => { m[k] = alvo[k]; m["v"+k] = 0; }); aplicar(el);
+      return new Promise(r => setTimeout(() => { el.style.transition = ""; r(); }, 200));
+    }
+    return new Promise(res => {
+      let t0 = performance.now();
+      const tick = t => {
+        const dt = Math.min((t - t0)/1000, 0.064); t0 = t; let parado = true;
+        for (const k of eixos){
+          const r = molaPasso({x:m[k], v:m["v"+k]||0}, alvo[k], mola, dt); m[k] = r.x; m["v"+k] = r.v;
+          if (!molaParada(r, alvo[k], (k==="s"||k==="o") ? 0.002 : 0.2)) parado = false;
+        }
+        if (parado){ eixos.forEach(k => { m[k] = alvo[k]; m["v"+k] = 0; }); aplicar(el); res(); }
+        else { aplicar(el); m.raf = requestAnimationFrame(tick); }
+      };
+      m.raf = requestAnimationFrame(tick);
+    });
+  }
+  // Arrastar uma alça para baixo: 1:1 com o dedo mantendo o ponto de pega, elástico para cima, projeção na soltura.
+  function arrastarFechar(el, alca, o){
+    let ativo = false, y0 = 0, off0 = 0, am = [];
+    alca.style.touchAction = "none";
+    alca.addEventListener("pointerdown", e => {
+      if (e.button > 0) return;
+      ativo = true; try{ alca.setPointerCapture(e.pointerId); }catch(_){}
+      const m = estado(el); cancelAnimationFrame(m.raf); y0 = e.clientY; off0 = m.y; am = [{t:e.timeStamp, x:e.clientY}];
+    });
+    alca.addEventListener("pointermove", e => {
+      if (!ativo) return;
+      const m = estado(el), bruto = off0 + (e.clientY - y0);
+      m.y = bruto < 0 ? elastico(bruto, o.altura()) : bruto;
+      am.push({t:e.timeStamp, x:e.clientY}); if (am.length > 8) am.shift();
+      aplicar(el); if (o.aoMover) o.aoMover(m);
+    });
+    const fim = () => {
+      if (!ativo) return; ativo = false;
+      const m = estado(el), v = velocidade(am), h = o.altura();
+      if (projetar(m.y, v) > h*0.5) o.aoFechar(v);
+      else para(el, {y:0}, "lancado", {y:v});
+    };
+    alca.addEventListener("pointerup", fim); alca.addEventListener("pointercancel", fim);
+  }
+  return {reduz, estado, aplicar, para, arrastarFechar};
+})();
+
+/* sheets: quem abre continua escrevendo em #ov; o observador monta o sheet (entrada por mola, alça, scrim) antes do primeiro quadro */
+function fecharSheet(vy){
+  const ov = $("ov"), s = ov.querySelector(".sheet"), limpar = () => { ov.innerHTML = ""; document.documentElement.classList.remove("sheet-aberta"); };
+  if (!s){ limpar(); return; }
+  if (s.dataset.fechando) return;
+  s.dataset.fechando = "1"; s.style.pointerEvents = "none";   // fechando: sem toques duplos nos botões do sheet
+  const h = s.offsetHeight || 400;
+  Mov.para(s, Mov.reduz() ? {o:0} : {y:h}, "suave", vy ? {y:vy} : null).then(() => { if (ov.querySelector(".sheet")===s) limpar(); });
+}
+function montarSheet(ov, s){
+  s.dataset.m = "1";
+  const dim = ov.querySelector(".dim"), h = () => s.offsetHeight || 400, m = Mov.estado(s);
+  m.alAplicar = () => { if (dim) dim.style.opacity = String(Math.max(0, Math.min(1, m.y > 0 ? 1 - m.y/h() : 1))); };
+  if (dim && !dim.dataset.m){ dim.dataset.m = "1"; dim.addEventListener("click", () => fecharSheet()); }
+  document.documentElement.classList.add("sheet-aberta");
+  if (Mov.reduz()){ m.y = 0; m.o = 0; Mov.aplicar(s); void s.offsetWidth; Mov.para(s, {o:1}); }
+  else { m.y = h(); Mov.aplicar(s); Mov.para(s, {y:0}, "suave"); }
+  // a alça pode ser recriada quando quem abriu reescreve o conteúdo do sheet (ex.: "Não fiz" em sheetItem)
+  const ligar = () => { const alca = s.querySelector(".grab:not([data-m])"); if (alca){ alca.dataset.m = "1"; Mov.arrastarFechar(s, alca, {altura:h, aoFechar:fecharSheet}); } };
+  ligar(); new MutationObserver(ligar).observe(s, {childList:true});
+}
+new MutationObserver(() => { const ov = $("ov"), s = ov && ov.querySelector(".sheet:not([data-m])"); if (s) montarSheet(ov, s); else if (ov && !ov.querySelector(".sheet")) document.documentElement.classList.remove("sheet-aberta"); }).observe($("ov"), {childList:true});
+
 /* ===================== PLANO NO DIA A DIA ===================== */
 function planoAtual(){ return (A && A.plano) || (P && P.plano); }
 const NOMEPAUSA = {doenca:"doença", lesao:"lesão", outro:"outro motivo"};
@@ -1361,14 +1452,14 @@ function sheetDocumento(onboarding){
         '<button type="button" class="btn go" id="dok">Confirmar resumo</button>'+(atual?'<button type="button" class="lk cor-ruim" id="dapaga">Apagar meu resumo</button>':'')+'</div>' :
         '<label class="btn ink" for="darq">Escolher foto ou PDF</label><input type="file" id="darq" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><button type="button" class="lk" id="dman">Prefiro digitar</button>')+
       '<p class="msg" id="dmsg"></p></div>';
-    $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+    $("dim").addEventListener("click", ()=>{ fecharSheet(); });
     if ($("darq")) $("darq").addEventListener("change", async e=>{
       const f = e.target.files && e.target.files[0]; if (!f) return;
       $("dmsg").textContent = "Lendo o documento…"; $("dmsg").className = "msg";
       try{ rascunho = await lerDocumento(f); desenha(); }catch(err){ $("dmsg").textContent = err.message || "Não consegui ler agora."; $("dmsg").className = "msg err"; }
     });
     if ($("dman")) $("dman").addEventListener("click", ()=>{ rascunho = {lesao:"", regiao:"", fase:"", evitar:[], permitido:[], limiteMinSemana:null, retorno:"", confianca:"alta"}; desenha(); });
-    if ($("dapaga")) $("dapaga").addEventListener("click", async ()=>{ const tinha = !!(P && P.perfil && P.perfil.fisio); delete alvo().fisio; delete draft.fisio; salvarRascunho(); if (tinha){ delete P.perfil.fisio; await salvarPerfil(); } ov.innerHTML = ""; toast("Resumo apagado."); if (onboarding) onb(1); else render(true); });
+    if ($("dapaga")) $("dapaga").addEventListener("click", async ()=>{ const tinha = !!(P && P.perfil && P.perfil.fisio); delete alvo().fisio; delete draft.fisio; salvarRascunho(); if (tinha){ delete P.perfil.fisio; await salvarPerfil(); } fecharSheet(); toast("Resumo apagado."); if (onboarding) onb(1); else render(true); });
     if ($("dok")) $("dok").addEventListener("click", async ()=>{
       if (!$("dc").checked){ $("dmsg").textContent = "Marque a autorização para guardar o resumo."; $("dmsg").className = "msg err"; return; }
       const quebra = v => String(v||"").split(";").map(x=>x.trim()).filter(Boolean).slice(0,8).map(x=>x.slice(0,120));
@@ -1380,7 +1471,7 @@ function sheetDocumento(onboarding){
       alvo().fisio = r; if (onboarding) salvarRascunho(); else await salvarPerfil();
       const limMudou = !onboarding && limAntes !== r.limiteMinSemana;
       if (limMudou){ const seg0 = addDays(today, -dow(today)); for (let n=0;n<2;n++){ const ini = addDays(seg0, 7*n); for (let i=0;i<7;i++){ const kk = key(addDays(ini,i)), a = LOG["aj_"+kk]; if (a && a.por==="teto") await salvarLog("aj_"+kk, null); } await salvarLog("teto_"+key(ini), null); await salvarLog("teto_off_"+key(ini), null); } }
-      ov.innerHTML = ""; toast("Resumo salvo. Seu plano vai ficar mais cuidadoso."); if (onboarding) onb(1); else render(true);
+      fecharSheet(); toast("Resumo salvo. Seu plano vai ficar mais cuidadoso."); if (onboarding) onb(1); else render(true);
     });
   };
   desenha();
@@ -2120,7 +2211,7 @@ function umaAcao(app, prox, c, k){
 const MOT_T = ["Sem tempo","Cansaço","Dor","Doente","Clima","Não quis","Não estava no plano","Outro"], MOT_R = ["Sem fome","Sem tempo","Esqueci","Não quis","Outro"];
 function bindItens(app){ app.querySelectorAll("[data-item]").forEach(b=>b.addEventListener("click", ()=>{ const [tp, ar] = b.dataset.item.split("|"); sheetItem(tp, ar); })); }
 function sheetItem(tp, ar){
-  const ov = $("ov"), fecha = () => { ov.innerHTML = ""; };
+  const ov = $("ov"), fecha = () => { fecharSheet(); };
   let h = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span>';
   if (tp==="treino"){
     const [k,i] = ar.split("~"), t = treinosDe(parseD(k))[+i]; if (!t) return;
@@ -2160,7 +2251,7 @@ function sheetItem(tp, ar){
 }
 function sheetPostar(){
   const ov = $("ov"); ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2">Postar no feed?</h2>'+(fotoTmp?'<img src="'+esc(fotoTmp)+'" alt="" style="max-height:220px;object-fit:cover">':'')+'<button type="button" class="btn go" id="sp1">Postar</button><button type="button" class="lk" id="sp2">Agora não</button></div>';
-  $("sp1").onclick = ()=>{ ov.innerHTML = ""; feedView = "postar"; ir("feed"); }; $("sp2").onclick = $("dim").onclick = ()=>{ ov.innerHTML = ""; fotoTmp = ""; };
+  $("sp1").onclick = ()=>{ fecharSheet(); feedView = "postar"; ir("feed"); }; $("sp2").onclick = $("dim").onclick = ()=>{ fecharSheet(); fotoTmp = ""; };
 }
 let reanalisando = false;
 /* marcar feito com um toque */
@@ -2189,7 +2280,7 @@ function sheetCheckin(editar){
     '<span class="k">dor de 0 a 10</span>'+painScale("dor", st.dor)+
     '<label class="chk"><input type="checkbox" id="cp"'+(c.peito?' checked':'')+'><span>Senti dor no peito, falta de ar estranha ou tontura forte</span></label><label class="chk"><input type="checkbox" id="cd"'+(c.desmaio?' checked':'')+'><span>Desmaiei</span></label>'+
     '<button type="button" class="btn go" id="cok">'+(editar?'Salvar':'Pronto · acender o foguinho')+'</button><p class="msg" id="cm"></p></div>';
-  const fecha = () => { ov.innerHTML = ""; };
+  const fecha = () => { fecharSheet(); };
   $("dim").addEventListener("click", fecha);
   const segb = (id, k) => $(id).addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; st[k] = +b.dataset.v; $(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); });
   segb("ce","humor"); bindPain(ov, (n,v)=>{ st.dor = v; });
@@ -2213,8 +2304,8 @@ function sheetAjuste(motivo, dk){
   dk = dk || key(today);
   const ov = $("ov");
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2">Ajustar o treino de '+(dk===key(today)?"hoje":esc(fmt(parseD(dk))))+'?</h2><p>'+esc(motivo)+'</p><button type="button" class="btn go" data-a="leve">Versão leve (60%, esforço até 4/10)</button><button type="button" class="btn" data-a="descanso">Virar descanso</button><button type="button" class="lk" id="nao">Manter como está</button></div>';
-  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; }); $("nao").addEventListener("click", ()=>{ ov.innerHTML = ""; });
-  ov.querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog("aj_"+dk, {acao:b.dataset.a, por:/^Dor/.test(motivo)?"dor":"prontidao", motivo:motivo.slice(0,100), at:new Date().toISOString()}); ov.innerHTML = ""; render(true); toast("Calendário atualizado."); }));
+  $("dim").addEventListener("click", ()=>{ fecharSheet(); }); $("nao").addEventListener("click", ()=>{ fecharSheet(); });
+  ov.querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog("aj_"+dk, {acao:b.dataset.a, por:/^Dor/.test(motivo)?"dor":"prontidao", motivo:motivo.slice(0,100), at:new Date().toISOString()}); fecharSheet(); render(true); toast("Calendário atualizado."); }));
 }
 
 function sheetPausar(){
@@ -2222,7 +2313,7 @@ function sheetPausar(){
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Pausar plano"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Pausar o plano?</h2><p>Os dias de pausa saem do calendário, não contam como falta e o foguinho fica congelado. Na volta, o plano começa mais leve.</p>'+
     '<span class="k">motivo</span><div class="seg" style="--c:3" id="pt">'+[["doenca","Doença"],["lesao","Lesão"],["outro","Outro"]].map(([v,l])=>'<button type="button" data-v="'+v+'" aria-pressed="'+(v===tipo)+'">'+l+'</button>').join("")+'</div>'+
     '<input class="inp" id="pm" maxlength="120" placeholder="Quer contar o que houve? (opcional)"><button type="button" class="btn go" id="pok">Pausar a partir de hoje</button><button type="button" class="lk" id="pno">Cancelar</button></div>';
-  const fecha = () => { ov.innerHTML = ""; };
+  const fecha = () => { fecharSheet(); };
   $("dim").addEventListener("click", fecha); $("pno").addEventListener("click", fecha);
   $("pt").addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; tipo = b.dataset.v; $("pt").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); });
   $("pok").addEventListener("click", async ()=>{ await pausarPlano(tipo, $("pm").value); fecha(); toast("Plano em pausa. Melhoras!"); });
@@ -2231,7 +2322,7 @@ function sheetRetomar(){
   const ov = $("ov"), pa = pausaAtiva(); if (!pa) return; let dor = null;
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Voltar a treinar"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Voltar a treinar?</h2><p>Como está a dor agora?'+(pa.tipo==="lesao"?' Em lesão, só volto com dor abaixo de 4.':'')+'</p>'+painScale("dor", -1)+
     '<button type="button" class="btn go" id="vok">Voltar ao plano</button><button type="button" class="lk" id="vno">Ainda não</button><p class="msg" id="vm"></p></div>';
-  const fecha = () => { ov.innerHTML = ""; };
+  const fecha = () => { fecharSheet(); };
   $("dim").addEventListener("click", fecha); $("vno").addEventListener("click", fecha);
   bindPain(ov, (n,v)=>{ dor = v; });
   $("vok").addEventListener("click", async ()=>{ if (dor===null){ $("vm").textContent = "Escolha a dor de 0 a 10."; $("vm").className = "msg err"; return; } const r = await retomarPlano(dor); if (!r.ok){ $("vm").textContent = r.msg; $("vm").className = "msg err"; return; } fecha(); toast(r.msg); });
@@ -2415,13 +2506,13 @@ function sheetPreviaImport(a, r){
     (difEsp ? '<div class="flag">O arquivo parece ser de '+esc(esp)+' e este treino é de '+esc(NOMEK[t.k] || t.k)+'.</div>' : '')+
     '<span class="k">como foi?</span><div class="seg" style="--c:4" id="rp">'+[["leve","Leve"],["ok","Ok"],["pesado","Pesado"],["limite","No limite"]].map(([v,l])=>'<button type="button" data-v="'+v+'" aria-pressed="'+(v===st.rpe)+'">'+l+'</button>').join("")+'</div>'+
     '<p class="s">O trajeto não é guardado, só estes números.</p><button type="button" class="btn go" id="svi">'+(dif || difEsp ? "Registrar mesmo assim" : "Registrar neste treino")+'</button></div>';
-  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+  $("dim").addEventListener("click", ()=>{ fecharSheet(); });
   $("rp").addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; st.rpe = b.dataset.v; $("rp").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); });
   $("svi").addEventListener("click", async ()=>{
     const antes = nivelAntes(), swim = t.k==="swim", km = swim ? 0 : r.km, metros = swim ? Math.round(r.km*1000) : 0;
     const comoPlano = swim ? (!t.m || metros>=t.m*0.85) : (!t.km || (km>=t.km*0.9 && km<=t.km*1.15));
     await salvarLog("ck_"+k+"_"+i, {at:new Date().toISOString(), rpe:st.rpe, km, m:metros||null, min:r.min, comoPlano, teste:false, junto:null, imp:{km:r.km, fc:r.fcMedia, sub:r.subidaM, pace:r.paceMinKm}});
-    ov.innerHTML = ""; ir("treino","fim",a); checarNivel(antes);
+    fecharSheet(); ir("treino","fim",a); checarNivel(antes);
   });
 }
 function sheetFeito(a){
@@ -2434,7 +2525,7 @@ function sheetFeito(a){
     (t.k==="run" ? '<label class="chk"><input type="checkbox" id="tst"><span><b>Foi prova ou teste</b> (corri no máximo). Atualiza seus ritmos de treino.</span></label>' : '')+
     (amigos.length ? '<span class="k">treinou com alguém? (XP extra)</span><div class="chips" id="jt">'+amigos.map(x=>'<button type="button" class="chip" data-v="'+esc(x)+'" aria-pressed="false">'+esc(SOC.people[x].nome.split(" ")[0])+'</button>').join("")+'</div>' : '')+
     '<button type="button" class="btn go" id="sv">Salvar treino</button><p class="msg" id="sm"></p></div>';
-  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+  $("dim").addEventListener("click", ()=>{ fecharSheet(); });
   $("rp").addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; st.rpe = b.dataset.v; $("rp").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); });
   const jt = $("jt"); if (jt) jt.addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; const ix = st.junto.indexOf(b.dataset.v); if (ix>=0) st.junto.splice(ix,1); else st.junto.push(b.dataset.v); b.setAttribute("aria-pressed", String(ix<0)); });
   $("sv").addEventListener("click", async ()=>{
@@ -2443,7 +2534,7 @@ function sheetFeito(a){
     const v0 = parseFloat(String($("fk").value).replace(",",".")) || 0, mn = parseFloat($("fm").value) || 0; const km = t.k==="swim" ? 0 : v0, metros = t.k==="swim" ? v0 : 0;
     const comoPlano = t.k==="swim" ? (!t.m || metros>=t.m*0.85) : (!t.km || (km>=t.km*0.9 && km<=t.km*1.15));
     await salvarLog("ck_"+k+"_"+i, {at:new Date().toISOString(), rpe:st.rpe, km, m:metros||null, min:mn, comoPlano, teste:!!($("tst") && $("tst").checked), junto:st.junto.length?st.junto:null});
-    ov.innerHTML = ""; ir("treino","fim",a); checarNivel(antes);
+    fecharSheet(); ir("treino","fim",a); checarNivel(antes);
   });
 }
 
@@ -2544,7 +2635,7 @@ function telaSubiu(n){
   ov.innerHTML = '<div class="lvl" role="dialog" aria-label="Subiu de nível"><span class="k" style="color:rgba(255,255,255,.6)">subiu de nível</span><div class="big">'+n.n+'</div><h1 class="h1">'+esc(n.faixa)+'</h1>'+
     (lib ? '<p>Liberou: <b>'+esc(benefLiberado(lib,n.n)?lib[1]:benefTxt(lib))+'</b></p>' : '')+(prox ? '<p style="opacity:.8">Próximo prêmio: nível '+prox[0]+' · '+esc(benefTxt(prox))+'</p>' : '')+
     '<button type="button" class="btn go" id="lc">Compartilhar conquista</button><button type="button" class="btn" id="lx" style="border-color:#fff;background:transparent;color:#fff">Continuar</button></div>';
-  $("lx").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+  $("lx").addEventListener("click", ()=>{ fecharSheet(); });
   $("lc").addEventListener("click", ()=>cardConquista("Nível "+n.n+" · "+n.faixa, [[String(n.x),"XP total"],[String(foguinho().n),"dias seguidos"]]));
 }
 /* card para o story do Instagram (PNG 1080×1920) */
@@ -2753,7 +2844,7 @@ function bindFeed(app){
 function convite(){ const c = meuCodigo(); return "Bora treinar junto? Tô usando o "+BRAND+", app de treino com IA que monta o plano pro seu objetivo. Entra pelo link com sua conta do Claude (é grátis)"+(c?" e usa meu código "+c:"")+": https://claude.ai/artifact/"+ARTIFACT_ID; }
 async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Copiado. Cole no WhatsApp."); }catch(e){ const ov = $("ov"), aberta = ov.querySelector(".sheet");
     if (aberta){ let ta = aberta.querySelector("#cpt"); if (!ta){ const w = document.createElement("div"); w.innerHTML = '<b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5"></textarea>'; aberta.appendChild(w); ta = w.querySelector("textarea"); } ta.value = t; ta.select(); toast("Não consegui copiar sozinho. Copie o texto abaixo."); return; }   // já tem uma sheet aberta (ex.: lista de compras): não substitui nem fecha
-    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpfx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpfx").onclick = ()=>{ ov.innerHTML = ""; }; } }
+    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpfx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpfx").onclick = ()=>{ fecharSheet(); }; } }
 
 /* ===================== COMIDA ===================== */
 function telaComida(o){
@@ -2786,7 +2877,7 @@ function sheetRepetir(ref){
     '<p class="s">A estimativa de calorias é copiada do registro anterior. Se a porção mudou, use "escrever" e conte o que comeu.</p>'+
     cands.map((c,i)=>'<button type="button" class="btn ghost" data-i="'+i+'" style="text-align:left">'+esc(c.comeu)+'<small class="s" style="display:block">'+(c.origem==="ontem"?"ontem":"favorita")+(c.estimativa?' · '+esc(c.estimativa):'')+'</small></button>').join("")+
     '<button type="button" class="lk" id="rno">Cancelar</button></div>';
-  const fecha = ()=>{ ov.innerHTML = ""; };
+  const fecha = ()=>{ fecharSheet(); };
   $("dim").addEventListener("click", fecha); $("rno").addEventListener("click", fecha);
   ov.querySelectorAll("[data-i]").forEach(b=>b.addEventListener("click", async ()=>{
     const c = cands[+b.dataset.i]; fecha();
@@ -2810,7 +2901,7 @@ async function gerarCompras(ini){
 }
 let comprasGerando = false, comprasAoTerminar = null;   // comprasAoTerminar: repinta a sheet aberta quando a geração acaba
 function sheetCompras(){
-  const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ ov.innerHTML = ""; };
+  const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ fecharSheet(); };
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
   $("dim").addEventListener("click", fecha);
   const raiz = $("cpb");
@@ -3021,8 +3112,8 @@ function avisoGrupos(seguir){
   if (LOG.gaviso){ seguir(); return; }
   const ov = $("ov");
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">O que os outros veem</h2><p>Quem estiver no grupo vê o seu apelido, o nome do grupo e os seus números do desafio: km, treinos ou dias de foguinho. Na dupla, também os treinos da semana e o foguinho.</p><p class="s">Nunca aparecem peso, fotos, comida, saúde ou trajetos. Quem tem acesso ao app e sabe mexer no banco de dados consegue ler esses mesmos números.</p><button type="button" class="btn go" id="gav">Entendi, continuar</button></div>';
-  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
-  $("gav").addEventListener("click", async ()=>{ ov.innerHTML = ""; await salvarLog("gaviso", true); seguir(); });
+  $("dim").addEventListener("click", ()=>{ fecharSheet(); });
+  $("gav").addEventListener("click", async ()=>{ fecharSheet(); await salvarLog("gaviso", true); seguir(); });
 }
 async function criarGrupo(def){
   if (!gruposOk()) return null;
@@ -3452,7 +3543,7 @@ const JAN = {ini:18, fim:21};
 function janelaEstado(){ if (LOG["tj_"+key(today)]) return "feita"; const h = new Date().getHours(); return h<JAN.ini ? "antes" : h<JAN.fim ? "aberta" : "fechada"; }
 function janelaSeq(){ let n = 0, d = new Date(today); if (!LOG["tj_"+key(d)]) d = addDays(d,-1); while (LOG["tj_"+key(d)]){ n++; d = addDays(d,-1); } return n; }
 function sheetTropa(){
-  const ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; }, k = key(today), ja = LOG["tj_"+k]; let hum = ja ? ja.humor : "", foto = ja ? (ja.foto||"") : "";
+  const ov = $("ov"), fecha = ()=>{ fecharSheet(); }, k = key(today), ja = LOG["tj_"+k]; let hum = ja ? ja.humor : "", foto = ja ? (ja.foto||"") : "";
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">Janela da Tropa</h2><p class="s">Um registro rápido do seu dia, no horário em que a Tropa toda aparece (18h às 21h). Vale +20 XP e conta na sua sequência da janela.</p>'+
     '<span class="k">como foi o dia?</span><div class="chips" id="tjh">'+["Treinei","Descansei","Dia bom","Dia difícil"].map(m=>'<button type="button" class="chip" data-v="'+m+'" aria-pressed="'+(m===hum)+'">'+m+'</button>').join("")+'</div>'+
     '<div class="fld"><label for="tjt">Quer contar em uma frase? (opcional)</label><input class="inp" id="tjt" maxlength="100" value="'+esc((ja&&ja.txt)||"")+'"></div>'+
@@ -3523,7 +3614,7 @@ async function gerarResumo(ini){
 }
 async function sheetResumo(ini){
   const ov = $("ov"); let mudou = false;
-  const fecha = ()=>{ ov.innerHTML = ""; if (mudou){ mudou = false; render(true); } };
+  const fecha = ()=>{ fecharSheet(); if (mudou){ mudou = false; render(true); } };
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">Resumo da semana</h2><div id="rsb"><div class="hint">O coach está montando o seu resumo…</div></div></div>';
   $("dim").onclick = fecha;
   const v = await gerarResumo(ini), b = $("rsb"); if (!b) return;
@@ -3818,7 +3909,7 @@ function telaExtras(){
   app.querySelectorAll("[data-mt]").forEach(b=>b.addEventListener("click", ()=>sheetMetaVer(b.dataset.mt)));
 }
 function sheetFixo(id){
-  const ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; }, ex = extrasDe(), f0 = ex.fixos.find(x=>x.id===id) || {tipo:"hyrox", nome:"Hyrox", dias:[1], min:60, obrig:true};
+  const ov = $("ov"), fecha = ()=>{ fecharSheet(); }, ex = extrasDe(), f0 = ex.fixos.find(x=>x.id===id) || {tipo:"hyrox", nome:"Hyrox", dias:[1], min:60, obrig:true};
   let tipo = f0.tipo, dias = (f0.dias||[]).slice();
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">'+(id?"Editar compromisso":"Compromisso fixo")+'</h2><p class="s">Algo que você faz toda semana, além do objetivo principal.</p>'+
     '<span class="k">o que é</span><div class="chips" id="fxt">'+Object.keys(TIPOS_FIXO).map(k=>'<button type="button" class="chip" data-v="'+k+'" aria-pressed="'+(k===tipo)+'">'+esc(TIPOS_FIXO[k].nome)+'</button>').join("")+'</div>'+
@@ -3838,7 +3929,7 @@ function sheetFixo(id){
   $("dim").onclick = fecha;
 }
 function sheetMeta(){
-  const ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; }; let tipo = "km";
+  const ov = $("ov"), fecha = ()=>{ fecharSheet(); }; let tipo = "km";
   const fimAno = new Date(today.getFullYear(), 11, 31), padrao = key(fimAno > today ? fimAno : addDays(today,60));
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">Nova meta</h2><p class="s">O coach analisa se cabe e como encaixa no seu plano.</p>'+
     '<span class="k">tipo</span><div class="chips" id="mtt"><button type="button" class="chip" data-v="km" aria-pressed="true">Distância (km)</button><button type="button" class="chip" data-v="livre" aria-pressed="false">Outra meta</button></div>'+
@@ -3872,7 +3963,7 @@ function bindMetaAcoes(root, m, fecha){
   const fx = root.querySelector("#mtfx"); if (fx) fx.onclick = ()=>{ fecha(); telaExtras(); };
 }
 function sheetMetaVer(id){
-  const ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; }, ex = extrasDe(), m = ex.metas.find(x=>x.id===id); if (!m) return;
+  const ov = $("ov"), fecha = ()=>{ fecharSheet(); }, ex = extrasDe(), m = ex.metas.find(x=>x.id===id); if (!m) return;
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2" style="font-size:1.4rem">'+esc(m.texto)+'</h2><span class="s">'+(m.status==="cumprida"?"Cumprida em "+esc(fmt(parseD(m.cumpridaEm||m.ate))):"Até "+esc(fmt(parseD(m.ate))))+'</span><div id="mtr">'+analiseMetaHTML(m)+'</div>'+
     (m.status!=="cumprida" ? '<button type="button" class="btn" id="mtc">Marcar como cumprida</button>' : '')+'<button type="button" class="btn" id="mtd2">Remover meta</button></div>';
   bindMetaAcoes($("mtr"), m, fecha); $("dim").onclick = fecha;
@@ -3988,7 +4079,7 @@ function sheetFoto(){
     '<label class="btn go" for="fup">Escolher foto</label><input type="file" id="fup" accept="image/*" hidden>'+
     (tem ? '<button type="button" class="lk cor-ruim" id="frem">Remover foto</button>' : '')+
     '<button type="button" class="lk" id="fno">Cancelar</button><p class="msg" id="fotom"></p></div>';
-  const fecha = () => { ov.innerHTML = ""; };
+  const fecha = () => { fecharSheet(); };
   $("dim").addEventListener("click", fecha); $("fno").addEventListener("click", fecha);
   $("fup").addEventListener("change", async e=>{
     const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -4007,11 +4098,11 @@ function sheetSair(){
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Sair"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Sair do '+esc(BRAND)+'?</h2>'+
     '<p class="s">Seus dados continuam salvos. Neste teste você entra com a sua conta do Claude, então ao voltar o app reconhece você. Quando o '+esc(BRAND)+' estiver no ar com login próprio, este botão encerra a sessão de verdade.</p>'+
     '<button type="button" class="btn go" id="sok">Sair</button><button type="button" class="lk" id="sno">Cancelar</button></div>';
-  $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; }); $("sno").addEventListener("click", ()=>{ ov.innerHTML = ""; });
+  $("dim").addEventListener("click", ()=>{ fecharSheet(); }); $("sno").addEventListener("click", ()=>{ fecharSheet(); });
   $("sok").addEventListener("click", sair);
 }
 // Hoje volta para a abertura sem apagar nada. Com login próprio, o corpo desta função passa a encerrar a sessão.
-function sair(){ $("ov").innerHTML = ""; R.tab = "hoje"; R.sub = null; R.arg = null; semOff = 0; telaAbertura(); }
+function sair(){ fecharSheet(); R.tab = "hoje"; R.sub = null; R.arg = null; semOff = 0; telaAbertura(); }
 /* ===================== CORPO: peso, medidas, tendência ===================== */
 const ROTULO_MEDIDA = {cin:"Cintura", qua:"Quadril", pei:"Peito", bra:"Braço", cox:"Coxa"};
 const ehMenor = p => !!(p && (p.menor || (+p.idade > 0 && +p.idade < 18)));
@@ -4062,7 +4153,7 @@ function bindCorpoExtra(){
   document.querySelectorAll("[data-fdel]").forEach(b=>b.addEventListener("click", async ()=>{ await salvarLog(b.dataset.fdel, null); render(true); }));
   const cp = $("fcmp");
   if (cp) cp.addEventListener("click", ()=>{
-    const fs = fotosCorpo(), a = fs[0], z = fs[fs.length-1], ov = $("ov"), fecha = ()=>{ ov.innerHTML = ""; };
+    const fs = fotosCorpo(), a = fs[0], z = fs[fs.length-1], ov = $("ov"), fecha = ()=>{ fecharSheet(); };
     ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Comparar fotos"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Antes e depois</h2><div class="grid2"><div><img alt="Primeira foto" src="'+esc(LOG[a].th)+'" style="width:100%;height:auto;display:block"><span class="s">'+esc(fmt(parseD(a.slice(3))))+'</span></div><div><img alt="Última foto" src="'+esc(LOG[z].th)+'" style="width:100%;height:auto;display:block"><span class="s">'+esc(fmt(parseD(z.slice(3))))+'</span></div></div><p class="s">Luz, ângulo e roupa mudam o que a foto mostra. Compare com calma.</p><button type="button" class="btn ghost" id="fcx">Fechar</button></div>';
     $("dim").addEventListener("click", fecha); $("fcx").addEventListener("click", fecha);
   });

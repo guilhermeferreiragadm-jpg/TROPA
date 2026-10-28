@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const raiz = path.join(__dirname, "..", "..");
 const stub = fs.readFileSync(path.join(__dirname, "stub.js"), "utf8");
-const EXPOR = "window.__T = {ir, R, toast, celebrar, telaAbertura, telaCodigo, telaPlanoPronto, telaAssinatura, telaMatch, telaSubiu, nivelXP, onb, sheetCheckin, sheetPausar, sheetCompras, sheetPostar, sheetRetomar, sheetDocumento};\n";
+const EXPOR = "window.__T = {ir, R, toast, celebrar, telaAbertura, telaCodigo, telaPlanoPronto, telaAssinatura, telaMatch, telaSubiu, nivelXP, onb, sheetCheckin, sheetPausar, sheetCompras, sheetPostar, sheetRetomar, sheetDocumento, Mov, fecharSheet};\n";
 
 http.createServer((req, res) => {
   if (!/^\/(\?.*)?$/.test(req.url)){ res.writeHead(404); return res.end("so /"); }
