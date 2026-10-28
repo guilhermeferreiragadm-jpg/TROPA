@@ -709,12 +709,12 @@ function tagDe(id){ let h = 0; String(id||"").split("").forEach(c=>{ h = (h*31 +
 function meuCodigo(){ if (!CODIGO) return ""; return isOwner ? CODIGO : CODIGO+"-"+tagDe(me); }
 function novoCodigo(){ const a = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let c = ""; for (let i=0;i<6;i++) c += a[Math.floor(Math.random()*a.length)]; return c; }
 const base = () => "data/users/"+me;   // coleção com 3 segmentos: perfil, log, rascunho e social são documentos dela
-async function salvarPerfil(){ if (db && me && P) await db.collection(base()).doc("perfil").set(P).catch(()=>{}); }
+async function salvarPerfil(){ if (db && me && P) await db.collection(base()).doc("perfil").set(P).catch(()=>{}); try{ Pro.agendar(); }catch(e){} }
 let logT = null;
 async function salvarLog(k, v){
   if (v==null) delete LOG[k]; else LOG[k] = v;
   if (!db || !me) return;
-  agendarGrupos();
+  agendarGrupos(); try{ Pro.agendar(); }catch(e){}
   clearTimeout(logT);
   logT = setTimeout(()=>{ podarFotos(); comTempo(db.collection(base()).doc("log").set({log:LOG}), 15000, "salvar_demorou").catch(e=>{ registrarErro("salvar log", e); toast("Não consegui salvar agora. Verifique a internet e tente de novo."); }); enviarResumo(); }, 300);
 }
@@ -1392,7 +1392,7 @@ function voltarPorGesto(){
 voltarPorGesto();
 
 /* ===================== PLANO NO DIA A DIA ===================== */
-function planoAtual(){ return (A && A.plano) || (P && P.plano); }
+function planoAtual(){ return (P && P.planoProf) || (A && A.plano) || (P && P.plano); }
 const NOMEPAUSA = {doenca:"doença", lesao:"lesão", outro:"outro motivo"};
 const PAUSAS = () => (P && P.pausas) || [];
 const pausaAtiva = () => PAUSAS().find(p=>!p.fim) || null;
@@ -3293,6 +3293,200 @@ function carregarGrupos(){
     if ((R.tab==="perf" && ["desafios","grupo","dupla"].includes(R.sub)) || (R.tab==="hoje" && !R.sub)){ gruposSigVista = sig; render(true); }
   }, e=>{ gruposOn = false; if (!(e && (e.code==="permission_denied" || e.code==="revoked"))) setTimeout(carregarGrupos, 8000); }); }catch(e){ gruposOn = false; }
 }
+/* ===== PRO: dados ===== */
+const Pro = {
+  papeis:{personal:false, nutri:false}, vinc:new Map(), props:new Map(), inbox:[], aoMudar:null,
+  _on:false, _ch:null, _pubs:{}, _ks:new Map(), _raw:[], _t:null, _fila:Promise.resolve(),
+  ok(){ return !!(realDb && db && me && !DEMO && !LOCAL); },
+  naoLidas(){ return Pro.inbox.filter(i=>!i.lida).length; },
+  _mudou(){ Pro._recalc(); try{ if (typeof Pro.aoMudar === "function") Pro.aoMudar(); }catch(e){} },
+  _recalc(){
+    Pro.inbox = Pro._raw.filter(i=>{
+      if (!itemInboxValido(i)) return false;
+      if (i.tipo==="convite") return true;
+      const ponto = i.ref.lastIndexOf("."), vid = (i.tipo==="proposta" || i.tipo==="resposta") ? i.ref.slice(0, ponto) : i.ref;
+      if (!Pro.vinc.has(vid)) return false;
+      return (i.tipo==="proposta" || i.tipo==="resposta") ? ponto > 0 && Pro.props.has(i.ref) : true;
+    }).sort((a, b)=>b.quando - a.quando);
+  },
+  async _carregarChaves(){
+    const r = db.collection(base()).doc("chaves"), s = await r.get();
+    let c = s.exists ? (s.data()||{}) : {};
+    if (!c.par || !c.par.pub || !c.par.priv){ c = Object.assign({}, c, {par: await gerarPar()}); c.v = c.v || {}; await r.set(c); }
+    c.v = c.v || {}; Pro._ch = c;
+  },
+  async _guardarChaves(){ await db.collection(base()).doc("chaves").set(Pro._ch); },
+  async iniciar(){
+    if (Pro._on || !Pro.ok()) return; Pro._on = true;
+    try{
+      await Pro._carregarChaves();
+      let primeira = true;
+      realDb.collection("papeis").doc(me).onSnapshot(s=>{ const d = s.exists ? (s.data()||{}) : {}; Pro.papeis = {personal:!!d.personal, nutri:!!d.nutri}; Pro._mudou(); }, ()=>{});
+      realDb.collection("vinculos").onSnapshot(s=>{
+        Pro.vinc.clear();
+        s.docs.forEach(d=>{ const v = d.data()||{}; if (v.alunoId===me || v.profId===me) Pro.vinc.set(d.id, Object.assign({}, v, {id:d.id})); });
+        Pro._mudou(); if (primeira){ primeira = false; Pro.agendar(); }
+      }, ()=>{});
+      realDb.collection("prop").onSnapshot(s=>{
+        Pro.props.clear();
+        s.docs.forEach(d=>{ const v = d.data()||{}, i = d.id.lastIndexOf("."); if (i > 0 && Pro.vinc.has(d.id.slice(0, i))) Pro.props.set(d.id, {id:d.id, vincId:d.id.slice(0, i), estado:v.estado, em:v.em}); });
+        Pro._mudou();
+      }, ()=>{});
+      realDb.collection("inbox").doc(me).collection("n").onSnapshot(s=>{ Pro._raw = s.docs.map(d=>Object.assign({}, d.data()||{}, {id:d.id})); Pro._mudou(); }, ()=>{});
+    }catch(e){ Pro._on = false; }
+  },
+  async ativarPapel(papel, ligado){
+    if (!PAPEIS_PRO.includes(papel) || !Pro.ok() || !Pro._ch) return {erro:"indisponivel"};
+    const novo = Object.assign({}, Pro.papeis, {[papel]: !!ligado});
+    await realDb.collection("papeis").doc(me).set({personal:!!novo.personal, nutri:!!novo.nutri, pub:Pro._ch.par.pub});
+    Pro.papeis = {personal:!!novo.personal, nutri:!!novo.nutri}; Pro._mudou(); return {ok:true};
+  },
+  async gerarConvite(papel){
+    if (!PAPEIS_PRO.includes(papel) || !Pro.papeis[papel] || !Pro.ok()) return {erro:"papel"};
+    for (let i = 0; i < 5; i++){
+      const cod = novoCodigoGrupo(), ex = await realDb.collection("convites").doc(cod).get();
+      if (ex.exists) continue;
+      await realDb.collection("convites").doc(cod).set(novoConvite(me, papel, Date.now(), cod));
+      return {cod};
+    }
+    return {erro:"codigo"};
+  },
+  async aceitarConvite(cod, perm){
+    if (!Pro.ok() || !Pro._ch) return {erro:"codigo"};
+    const n = normalizarCodigo(cod); if (!n) return {erro:"codigo"};
+    const s = await realDb.collection("convites").doc(n).get(); if (!s.exists) return {erro:"codigo"};
+    const c = s.data()||{};
+    if (!conviteValido(c, Date.now())) return {erro: c.usado || !PAPEIS_PRO.includes(c.papel) ? "codigo" : "expirado"};
+    if (c.profId===me) return {erro:"proprio"};
+    const vid = vincId(me, c.papel), conf = conflitoVinculo(Pro.vinc.get(vid), c.profId); if (conf) return {erro:conf};
+    const par = await gerarPar();
+    Pro._ch.v[vid] = par; await Pro._guardarChaves();
+    const doc = {alunoId:me, profId:c.profId, papel:c.papel, perm:permissoesValidas(c.papel, perm), estado:"ativo", pubA:par.pub, criado:Date.now()};
+    await realDb.collection("vinculos").doc(vid).set(doc);
+    Pro.vinc.set(vid, Object.assign({}, doc, {id:vid})); Pro._ks.delete(vid);
+    await realDb.collection("convites").doc(n).update({usado:true});
+    Pro.avisar(c.profId, "vinculo", vid);
+    await Pro.publicarSnaps(); Pro._mudou();
+    return {ok:true, vincId:vid};
+  },
+  async salvarPerm(vid, perm){
+    const v = Pro.vinc.get(vid); if (!v || v.alunoId!==me || v.estado!=="ativo") return {erro:"vinculo"};
+    v.perm = permissoesValidas(v.papel, perm);
+    await realDb.collection("vinculos").doc(vid).update({perm:v.perm});
+    Pro.avisar(v.profId, "perm", vid); await Pro.publicarSnaps(); Pro._mudou(); return {ok:true};
+  },
+  async encerrar(vid){
+    const v = Pro.vinc.get(vid); if (!v || v.estado!=="ativo") return {erro:"vinculo"};
+    await Promise.all((CATS_POR_PAPEL[v.papel]||[]).map(c=>realDb.collection("snap").doc(vid+"_"+c).delete().catch(()=>{})));
+    v.estado = "encerrado"; await realDb.collection("vinculos").doc(vid).update({estado:"encerrado", fim:Date.now()});
+    Pro.avisar(v.alunoId===me ? v.profId : v.alunoId, "encerrado", vid); Pro._mudou(); return {ok:true};
+  },
+  async _pubDe(uid){
+    if (Pro._pubs[uid]) return Pro._pubs[uid];
+    const s = await realDb.collection("papeis").doc(uid).get(), p = s.exists ? (s.data()||{}).pub : null;
+    if (p) Pro._pubs[uid] = p; return p || null;
+  },
+  async _chave(v){
+    let priv, pub;
+    if (v.alunoId===me){ const k = Pro._ch && Pro._ch.v[v.id]; if (!k) return null; priv = k.priv; pub = await Pro._pubDe(v.profId); }
+    else { priv = Pro._ch && Pro._ch.par.priv; pub = v.pubA; }
+    if (!priv || !pub) return null;
+    const sig = hash32(JSON.stringify([priv.d, pub.x, pub.y])), ca = Pro._ks.get(v.id);
+    if (ca && ca.sig===sig) return ca.k;
+    const k = await derivarChave(priv, pub, v.id); Pro._ks.set(v.id, {sig, k}); return k;
+  },
+  _dados(cat){
+    const ks = Object.keys(LOG), lim = key(addDays(today, -90)), lim14 = key(addDays(today, -14));
+    const dia = (k, ini) => k.slice(ini, ini+10);
+    if (cat==="treino"){
+      const feitos = {}; ks.filter(k=>/^(ck|aj)_/.test(k) && dia(k, 3) >= lim).forEach(k=>{ feitos[k] = LOG[k]; });
+      return {plano:planoAtual() || null, feitos, coment:LOG.coment || {}};
+    }
+    if (cat==="perf"){
+      const corridas = ks.filter(k=>k.startsWith("ck_") && dia(k, 3) >= lim && +(LOG[k]||{}).km > 0).map(k=>({d:dia(k, 3), km:+LOG[k].km, min:+LOG[k].min||0, rpe:LOG[k].rpe||null})).sort((a, b)=>a.d < b.d ? -1 : 1);
+      let fogo = 0, sem = 0; try{ fogo = foguinho().n; sem = treinosFeitosSemana(); }catch(e){}
+      return {corridas, km:Math.round(corridas.reduce((a, c)=>a+c.km, 0)*10)/10, fogo, treinosSemana:sem};
+    }
+    if (cat==="comida"){
+      const ref = {}; ks.filter(k=>k.startsWith("ref_") && dia(k, 4) >= lim14).forEach(k=>{ ref[k] = (LOG[k]||[]).map(r=>{ const c = Object.assign({}, r); delete c.thumb; delete c.foto; return c; }); });
+      let metas = null; try{ metas = metasDia(today); }catch(e){}
+      return {ref, metas, objetivo:(P && P.perfil && P.perfil.objetivo) || ""};
+    }
+    if (cat==="corpo") return {lista:(LOG.corpo || []).slice(-120), cfg:LOG.corpo_cfg || {}};
+    if (cat==="feed") return {posts:((typeof SOC!=="undefined" && SOC.posts) || []).filter(p=>p.autor===ME()).slice(0, 30).map(p=>({id:p.id, date:p.date, at:p.at, esporte:p.esporte, titulo:p.titulo, stats:p.stats, legenda:p.legenda}))};
+    return {};
+  },
+  publicarSnaps(){
+    const w = Pro._fila = Pro._fila.catch(()=>{}).then(async ()=>{
+      if (!Pro.ok() || !Pro._ch) return;
+      for (const v of Pro.vinc.values()){
+        if (v.alunoId!==me || v.estado!=="ativo") continue;
+        let k = null; try{ k = await Pro._chave(v); }catch(e){}
+        for (const cat of (CATS_POR_PAPEL[v.papel]||[])){
+          const ref = realDb.collection("snap").doc(v.id+"_"+cat);
+          try{
+            if (k && podeVer(v, cat)) await ref.set(Object.assign({vinc:v.id, cat, em:Date.now()}, await cifrar(k, Pro._dados(cat))));
+            else await ref.delete();
+          }catch(e){}
+        }
+      }
+    });
+    return w;
+  },
+  agendar(){
+    if (!Pro.ok() || ![...Pro.vinc.values()].some(v=>v.alunoId===me && v.estado==="ativo")) return;
+    clearTimeout(Pro._t); Pro._t = setTimeout(()=>{ Pro.publicarSnaps().catch(()=>{}); }, 3000);
+  },
+  async lerSnap(vid, cat){
+    try{
+      const v = Pro.vinc.get(vid); if (!v || !podeVer(v, cat) || !Pro._ch) return null;
+      const s = await realDb.collection("snap").doc(vid+"_"+cat).get(); if (!s.exists) return null;
+      const k = await Pro._chave(v); if (!k) return null;
+      return await decifrar(k, s.data());
+    }catch(e){ return null; }
+  },
+  async _lerProp(vid, id){
+    const v = Pro.vinc.get(vid), s = await realDb.collection("prop").doc(vid+"."+id).get(); if (!v || !s.exists) return null;
+    const k = await Pro._chave(v); if (!k) return null;
+    return {v, k, doc:s.data()||{}, p:await decifrar(k, s.data())};
+  },
+  async lerProposta(vid, id){ try{ const r = await Pro._lerProp(vid, id); return r ? Object.assign({}, r.p, {estado:r.doc.estado || r.p.estado}) : null; }catch(e){ return null; } },
+  async enviarProposta(vid, tipo, antes, depois, texto){
+    const v = Pro.vinc.get(vid); if (!v || v.profId!==me || v.estado!=="ativo") return {erro:"vinculo"};
+    const k = await Pro._chave(v); if (!k) return {erro:"chave"};
+    const id = Date.now().toString(36)+Math.random().toString(36).slice(2, 6), em = Date.now();
+    const p = {id, de:me, tipo:String(tipo||"").slice(0, 30), base:hash32(JSON.stringify(antes)), ops:criarPatch(antes, depois), texto:String(texto||"").slice(0, 500), estado:"pendente", em};
+    await realDb.collection("prop").doc(vid+"."+id).set(Object.assign({vinc:vid, estado:"pendente", em}, await cifrar(k, p)));
+    Pro.avisar(v.alunoId, "proposta", vid+"."+id); return {ok:true, id};
+  },
+  async responderProposta(vid, id, acao, motivo){
+    const v = Pro.vinc.get(vid); if (!v || v.alunoId!==me || !["aceitar", "recusar"].includes(acao)) return {erro:"vinculo"};
+    const r = await Pro._lerProp(vid, id); if (!r || r.p.estado!=="pendente") return {erro:"estado"};
+    let ev = acao, res = {ok:true};
+    if (acao==="aceitar" && v.papel==="personal"){
+      try{
+        const antes = planoAtual();
+        if (!propostaAtual(r.p, JSON.stringify(antes))) throw new Error("base");
+        const novo = aplicarPatch(antes, r.p.ops);
+        P.planoProf = novo; await salvarPerfil(); await Pro.publicarSnaps();
+      }catch(e){ ev = "invalidar"; res = {ok:false, erro:"desatualizada"}; }
+    }
+    const estado = proximoEstadoProposta("pendente", ev), p = Object.assign({}, r.p, {estado, resp:Date.now()});
+    if (acao==="recusar") p.motivo = String(motivo||"").slice(0, 300);
+    await realDb.collection("prop").doc(vid+"."+id).set(Object.assign({vinc:vid, estado, em:r.p.em}, await cifrar(r.k, p)));
+    Pro.avisar(v.profId, "resposta", vid+"."+id); return Object.assign(res, {estado});
+  },
+  avisar(dest, tipo, ref){
+    if (!dest || !Pro.ok()) return Promise.resolve();
+    const id = Date.now().toString(36)+Math.random().toString(36).slice(2, 6);
+    return realDb.collection("inbox").doc(dest).collection("n").doc(id).set({tipo, ref, quando:Date.now(), lida:false}).catch(()=>{});
+  },
+  async marcarLidas(){
+    const col = realDb.collection("inbox").doc(me).collection("n");
+    await Promise.all(Pro._raw.filter(i=>!i.lida).map(i=>{ i.lida = true; return col.doc(i.id).update({lida:true}).catch(()=>{}); }));
+    Pro._mudou();
+  }
+};
 function avisoGrupos(seguir){
   if (LOG.gaviso){ seguir(); return; }
   const ov = $("ov");
@@ -4508,6 +4702,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
   }
   carregarPostsDono(realDb);
   carregarGrupos();
+  try{ Pro.iniciar().catch(()=>{}); }catch(e){}
   entrou = !!(P && P.perfil);
   rotear();
 })();
