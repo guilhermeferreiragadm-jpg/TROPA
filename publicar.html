@@ -355,12 +355,13 @@ tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 .thumbs{display:flex;gap:6px;align-self:flex-start;margin-top:-4px}
 .thumbs button{border:1px solid var(--sep);background:var(--surface);font-size:.8rem;padding:2px 8px}
 .thumbs button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-.cin{position:sticky;bottom:0;display:flex;gap:8px;align-items:flex-end;padding:10px 16px calc(12px + var(--safe-b));background:var(--mat-reg);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+.cin{position:sticky;bottom:0;display:flex;gap:8px;align-items:flex-end;padding:10px 16px calc(12px + var(--safe-b));border-width:0}
 .cin textarea{flex:1;min-height:46px;max-height:140px;border:0;border-radius:23px;background:var(--surface-2);padding:12px 16px;resize:none}
-.cin button{border:0;border-radius:23px;min-height:46px;background:var(--go-fill);color:#fff;font-weight:600;padding:0 18px}
+.cin button{border:0;border-radius:23px;min-height:46px;background:var(--go-fill);color:#fff;font-weight:600;padding:0 18px;transition:transform .1s ease-out}
 .cin button:active{transform:scale(.97)}
 .mode{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:var(--r1);padding:2px;gap:2px}
-.mode button{border:0;border-radius:8px;background:transparent;padding:9px;font-weight:600;font-size:.9375rem}
+.mode button{border:0;border-radius:8px;background:transparent;padding:9px;min-height:44px;font-weight:600;font-size:.9375rem;transition:transform .1s ease-out}
+.mode button:active{transform:scale(.97)}
 .mode button[aria-pressed="true"]{background:var(--surface);color:var(--go-ink);box-shadow:var(--sh1),inset 0 0 0 1.5px var(--go)}
 /* perfil, painel */
 .prof{display:flex;gap:12px;align-items:center}
@@ -1224,7 +1225,7 @@ function tituloGrande(app){
   const cab = $("cab"), h1 = app.querySelector("h1.h1"); if (!cab) return;
   cab.classList.remove("on");
   if (!h1 || app.classList.contains("full") || !("IntersectionObserver" in window)) return;
-  tituloObs = new IntersectionObserver(es => { cab.classList.toggle("on", !es[0].isIntersecting && es[0].boundingClientRect.top < 0); }, {rootMargin:"-8px 0px 0px 0px"});
+  tituloObs = new IntersectionObserver(es => { cab.classList.toggle("on", !es[es.length-1].isIntersecting && es[es.length-1].boundingClientRect.top < 0); }, {rootMargin:"-8px 0px 0px 0px"});
   tituloObs.observe(h1);
 }
 /* vibração curta nos momentos de conclusão, no mesmo quadro da mudança visual; só onde o aparelho suporta */
@@ -4145,7 +4146,7 @@ function telaChat(){
   const ola = chatModo==="coach" ? "Pergunte o que quiser do seu treino: carga, ritmo, dor, como encaixar na semana. Se eu sugerir mudar o dia e você topar, eu mudo o calendário." : "Me conte o que comeu (eu salvo no seu dia) ou pergunte sobre comida no treino: antes, durante, depois, proteína, hidratação.";
   const app = tela('<div class="chat"><div class="chat-h mat"><span class="grab" id="cgrab"></span><div class="between"><button type="button" class="back" id="cx">← Voltar</button><span class="k">assistente</span><span></span></div><div class="mode"><button type="button" data-m="coach" aria-pressed="'+(chatModo==="coach")+'">Coach</button><button type="button" data-m="nutri" aria-pressed="'+(chatModo==="nutri")+'">Nutri</button></div></div>'+
     '<div class="msgs" id="msgs"><div class="m a">'+esc(ola)+'</div>'+L.map((m,i)=>'<div class="m '+(m.sys?'sys':m.role==="user"?'u':'a')+'">'+esc(m.content)+'</div>'+(m.role==="assistant"&&!m.sys&&m.content!=="…"?'<div class="thumbs"><button type="button" data-th="'+i+'~1" aria-pressed="'+(m.av===1)+'" aria-label="Resposta boa">👍</button><button type="button" data-th="'+i+'~0" aria-pressed="'+(m.av===0)+'" aria-label="Resposta ruim">👎</button></div>':'')).join("")+'</div>'+
-    '<div class="cin"><textarea id="cin" rows="1" placeholder="Escreva ou use o 🎙️ do teclado" aria-label="Mensagem">'+esc(chatPre)+'</textarea><button type="button" id="cs">Enviar</button></div></div>', {full:true});
+    '<div class="cin mat-reg"><textarea id="cin" rows="1" placeholder="Escreva ou use o 🎙️ do teclado" aria-label="Mensagem">'+esc(chatPre)+'</textarea><button type="button" id="cs">Enviar</button></div></div>', {full:true});
   chatPre = "";
   $("cx").addEventListener("click", ()=>ir("hoje"));
   Mov.arrastarFechar(app, $("cgrab"), {altura:()=>window.innerHeight, aoFechar:vy=>{ Mov.para(app, {y:window.innerHeight}, "suave", {y:vy}).then(()=>ir("hoje")); }});
