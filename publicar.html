@@ -1137,12 +1137,12 @@ const Mov = (() => {
     let ativo = false, y0 = 0, off0 = 0, am = [];
     alca.style.touchAction = "none";
     alca.addEventListener("pointerdown", e => {
-      if (e.button > 0) return;
+      if (e.button > 0 || el.dataset.fechando) return;
       ativo = true; try{ alca.setPointerCapture(e.pointerId); }catch(_){}
-      const m = estado(el); cancelAnimationFrame(m.raf); y0 = e.clientY; off0 = m.y; am = [{t:e.timeStamp, x:e.clientY}];
+      const m = estado(el); cancelAnimationFrame(m.raf); m.vy = 0; y0 = e.clientY; off0 = m.y; am = [{t:e.timeStamp, x:e.clientY}];
     });
     alca.addEventListener("pointermove", e => {
-      if (!ativo) return;
+      if (!ativo || el.dataset.fechando) return;
       const m = estado(el), bruto = off0 + (e.clientY - y0);
       m.y = bruto < 0 ? elastico(bruto, o.altura()) : bruto;
       am.push({t:e.timeStamp, x:e.clientY}); if (am.length > 8) am.shift();
@@ -1150,6 +1150,7 @@ const Mov = (() => {
     });
     const fim = () => {
       if (!ativo) return; ativo = false;
+      if (el.dataset.fechando) return;
       const m = estado(el), v = velocidade(am), h = o.altura();
       if (projetar(m.y, v) > h*0.5) o.aoFechar(v);
       else para(el, {y:0}, "lancado", {y:v});
@@ -1168,19 +1169,23 @@ function fecharSheet(vy){
   const h = s.offsetHeight || 400;
   Mov.para(s, Mov.reduz() ? {o:0} : {y:h}, "suave", vy ? {y:vy} : null).then(() => { if (ov.querySelector(".sheet")===s) limpar(); });
 }
-function montarSheet(ov, s){
+function montarSheet(ov, s, instante){
   s.dataset.m = "1";
   const dim = ov.querySelector(".dim"), h = () => s.offsetHeight || 400, m = Mov.estado(s);
   m.alAplicar = () => { if (dim) dim.style.opacity = String(Math.max(0, Math.min(1, m.y > 0 ? 1 - m.y/h() : 1))); };
   if (dim && !dim.dataset.m){ dim.dataset.m = "1"; dim.addEventListener("click", () => fecharSheet()); }
   document.documentElement.classList.add("sheet-aberta");
-  if (Mov.reduz()){ m.y = 0; m.o = 0; Mov.aplicar(s); void s.offsetWidth; Mov.para(s, {o:1}); }
+  if (instante){ m.y = 0; Mov.aplicar(s); }   // redesenho no lugar de um sheet já aberto: sem repetir a entrada
+  else if (Mov.reduz()){ m.y = 0; m.o = 0; Mov.aplicar(s); void s.offsetWidth; Mov.para(s, {o:1}); }
   else { m.y = h(); Mov.aplicar(s); Mov.para(s, {y:0}, "suave"); }
   // a alça pode ser recriada quando quem abriu reescreve o conteúdo do sheet (ex.: "Não fiz" em sheetItem)
   const ligar = () => { const alca = s.querySelector(".grab:not([data-m])"); if (alca){ alca.dataset.m = "1"; Mov.arrastarFechar(s, alca, {altura:h, aoFechar:fecharSheet}); } };
   ligar(); new MutationObserver(ligar).observe(s, {childList:true});
 }
-new MutationObserver(() => { const ov = $("ov"), s = ov && ov.querySelector(".sheet:not([data-m])"); if (s) montarSheet(ov, s); else if (ov && !ov.querySelector(".sheet")) document.documentElement.classList.remove("sheet-aberta"); }).observe($("ov"), {childList:true});
+new MutationObserver(recs => { const ov = $("ov"), s = ov && ov.querySelector(".sheet:not([data-m])");
+  // substituiu um sheet montado e que não estava fechando (ex.: sheetDocumento redesenha a cada passo): troca na hora
+  const trocou = recs.some(r => [...r.removedNodes].some(n => n.nodeType===1 && n.classList.contains("sheet") && n.dataset.m && !n.dataset.fechando));
+  if (s) montarSheet(ov, s, trocou); else if (ov && !ov.querySelector(".sheet")) document.documentElement.classList.remove("sheet-aberta"); }).observe($("ov"), {childList:true});
 
 /* ===================== PLANO NO DIA A DIA ===================== */
 function planoAtual(){ return (A && A.plano) || (P && P.plano); }
