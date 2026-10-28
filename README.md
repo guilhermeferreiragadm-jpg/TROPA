@@ -4,6 +4,7 @@ App de treino e nutrição com coach de IA, feed entre amigos e acompanhamento d
 
 ## Como o projeto é organizado
 - `publicar.html`: o app inteiro (HTML, CSS e JS). **É a fonte principal.** Edite este arquivo.
+- `tests/harness/`: servidor local (`node tests/harness/servir.js`, porta 5173) que serve o `publicar.html` com `window.claude` simulado e banco em memória, para ver as telas sem publicar. `?perfil=0` abre sem perfil (onboarding) e `?tema=escuro` liga o tema escuro; o tema também fica em `localStorage` na chave `tropa-tema` (`claro`, `escuro` ou `auto`). O roteiro de telas está em `tests/harness/roteiro.md`.
 - `tests/`: testes em Node das funções puras (pausa, volta gradual, teto de carga, validação da foto, grupos, importação de GPX e TCX, leitor de FIT) e uma checagem de que o script compila.
 - `docs/superpowers/specs/`: especificação da pausa, do teto de carga e do documento de fisioterapia.
 - `docs/superpowers/plans/`: plano de implementação dessas funcionalidades.
@@ -45,6 +46,7 @@ Coleção `grupos` (fase 4): todos com acesso leem (`read: view`), só o dono gr
 - Foto de perfil e botão Sair (hoje volta à tela inicial; com login próprio passa a encerrar a sessão).
 - Tema escuro, objetivos extras e metas (ex.: 22 km em dezembro), compromissos fixos no plano, missões da semana, resumo semanal do coach e janela da Tropa (trazidos do artifact do amigo).
 - Sugestão de aliviar a próxima semana a partir do "Como foi" (você aceita ou recusa), motivo do treino para qualquer plano, e repetir refeição com favoritos.
+- Redesign visual (branch `redesign-apple`): fonte do sistema, cantos arredondados, barra de abas e sheets de vidro, molas e gestos (sheet arrastável, voltar pela borda, chat que sobe de baixo), título grande que encolhe ao rolar, tema escuro e respeito a `prefers-reduced-motion`, `prefers-reduced-transparency` e `prefers-contrast`. Os tokens de design (cores, raios, sombras, materiais) ficam no bloco `:root` no começo do CSS do `publicar.html`; a spec está em `docs/superpowers/specs/2026-10-27-redesign-apple-design.md`. Os testes `tests/movimento.test.js` e `tests/contraste.test.js` cobrem o núcleo de movimento e os pares de contraste (`node --test tests/*.test.js`).
 - Foguinho, XP, medalhas, desafios, feed e retrospectiva.
 - Resumo de domingo com pergunta sobre o corpo e sugestão de aliviar a próxima semana, carga da musculação que considera prontidão e dor, e lista de compras da semana montada pela Nutri.
 - Tela Corpo (Perfil): peso, medidas, gráfico e tendência de 4 semanas, fotos de progresso em miniatura (até 6, só adultos), cartão semanal de pesagem na tela Hoje e faixa de calorias estimada com piso de segurança (só adultos, sem alerta de saúde nem ciclo irregular informado).
@@ -53,6 +55,7 @@ Coleção `grupos` (fase 4): todos com acesso leem (`read: view`), só o dono gr
 - Importar treino de GPX, TCX e FIT (inclusive .gz).
 
 ## Pendências conhecidas
+- O redesign foi verificado no harness local (banco simulado, sem IA, sem grupos reais, sem foto nem PDF). Falta conferir dentro do artifact publicado: o vidro (`backdrop-filter`) dentro do iframe do claude.ai, os gestos no celular real e o desempenho em aparelho fraco.
 - A fase 1 (sugestão da próxima semana, repetir refeição, motivo do treino) foi validada só por testes de funções puras e leitura de código; falta conferir os cards e a sheet dentro do artifact. Planos personalizados com fases (pl.fases) usam textos de motivo específicos do plano de origem; os planos gerados pelo app usam textos genéricos.
 - A integração das novidades do amigo foi feita por merge de três vias e validada só por teste de sintaxe e testes de funções puras. Falta conferir tema escuro, metas, compromissos fixos e missões dentro do artifact, junto com a pausa nova.
 - A leitura de PDF usa o pdf.js do cdnjs e ainda não foi validada dentro do artifact. Se falhar, o app pede uma foto.

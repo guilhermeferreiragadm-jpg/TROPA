@@ -89,7 +89,7 @@ Tudo que responde a toque anima só `transform` e `opacity` (mais `backdrop-filt
 
 Funções puras, testadas em Node como as outras:
 
-- `molaPasso(estado, alvo, {amort, resposta}, dt)`: integra uma mola com massa 1. Rigidez `(2π/resposta)²`, amortecimento `4π·amort/resposta`. Passo fixo de 1/120 s, para não depender da taxa de quadros. Retorna `{x, v}`.
+- `molaPasso(estado, alvo, {amort, resposta}, dt)`: avança uma mola de massa 1 pela solução analítica exata (crítica ou subamortecida). Rigidez `(2π/resposta)²`, amortecimento `4π·amort/resposta`. Não depende do tamanho do quadro e não perde energia por erro numérico. Retorna `{x, v}`.
 - `projetar(x, v, d = 0.998)`: ponto de repouso `x + (v/1000)·d/(1-d)`, com `v` em px/s.
 - `elastico(sobra, dimensao)`: `(sobra·dimensao·0,55)/(dimensao + 0,55·|sobra|)`, com o sinal da sobra.
 - `velocidade(amostras)`: velocidade em px/s a partir dos últimos ~100 ms de pontos `{t, x}`.
@@ -110,9 +110,9 @@ Pressão: `:active` com `transform: scale(.97)` e `transition: transform 100ms e
 
 ### Sheets (substituem `.sheet` e `#ov`)
 
-- Dois tamanhos: médio (50% da altura útil) e grande (até 92%). Sheets curtos abrem só no tamanho do conteúdo.
-- Arrastar pela alça ou pelo corpo quando o conteúdo está no topo (`scrollTop === 0`). `setPointerCapture`, posição 1:1 mantendo o ponto de pega, velocidade medida na soltura.
-- Ao soltar: `projetar` a posição, escolher o tamanho mais próximo (ou fechar se a projeção passar do limite). Acima do grande ou abaixo do fechado, `elastico`.
+- Um tamanho só (altura do conteúdo, até 92% da tela). Arrastar pela alça, que tem área de toque de 44 px; o corpo rola normalmente. `setPointerCapture`, posição 1:1 mantendo o ponto de pega, velocidade medida na soltura.
+- Ao soltar: `projetar` a posição e fechar se a projeção passar da metade da altura; senão volta ao repouso por mola. Acima do repouso, `elastico`.
+- Escape fecha o sheet; o sheet declara `role="dialog"` e `aria-modal`.
 - Fundo: o `scrim` escurece em proporção à altura. Com o sheet grande, a página atrás recua (`scale(.96)`, raio de 14 px). Sheet sobre sheet recua o anterior em degraus.
 - O sheet nasce e some pelo mesmo caminho (de baixo, ancorado no botão que o abriu quando houver um), e nenhum toque é bloqueado durante a animação.
 - Teclado: o sheet sobe com ele (`visualViewport`) sem pulo.
@@ -141,7 +141,7 @@ Pressão: `:active` com `transform: scale(.97)` e `transition: transform 100ms e
 ## Mudanças de estrutura
 
 1. **Hoje:** cartão principal "Próximo" no topo (a próxima ação do dia, que hoje é montada em `umaAcao`). Foguinho compacto numa linha com a faixa da semana. O resto do dia vira seções recolhíveis (Check-in, Missões, Seu dia), com a seção mais útil aberta por padrão. Os avisos (pausa, risco do foguinho, ajuste) viram uma faixa de avisos acima do cartão principal.
-2. **Coach · Nutri:** deixa de ser o botão flutuante retangular. Fica como botão redondo de vidro ao lado direito da barra de abas, no mesmo contêiner. O chat abre como sheet de dois tamanhos. Se "Performance" não couber a 360 px de largura com as cinco abas e o botão, o botão passa a ficar logo acima da barra, alinhado à direita, em vez de espremer os rótulos. Isso se decide na verificação visual.
+2. **Coach · Nutri:** deixa de ser o botão flutuante retangular. Fica como botão redondo de vidro ao lado direito da barra de abas, no mesmo contêiner. O chat continua sendo uma rota; sobe de baixo, a partir do botão Coach, e fecha arrastando a alça do cabeçalho para baixo. Se "Performance" não couber a 360 px de largura com as cinco abas e o botão, o botão passa a ficar logo acima da barra, alinhado à direita, em vez de espremer os rótulos. Isso se decide na verificação visual.
 3. **Voltar:** botão "←" continua, e ganha o gesto de borda descrito acima.
 4. **Telas com título grande** que encolhe ao rolar.
 5. **Performance:** anéis, gráficos e cartões de vidro. Anéis e barras animam por mola quando o dado muda. Os gráficos SVG atuais mantêm os dados e as cores por modalidade.
@@ -154,6 +154,8 @@ Tudo no `publicar.html`, em seções marcadas por comentário, nesta ordem:
 1. CSS: tokens, base, tipografia, materiais, componentes, depois uma seção por tela.
 2. JS `MOVIMENTO`: núcleo puro, `animar`, `Sheet`, `abas`, `transicao`, `voltarPorGesto`, `haptica`.
 3. Telas (já existem), trocando classes e marcação.
+
+Os nomes de classe existentes foram mantidos e redesenhados; classes novas só onde a estrutura mudou (`.proxc`, `.avisos`, `.dia-sec`, `.cab`, `.tabs-pill`, `.tabs-ind`, `.mat`).
 
 Estilos inline estáticos (184 hoje) saem. Valores que dependem de dado (cor da modalidade, largura de barra) passam por variável CSS (`style="--c:..."`, `style="--p:..."`). O comentário de topo do CSS é reescrito para descrever o layout novo.
 
@@ -190,3 +192,17 @@ O app só roda no claude.ai, porque depende de `window.claude`. Para ver cada te
 - Largura de 360 px com cinco abas e o botão Coach: tratado na mudança 2.
 - Tamanho do arquivo: sai CSS antigo e inline, entra CSS novo e o módulo de movimento. O alvo é não crescer mais de 10% do tamanho atual.
 - Contraste do laranja: texto sobre laranja usa `--go-fill`, e o `#FF5A00` fica sem texto.
+
+## Desvios aceitos na implementação
+
+- **Abaixo de 390 px** o botão Coach fica acima da pílula de abas, alinhado à direita (o plano B previsto), para não espremer o rótulo "Performance".
+- **Tokens novos:** `--neutro` (cinza de estado neutro), `--track` (trilho de barras e anéis, opaco nos dois temas) e `--swim-ink` (azul de texto da natação, `#1565C0` no claro e `#6AB7FF` no escuro).
+- **`--surface-2` claro** passou a `#EBEBF0`, para campos, segmentos e chips aparecerem sobre cartões brancos (contraste do texto secundário sobre ele ≈ 5,2:1).
+- **`.rk.eu`:** a linha da própria pessoa no ranking usa a classe `.rk.eu` (renomeada para não colidir com outras regras de linha).
+- **Onboarding** é sempre uma entrada em push quando vem de outra tela (Perfil ou abertura); entre perguntas, direita ao avançar e esquerda ao voltar.
+- **Piso de iOS:** `overflow:clip` exige iOS 16 e `:has()` exige iOS 15.4. Em iOS anterior a 15.4 o chat fica com 112 px de folga a mais embaixo.
+- **Abertura sempre escura:** `.mani em` usa `#FF8A4C` (laranja de texto do tema escuro) e `.mline i` mantém `--done` (`#13A150`, 6:1 sobre `--noite`), porque essas telas não mudam com o tema.
+- **Cantos abaixo de 10 px** em segmentos de barra e de fase (`.bars`, `.zbar`, `.phase span`, `.seg button`) são exceção deliberada à escala: a altura desses elementos é de 4 a 8 px e raios maiores os arredondariam por inteiro.
+- **Card de compartilhar** (canvas): os textos continuam em caixa alta porque os textos não mudam neste redesign.
+- **Reduced motion:** as trocas que viram fade passam por `Mov.para` com `transition` inline `!important` de 200 ms, que vence a regra global `transition:none`; o aviso (`.toast`) tem a mesma exceção.
+- **Abas:** a aba atual usa `aria-current="page"` em vez de `aria-selected`, porque a barra não tem `role="tablist"`.
