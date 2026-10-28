@@ -229,7 +229,7 @@ textarea.inp{resize:vertical;min-height:88px}
 /* folha (sheet): material grosso, topo arredondado, alça com área de toque de 44px */
 .dim{position:fixed;inset:0;background:rgba(11,13,16,.4);z-index:40}
 .sheet{position:fixed;left:0;right:0;margin:0 auto;bottom:0;width:min(480px,100%);max-height:92vh;overflow-y:auto;overscroll-behavior:contain;background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);border-radius:var(--r4) var(--r4) 0 0;box-shadow:var(--sh3);padding:8px 16px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px;z-index:41;will-change:transform}
-.sheet .box,.sheet .opt{background:var(--surface)}
+.sheet .box,.sheet .opt{background:var(--surface)}#shb{display:contents}
 .grab{position:relative;display:block;height:44px;margin:-8px -16px -16px;flex:none;cursor:grab}
 .grab::after{content:"";position:absolute;left:50%;top:14px;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--tx-2);opacity:.5}
 #rsb,#rsx{display:flex;flex-direction:column;gap:12px}
@@ -2062,14 +2062,15 @@ function telaCodigo(){
   const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo, ou o de um Personal ou Nutri.</p>'+
     '<input class="inp cd n upper" id="cd" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2">'+
     '<button class="btn go" type="button" id="cdok">Entrar</button><p class="msg" id="cdm"></p><p class="s">Não tem? Peça para quem te mandou o link.</p>');
-  const go = async ()=>{
+  const go = async ()=>{ const bt = $("cdok"); if (bt.disabled) return; bt.disabled = true; try{ await entrar(); }finally{ bt.disabled = false; } };
+  const entrar = async ()=>{
     const v = $("cd").value.trim().toUpperCase();
     if (!CODIGO){ try{ const s = await realDb.collection("config").doc("convite").get(); CODIGO = s.exists ? String((s.data()||{}).codigo||"") : ""; }catch(e){} }
     const b = CODIGO.toUpperCase();
     if (!v){ $("cdm").textContent = "Digite o código."; return; }
     if (!b || !(v===b || (v.startsWith(b+"-") && v.length===b.length+5))){
       const r = normalizarCodigo(v) ? await lerConvite(v) : {erro:"codigo"};   // só valida: quem consome o convite é Pro.aceitarConvite
-      if (!r.n || r.erro){ $("cdm").textContent = r.erro==="usado"||r.erro==="expirado" ? ERRCONV[r.erro] : "Esse código não bate. Confira com quem te convidou."; $("cdm").className = "msg err"; return; }
+      if (!r.n || r.erro){ $("cdm").textContent = r.erro==="usado"||r.erro==="expirado" ? ERRCONV[r.erro] : r.erro==="falha" ? "Não consegui conferir o código agora. Tente de novo." : "Esse código não bate. Confira com quem te convidou."; $("cdm").className = "msg err"; return; }
       ACESSO = {status:"aceito", via:"profissional", codigo:r.n, indicadoPor:r.c.profId, at:new Date().toISOString()};
       try{ localStorage.setItem("tropa-conv-pend", r.n); }catch(e){}
       try{ await db.collection("acessos").doc(me).set(ACESSO); }catch(e){}
@@ -4660,8 +4661,9 @@ async function lerConvite(cod){   // só lê e valida; não consome
     if (c.usado) return {erro:"usado"};
     if (!conviteValido(c, Date.now())) return {erro: Number.isFinite(c.expira) ? "expirado" : "codigo"};
     if (c.profId===me) return {erro:"proprio"};
-    let nome = ""; try{ const p = await realDb.collection("papeis").doc(c.profId).get(); nome = String(((p.exists && p.data())||{}).nome||"").slice(0, 40); }catch(e){}
-    return {n, c, nome: nome || "Seu "+NOMEMODO[c.papel]};
+    const p = await realDb.collection("papeis").doc(c.profId).get(), pp = p.exists ? (p.data()||{}) : {};
+    if (!jwkPubOk(pp.pub) || !pp[c.papel]) return {erro:"profissional"};
+    return {n, c, nome: String(pp.nome||"").slice(0, 40) || "Seu "+NOMEMODO[c.papel]};
   }catch(e){ return {erro:"falha"}; }
 }
 function abrirSheet(rotulo){
@@ -4702,7 +4704,7 @@ function sheetConvite(cod){
   };
   if (!cod){ pedir(); return; }
   corpo.innerHTML = '<p class="s">Abrindo o convite…</p>';
-  lerConvite(cod).then(r=>{ if (!$("shb")) return; if (r.erro) pedir(msgConv(r.erro)); else mostrar(r); });
+  lerConvite(cod).then(r=>{ if (!corpo.isConnected) return; if (r.erro) pedir(msgConv(r.erro)); else mostrar(r); });
 }
 function sheetProfissionais(vid){
   const corpo = abrirSheet("Meus profissionais");
