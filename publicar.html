@@ -2453,12 +2453,12 @@ function telaRevisao(){
 /* ===================== NAVEGAÇÃO ===================== */
 let voltandoPor = false;   // liga no clique de um botão "←" e vale só para a navegação que ele provoca
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".back, [data-back]")){ voltandoPor = true; setTimeout(() => { voltandoPor = false; }, 300); } }, true);
-let sinoDe = null, sinoTimer = null, sinoVis = [];
+let sinoDe = null, sinoTimer = null, sinoVis = [], sinoMarcou = false;
 function ir(tab, sub, arg){
   const antes = {tab:R.tab, sub:R.sub, arg:R.arg};
   R.tab = tab; R.sub = sub||null; R.arg = arg==null?null:arg;
   if (tab==="sino" && antes.tab!=="sino") sinoDe = antes;
-  if (tab!=="sino" && antes.tab==="sino"){ clearTimeout(sinoTimer); sinoTimer = null; }
+  if (tab!=="sino" && antes.tab==="sino"){ clearTimeout(sinoTimer); sinoTimer = null; sinoMarcou = false; }
   proxTransicao = tipoTransicao(antes, {tab:R.tab, sub:R.sub, arg:R.arg}, voltandoPor);
   voltandoPor = false;
   render();
@@ -2895,6 +2895,14 @@ function abrirAviso(it){
   if (MODO!==v.papel && modosDisp().includes(v.papel)){ MODO = v.papel; try{ localStorage.setItem("tropa-modo", MODO); }catch(e){} renderBarra(); }
   if (it.tipo==="encerrado" || v.estado!=="ativo") ir("alunos"); else ir("alunos", "det", vid);
 }
+function armarMarcar(){   // uma marcação por abertura do sino: avisos que chegam depois ficam não lidos até a próxima abertura
+  sinoTimer = setTimeout(()=>{
+    sinoTimer = null; if (R.tab!=="sino") return;
+    if ($("ov").innerHTML) return armarMarcar();   // sheet aberto: espera 1 s e tenta de novo (não marca o que está atrás dele)
+    sinoMarcou = true;
+    const ids = idsParaMarcar(sinoVis); if (ids.length) Pro.marcarLidas(ids).catch(()=>toast("Não consegui marcar como lidas."));
+  }, 1000);
+}
 function telaSino(){
   const tk = ++sinoTk, agora = Date.now(), its = Pro.inbox.slice(0, 50), foco = document.activeElement && document.activeElement.id;
   sinoVis = its;
@@ -2913,11 +2921,8 @@ function telaSino(){
     const vid = it.ref.split(".")[0];
     Pro.lerProposta(vid, it.ref.slice(vid.length+1)).then(p=>{ const e = $("st_"+it.id); if (tk===sinoTk && R.tab==="sino" && e && p && p.motivo) e.textContent = textoAviso(it, Object.assign({}, c, {motivo:String(p.motivo)})); }).catch(()=>{});
   });
-  if (foco && /^sn_/.test(foco)){ const f = $(foco); if (f) f.focus(); }
-  if (!sinoTimer) sinoTimer = setTimeout(()=>{   // um por abertura: render(true) não reinicia
-    sinoTimer = null; if (R.tab!=="sino") return;
-    const ids = idsParaMarcar(sinoVis); if (ids.length) Pro.marcarLidas(ids).catch(()=>toast("Não consegui marcar como lidas."));
-  }, 1000);
+  if (foco && /^sn_/.test(foco)){ const f = $(foco); if (f) f.focus({preventScroll:true}); }
+  if (!sinoTimer && !sinoMarcou) armarMarcar();
   return app;
 }
 const msgPro = e => { const m = e && e.message; return m==="pro_indisponivel" ? "Só funciona no app oficial." : m==="ocupado" ? "Aguarde a ação anterior." : /^chave/.test(m) ? "Não consegui abrir suas chaves de segurança." : "Não deu certo. Tente de novo."; };
@@ -4233,7 +4238,8 @@ const Pro = {
   async marcarLidas(ids){   // marca SÓ os ids passados (sem argumento não marca nada); rejeita se alguma gravação falhar
     const col = realDb.collection("inbox").doc(me).collection("n"), alvo = new Set(Array.isArray(ids) ? ids : []), its = Pro._raw.filter(i=>alvo.has(i.id) && !i.lida);
     its.forEach(i=>{ i.lida = true; });
-    const rs = await Promise.all(its.map(i=>col.doc(i.id).update({lida:true}).then(()=>true, ()=>{ i.lida = false; return false; })));
+    const rs = await Promise.all(its.map(i=>col.doc(i.id).update({lida:true}).then(()=>true, ()=>false)));
+    its.forEach((i, k)=>{ if (!rs[k]){ const live = Pro._raw.find(x=>x.id===i.id); if (live) live.lida = false; } });   // o snapshot já pode ter trocado os objetos de _raw: reverte pelo id no _raw atual
     Pro._mudou();
     if (rs.includes(false)) throw new Error("marcar");
   }
