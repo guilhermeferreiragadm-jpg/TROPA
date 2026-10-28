@@ -1198,6 +1198,21 @@ const hash32 = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h*3
 const propostaAtual = (prop, planoJson) => !!prop && prop.base === hash32(planoJson);
 const TIPOS_INBOX = ["convite","vinculo","encerrado","proposta","resposta","perm","comentario"];
 const itemInboxValido = it => !!it && TIPOS_INBOX.includes(it.tipo) && typeof it.ref === "string" && it.ref.length > 0 && it.ref.length <= 80 && Number.isFinite(it.quando);
+const cripto = () => globalThis.crypto.subtle;
+const paraB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i+8192)); return btoa(s); };
+const deB64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+const CURVA = {name:"ECDH", namedCurve:"P-256"};
+async function gerarPar(){ const k = await cripto().generateKey(CURVA, true, ["deriveBits"]); return {pub: await cripto().exportKey("jwk", k.publicKey), priv: await cripto().exportKey("jwk", k.privateKey)}; }
+async function derivarChave(privJwk, pubJwk, vincIdStr){
+  const priv = await cripto().importKey("jwk", privJwk, CURVA, false, ["deriveBits"]);
+  const pub = await cripto().importKey("jwk", pubJwk, CURVA, false, []);
+  const bits = await cripto().deriveBits({name:"ECDH", public:pub}, priv, 256);
+  const hk = await cripto().importKey("raw", bits, "HKDF", false, ["deriveKey"]);
+  const te = new TextEncoder();
+  return cripto().deriveKey({name:"HKDF", hash:"SHA-256", salt:te.encode(vincIdStr), info:te.encode("tropa-vinculo-v1")}, hk, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function cifrar(chave, obj){ const iv = globalThis.crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await cripto().encrypt({name:"AES-GCM", iv}, chave, new TextEncoder().encode(JSON.stringify(obj)))); return {v:1, iv:paraB64(iv), ct:paraB64(ct)}; }
+async function decifrar(chave, env){ const pt = await cripto().decrypt({name:"AES-GCM", iv:deB64(env.iv)}, chave, deB64(env.ct)); return JSON.parse(new TextDecoder().decode(pt)); }
 /* @pro:end */
 
 /* ===================== MOVIMENTO (DOM) ===================== */

@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -116,4 +116,29 @@ test("aplicarPatch rejeita length e índice além do tamanho em array", () => {
 test("conviteValido exige expira numérico finito", () => {
   const c = F.novoConvite("p1", "personal", 1000, "ABCD2345");
   assert.equal(F.conviteValido({...c, expira: String(c.expira)}, 1000), false);
+});
+
+test("cifragem: aluno e profissional derivam a mesma chave e leem um ao outro", async () => {
+  const al = await F.gerarPar(), pf = await F.gerarPar();
+  const kA = await F.derivarChave(al.priv, pf.pub, "u1~personal");
+  const kP = await F.derivarChave(pf.priv, al.pub, "u1~personal");
+  const env = await F.cifrar(kA, {treino: [1, 2, 3], nota: "força"});
+  assert.equal(env.v, 1);
+  assert.ok(!JSON.stringify(env).includes("força"));
+  assert.deepEqual(await F.decifrar(kP, env), {treino: [1, 2, 3], nota: "força"});
+});
+
+test("cifragem: terceiro e id de vínculo errado não decifram", async () => {
+  const al = await F.gerarPar(), pf = await F.gerarPar(), x = await F.gerarPar();
+  const k = await F.derivarChave(al.priv, pf.pub, "u1~personal");
+  const env = await F.cifrar(k, {a: 1});
+  await assert.rejects(F.decifrar(await F.derivarChave(x.priv, al.pub, "u1~personal"), env));
+  await assert.rejects(F.decifrar(await F.derivarChave(pf.priv, al.pub, "u1~nutri"), env));
+});
+
+test("cifragem: payload grande (200 KB) volta igual", async () => {
+  const al = await F.gerarPar(), pf = await F.gerarPar();
+  const k = await F.derivarChave(al.priv, pf.pub, "v");
+  const grande = {s: "x".repeat(200000)};
+  assert.deepEqual(await F.decifrar(k, await F.cifrar(k, grande)), grande);
 });
