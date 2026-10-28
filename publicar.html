@@ -415,7 +415,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .lst{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);overflow:hidden}
 .lst>button,.lst>a{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--sep);background:none;padding:14px 16px;font-weight:600;text-align:left;width:100%;color:var(--tx);text-decoration:none;min-height:50px}
 .lst>button:last-child,.lst>a:last-child{border-bottom:0}
-.lst small{display:block;font-weight:400;color:var(--tx-2);font-size:.8125rem}.chev{color:var(--tx-2);font-weight:400;flex:none}
+.lst small{display:block;font-weight:400;color:var(--tx-2);font-size:.8125rem}.chev{color:var(--tx-2);font-weight:400;flex:none}.ds{display:flex;flex-direction:column;gap:12px}
 .code{font-weight:700;font-size:1.8rem;letter-spacing:.12em;font-variant-numeric:tabular-nums}
 .tbl{width:100%;border-collapse:collapse;font-size:.875rem}
 .tbl th{font-size:.75rem;font-weight:600;color:var(--tx-2);text-align:left;padding:6px 4px;border-bottom:1px solid var(--sep)}
@@ -2347,7 +2347,7 @@ function render(keep){
   if (t==="feed") return telaFeed(o);
   if (t==="comida") return telaComida(o);
   if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="ngrupo") return telaNovoGrupo(); if (s==="grupo") return telaGrupo(R.arg); if (s==="dupla") return telaDupla(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
-  if (t==="alunos") return telaProAlunos(o);
+  if (t==="alunos") return s==="det" ? telaProDetalhe(R.arg) : telaProAlunos(o);
   if (t==="propostas") return telaPropostas(o);
   if (t==="biblioteca") return telaProBiblioteca(o);
   if (t==="planos") return telaProPlanos(o);
@@ -2394,6 +2394,7 @@ function aoMudarPro(){
   renderBarra();
   if (!papelOcup) ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
   if (MODO!==ant && P && P.perfil && !$("tabs").hidden && ((R.tab==="hoje" && !R.sub) || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
+  else proAoVivo();
 }
 let papelOcup = false;
 function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca ficam em modos diferentes
@@ -2402,7 +2403,160 @@ function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca 
   m = modoValido(m); if (m===MODO) return false; MODO = m; return true;
 }
 function telaPro(h1, msg, o){ const app = tela(topo(NOMEMODO[MODO],h1)+'<div class="box"><p class="s">'+msg+'</p></div>', {tabs:true, keepScroll:o&&o.keepScroll}); bindGo(app); return app; }
-const telaProAlunos = o => telaPro("Alunos","Nenhum aluno ainda.",o), telaPropostas = o => telaPro("Propostas","Nenhuma proposta por enquanto.",o), telaProBiblioteca = o => telaPro("Biblioteca","Biblioteca vazia.",o), telaProPlanos = o => telaPro("Planos","Nenhum plano ainda.",o);
+const telaPropostas = o => telaPro("Propostas","Nenhuma proposta por enquanto.",o);
+/* ===== modos Personal e Nutri: alunos, detalhe, modelos ===== */
+const alunosDe = papel => [...Pro.vinc.values()].filter(v=>v.profId===me && v.papel===papel && v.estado==="ativo").sort((a,b)=>String(a.nomeA||"").localeCompare(String(b.nomeA||""), "pt-BR"));
+const propsPend = vid => 0;   // Task 7: conta as propostas pendentes do vínculo
+const quandoPro = d => { const x = parseD(d), n = x ? Math.max(0, Math.round((today-x)/DAY)) : 0; return {n, t:n===0 ? "hoje" : n===1 ? "ontem" : "há "+n+" dias"}; };
+const SNAPS = new Map();
+async function snapPro(vid, cat, fresco){
+  const k = vid+"_"+cat, c = SNAPS.get(k); if (c && !fresco && Date.now()-c.t < 20000) return c.d;
+  let d = null; try{ d = await Pro.lerSnap(vid, cat); }catch(e){}
+  if (d) SNAPS.set(k, {t:Date.now(), d}); return d;   // null não fica em cache: o aluno pode publicar a qualquer momento
+}
+async function ativAluno(v){
+  const per = v.papel==="personal", lib = (per ? ["treino","perf"] : ["comida"]).filter(c=>podeVer(v, c));
+  if (!lib.length) return {t: per ? "Treino não liberado" : "Comida não liberada"};
+  const ss = await Promise.all(lib.map(c=>snapPro(v.id, c)));
+  if (ss.every(s=>!s)) return {t:"Aguardando o aluno abrir o app"};
+  let ult = "";
+  ss.forEach((s, i)=>{ if (!s) return;
+    if (lib[i]==="treino") Object.keys(s.feitos||{}).forEach(k=>{ const m = /^ck_(\d{4}-\d{2}-\d{2})_/.exec(k); if (m && m[1]>ult) ult = m[1]; });
+    if (lib[i]==="perf") (s.corridas||[]).forEach(r=>{ if (r && r.d>ult) ult = r.d; });
+    if (lib[i]==="comida") Object.keys(s.ref||{}).forEach(k=>{ const m = /^ref_(\d{4}-\d{2}-\d{2})$/.exec(k); if (m && m[1]>ult && (s.ref[k]||[]).some(r=>r && !r.pulou)) ult = m[1]; });
+  });
+  if (!ult) return {t: per ? "Ainda não treinou" : "Nenhuma refeição nos últimos 14 dias"};
+  const q = quandoPro(ult);
+  if (!per) return {t:"última refeição "+q.t};
+  return q.n>=5 ? {t:"sem treinar há "+q.n+" dias", warn:true} : {t:"treinou "+q.t};
+}
+function proSig(){
+  if (R.tab!=="alunos") return "";
+  if (R.sub==="det"){ const v = Pro.vinc.get(R.arg); return JSON.stringify(v ? [v.estado, v.perm, v.nomeA] : null); }
+  return JSON.stringify(alunosDe(MODO).map(v=>[v.id, v.nomeA, v.perm]));
+}
+let proSigVista = "", proTent = false;
+function proAoVivo(){
+  if (R.tab!=="alunos" || !P || $("tabs").hidden) return;
+  const sig = proSig(); if (sig===proSigVista) return;
+  const ov = $("ov"), at = document.activeElement;
+  if ((ov && ov.innerHTML) || (at && (at.tagName==="INPUT" || at.tagName==="TEXTAREA" || at.isContentEditable)) || document.querySelector('[data-armed="1"]')){
+    if (!proTent){ proTent = true; setTimeout(()=>{ proTent = false; proAoVivo(); }, 2000); }
+    return;
+  }
+  const v = R.sub==="det" && Pro.vinc.get(R.arg);
+  if (R.sub==="det" && (!v || v.estado!=="ativo")){ ir("alunos"); return; }
+  render(true);
+}
+function telaProAlunos(o){
+  const papel = MODO, vs = alunosDe(papel), pend = vs.reduce((n, v)=>n+propsPend(v.id), 0);
+  proSigVista = proSig();
+  const app = tela(topo(NOMEMODO[papel], "Alunos")+'<button type="button" class="btn go" id="alc">Convidar aluno</button>'+
+    (vs.length ? '<p class="s">'+vs.length+(vs.length===1?" aluno":" alunos")+' · '+pend+(pend===1?" proposta pendente":" propostas pendentes")+'</p><div class="lst">'+vs.map(v=>lr("al_"+v.id, "", esc(v.nomeA||"Aluno")+(propsPend(v.id) ? ' <span class="pill">'+propsPend(v.id)+'</span>' : ''), '…')).join("")+'</div>'
+      : '<div class="box"><b>Nenhum aluno ainda</b><p class="s">Toque em Convidar aluno e mande o código. Ele escolhe o que você pode ver.</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
+  bindGo(app);
+  $("alc").addEventListener("click", ()=>sheetNovoConvite(papel));
+  vs.forEach(v=>{
+    $("al_"+v.id).addEventListener("click", ()=>ir("alunos", "det", v.id));
+    ativAluno(v).then(a=>{ const s = document.querySelector('[id="al_'+v.id+'"] small'); if (s) s.innerHTML = a.warn ? '<span class="cor-warn">'+esc(a.t)+'</span>' : esc(a.t); });
+  });
+}
+function sheetNovoConvite(papel){
+  const corpo = abrirSheet("Novo convite");
+  corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="s">Gerando o código…</p>';
+  Pro.gerarConvite(papel).then(r=>{
+    if (!corpo.isConnected) return;
+    if (!r || !r.cod) throw new Error("falha");
+    const cod = r.cod.slice(0,4)+"-"+r.cod.slice(4), txt = "Entra no "+BRAND+": https://claude.ai/artifact/"+ARTIFACT_ID+". Código: "+cod+". Vale por 7 dias.";
+    corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="s">Mande este código. O aluno digita em Perfil, Entrar com código de um profissional.</p><div class="box tc"><span class="code" id="cvcod">'+esc(cod)+'</span></div><p class="s" id="cvtx">'+esc(txt)+'</p><button type="button" class="btn go" id="cvcp">Copiar</button><button type="button" class="lk" id="cvfe">Fechar</button>';
+    $("cvcp").addEventListener("click", ()=>copiar(txt)); $("cvfe").addEventListener("click", ()=>fecharSheet());
+  }).catch(e=>{ if (!corpo.isConnected) return; corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="msg err" role="alert">'+esc(msgPro(e))+'</p><button type="button" class="lk" id="cvfe">Fechar</button>'; $("cvfe").addEventListener("click", ()=>fecharSheet()); });
+}
+const CATPRO = {treino:"Treino", perf:"Performance", comida:"Comida", corpo:"Peso e medidas", feed:"Feed"};
+const kgTxt = n => num(+n, 1)+" kg", linhaPro = (a, b) => '<div class="between"><span>'+a+'</span><span class="s">'+b+'</span></div>';
+function htmlSnap(cat, s){
+  const lista = (arr, vazio) => arr.length ? arr.join("") : '<p class="s">'+vazio+'</p>';
+  if (cat==="treino"){
+    const feitos = s.feitos||{}, segK = key(addDays(today, -dow(today))), nSem = Object.keys(feitos).filter(k=>/^ck_/.test(k) && k.slice(3,13)>=segK).length;
+    let r = null; try{ r = s.plano && semanaEm(s.plano, [], key(today)); }catch(e){}
+    const sem = r && r.sem, prev = sem ? sem.dias.reduce((n, d)=>n+((d && d.treinos)||[]).length, 0) : 0;
+    const dias = sem ? sem.dias.map((d, i)=>{ const ts = (d && d.treinos)||[]; if (!ts.length) return ""; const dk = key(addDays(today, i-dow(today)));
+      return linhaPro('<b>'+esc(d.dia)+'</b> '+ts.map(t=>esc(t.t)).join(" + "), ts.every((t, j)=>feitos["ck_"+dk+"_"+j]) ? '<span class="pill ok">feito</span>' : ''); }).join("") : "";
+    const com = Object.entries(s.coment||{}).slice(-8).map(([k, v])=>{ const t = typeof v==="string" ? v : v && v.txt; return t ? '<p><b>'+esc(k.replace(/_/g, " "))+'</b> '+esc(String(t).slice(0, 240))+'</p>' : ""; }).join("");
+    return '<div class="box"><b>Resumo da semana</b><p><span class="n">'+nSem+'</span> '+(prev ? 'de '+prev+' treinos feitos' : (nSem===1 ? 'treino feito' : 'treinos feitos'))+'</p></div>'+
+      '<div class="box"><div class="between"><b>Treino atual</b><span class="s">'+(r && sem ? 'Semana '+r.w+' de '+s.plano.semanas.length : '')+'</span></div>'+(dias || '<p class="s">Sem plano ativo nesta semana.</p>')+'</div>'+
+      '<div class="box"><b>Comentários dos exercícios</b>'+(com || '<p class="s">Nenhum comentário ainda.</p>')+'</div>';
+  }
+  if (cat==="perf"){
+    const cs = (s.corridas||[]).slice(-5).reverse();
+    return '<div class="box"><b>Performance</b><p><span class="n">'+num(+s.km||0, 1)+'</span> km em 90 dias · <span class="n">'+(+s.treinosSemana||0)+'</span> '+(+s.treinosSemana===1 ? 'treino' : 'treinos')+' na semana · foguinho <span class="n">'+(+s.fogo||0)+'</span></p>'+lista(cs.map(c=>linhaPro(esc(fmt(parseD(c.d))), num(+c.km, 1)+' km'+(c.min ? ' · '+Math.round(c.min)+' min' : ''))), "Nenhuma corrida nos últimos 90 dias.")+'</div>';
+  }
+  if (cat==="comida"){
+    const ds = Object.keys(s.ref||{}).sort().reverse().slice(0, 5), m = s.metas;
+    return '<div class="box"><b>Plano alimentar</b>'+(s.objetivo ? '<p>Objetivo: '+esc(s.objetivo)+'</p>' : '')+(m ? '<p class="s">Meta do dia: proteína '+esc((m.prot||[]).join(" a "))+' g · carboidrato '+esc((m.carb||[]).join(" a "))+' g · água '+num(+m.agua, 1)+' L</p>' : '')+'</div>'+
+      '<div class="box"><b>Refeições recentes</b>'+lista(ds.map(k=>'<p><b>'+esc(fmt(parseD(k.slice(4))))+'</b></p>'+(s.ref[k]||[]).map(r=>linhaPro(esc(r.refeicao||"")+': '+esc(r.pulou ? "pulou" : r.comeu||""), esc(r.estimativa||""))).join("")), "Nenhuma refeição registrada.")+'</div>';
+  }
+  if (cat==="corpo"){
+    const l = (s.lista||[]).slice(-6).reverse(), u = l[0], ant = l[1];
+    return '<div class="box"><b>Peso e medidas</b>'+(u ? '<p><span class="n">'+kgTxt(u.kg)+'</span> em '+esc(fmt(parseD(u.d)))+(ant ? ' · antes '+kgTxt(ant.kg) : '')+'</p>'+(u.m ? '<p class="s">'+Object.keys(ROTULO_MEDIDA).filter(k=>+u.m[k]>0).map(k=>ROTULO_MEDIDA[k]+' '+num(+u.m[k], 1)+' cm').join(" · ")+'</p>' : '') : '<p class="s">Nenhum peso registrado.</p>')+lista(l.slice(1).map(x=>linhaPro(esc(fmt(parseD(x.d))), kgTxt(x.kg))), "")+'</div>';
+  }
+  if (cat==="feed") return '<div class="box"><b>Feed</b>'+lista((s.posts||[]).slice(0, 5).map(p=>linhaPro(esc(p.titulo||p.esporte||"Post"), esc(p.date ? fmt(parseD(p.date)) : ""))), "Nenhum post ainda.")+'</div>';
+  return "";
+}
+const cadeado = () => SV('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>');
+function telaProDetalhe(vid){
+  const v = Pro.vinc.get(vid);
+  if (!v || v.estado!=="ativo" || v.profId!==me || v.papel!==MODO){ R.sub = null; R.arg = null; return telaProAlunos({}); }
+  proSigVista = proSig();
+  const cats = CATS_POR_PAPEL[v.papel];
+  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">'+esc(v.nomeA||"Aluno")+'</h1></div><button type="button" class="btn go" id="vpr">Propor mudança</button>'+
+    cats.map(c=>podeVer(v, c) ? '<div class="ds" id="ds_'+c+'"><div class="box"><b>'+CATPRO[c]+'</b><p class="s">Carregando…</p></div></div>' : '<div class="box"><div class="between"><b>'+CATPRO[c]+'</b><span class="cor-2">'+cadeado()+'</span></div><p class="s">O aluno não liberou</p></div>').join(""), {tabs:true});
+  $("vb").addEventListener("click", ()=>ir("alunos")); $("vpr").addEventListener("click", ()=>proporMudanca(vid));
+  cats.filter(c=>podeVer(v, c)).forEach(c=>snapPro(vid, c, true).then(s=>{ const el = $("ds_"+c); if (!el) return;
+    el.innerHTML = s ? htmlSnap(c, s) : '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Aguardando o aluno abrir o app</p></div>'; }));
+}
+function proporMudanca(vid){   // Task 7 liga o editor de propostas aqui
+  const corpo = abrirSheet("Propor mudança");
+  corpo.innerHTML = '<h2 class="h2 lg">Em breve</h2><p class="s">Aqui você vai propor mudanças no plano do aluno, e ele aceita ou recusa.</p><button type="button" class="btn" id="pmok">Entendi</button>';
+  $("pmok").addEventListener("click", ()=>fecharSheet());
+}
+/* modelos do profissional: privados, em data/users/<eu>/modelos */
+let MODELOS = null;
+async function lerModelos(){
+  if (MODELOS) return MODELOS;
+  try{ const s = await db.collection(base()).doc("modelos").get(), d = s.exists ? (s.data()||{}) : {}; MODELOS = (Array.isArray(d.lista) ? d.lista : []).filter(x=>x && x.id && typeof x.nome==="string"); }catch(e){ return null; }
+  return MODELOS;
+}
+async function gravarModelos(l){ await db.collection(base()).doc("modelos").set({lista:l}); MODELOS = l; }
+function telaModelos(o, h1, vazio){
+  const papel = MODO, app = tela(topo(NOMEMODO[papel], h1)+'<button type="button" class="btn go" id="mdn">Novo modelo</button><div id="mdl"><p class="s">Carregando…</p></div>', {tabs:true, keepScroll:o&&o.keepScroll});
+  bindGo(app); $("mdn").addEventListener("click", ()=>sheetModelo(papel, null));
+  lerModelos().then(l=>{ const el = $("mdl"); if (!el) return;
+    if (!l){ el.innerHTML = '<p class="msg err">Não consegui carregar agora.</p>'; return; }
+    const ms = l.filter(m=>m.papel===papel);
+    el.innerHTML = ms.length ? '<div class="lst">'+ms.map(m=>lr("md_"+m.id, "", esc(m.nome), esc(String(m.txt||"").split("\n")[0].slice(0, 60)))).join("")+'</div>' : '<div class="box"><b>'+vazio+'</b><p class="s">Salve modelos para usar como ponto de partida quando for propor mudanças.</p></div>';
+    ms.forEach(m=>$("md_"+m.id).addEventListener("click", ()=>sheetModelo(papel, m)));
+  });
+}
+function sheetModelo(papel, m){
+  const corpo = abrirSheet(m ? "Editar modelo" : "Novo modelo");
+  corpo.innerHTML = '<h2 class="h2 lg">'+(m ? 'Editar modelo' : 'Novo modelo')+'</h2><input class="inp" id="mdnm" maxlength="60" placeholder="Nome do modelo" aria-label="Nome do modelo" value="'+esc(m ? m.nome : "")+'"><textarea class="inp" id="mdtx" rows="6" maxlength="4000" placeholder="Anotações e conteúdo" aria-label="Anotações e conteúdo">'+esc(m ? m.txt||"" : "")+'</textarea><p class="msg err" id="mdm" role="alert"></p><button type="button" class="btn go" id="mdok">Salvar</button>'+(m ? '<button type="button" class="btn ghost cor-ruim" id="mdex">Excluir</button>' : '')+'<button type="button" class="lk" id="mdno">Cancelar</button>';
+  const msg = t => { const e = $("mdm"); if (e) e.textContent = t; };
+  const gravar = async l => { try{ await gravarModelos(l); fecharSheet(); if (R.tab==="biblioteca" || R.tab==="planos") render(true); }catch(e){ msg("Não consegui salvar. Tente de novo."); const b = $("mdok"); if (b) b.disabled = false; } };
+  $("mdno").addEventListener("click", ()=>fecharSheet());
+  $("mdok").addEventListener("click", async ()=>{
+    const nome = $("mdnm").value.trim().slice(0, 60), txt = $("mdtx").value.trim().slice(0, 4000);
+    if (!nome){ msg("Dê um nome ao modelo."); return; }
+    $("mdok").disabled = true; const l = await lerModelos(); if (!l){ msg("Não consegui salvar. Tente de novo."); $("mdok").disabled = false; return; }
+    const novo = {id:m ? m.id : "m"+Date.now().toString(36), papel, nome, txt, em:Date.now()};
+    gravar(m ? l.map(x=>x.id===m.id ? novo : x) : l.concat([novo]));
+  });
+  if (m) $("mdex").addEventListener("click", async e=>{
+    const b = e.currentTarget; if (b.dataset.armed!=="1"){ b.dataset.armed = "1"; b.textContent = "Toque de novo para excluir"; setTimeout(()=>{ if (b.isConnected){ delete b.dataset.armed; b.textContent = "Excluir"; } }, 4000); return; }
+    b.disabled = true; const l = await lerModelos(); if (!l){ msg("Não consegui excluir. Tente de novo."); b.disabled = false; return; } gravar(l.filter(x=>x.id!==m.id));
+  });
+}
+const telaProBiblioteca = o => telaModelos(o, "Biblioteca", "Biblioteca vazia"), telaProPlanos = o => telaModelos(o, "Planos", "Nenhum plano ainda");
 function telaSino(){
   const app = tela('<button type="button" class="back" id="vb">← Voltar</button><h1 class="h1">Notificações</h1><div class="box"><p class="s">Sem notificações.</p></div>', {tabs:true});
   $("vb").addEventListener("click", ()=>ir(barraAbas(MODO)[0]));
