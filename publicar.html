@@ -7,7 +7,7 @@
 :root{
   color-scheme:light;
   --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:#EBEBF0; --tx:#0B0D10; --tx-2:#5A626C; --sep:rgba(60,60,67,.14);
-  --go:#FF5A00; --go-fill:#CF4500; --go-press:#B53B00; --go-ink:#C23E00; --go-soft:#FFF1EC; --go-line:#FFC9B6;
+  --go:#FF5A00; --go-fill:#CF4500; --go-press:#B53B00; --go-ink:#C23E00; --go-soft:#FFF1EC;
   --done:#13A150; --done-ink:#0F7A3E; --done-soft:#EAF7EF; --done-line:#BFE6CE;
   --caution:#E5A100; --caution-soft:#FFF7E0; --warn-ink:#8A5F00;
   --stop:#E0362B; --stop-ink:#C62A20; --stop-soft:#FDECEA;
@@ -21,24 +21,25 @@
 }
 *{box-sizing:border-box}
 :root[data-tema="escuro"]{color-scheme:dark;--bg:#0F1317;--surface:#181D22;--surface-2:#20262C;--tx:#F2F4F6;--tx-2:#A7B0B9;--sep:rgba(255,255,255,.12);
-  --go-ink:#FF8A4C;--go-soft:#2A1A12;--go-line:#6B2F12;--done-ink:#4ADE80;--done-soft:#12261B;--done-line:#1F5A38;--warn-ink:#F0B429;--caution-soft:#2B2410;--stop-ink:#FF7A70;--stop-soft:#2D1512;
+  --go-ink:#FF8A4C;--go-soft:#2A1A12;--done-ink:#4ADE80;--done-soft:#12261B;--done-line:#1F5A38;--warn-ink:#F0B429;--caution-soft:#2B2410;--stop-ink:#FF7A70;--stop-soft:#2D1512;
   --sh1:0 1px 2px rgba(0,0,0,.4);--sh2:0 4px 16px rgba(0,0,0,.4);--sh3:0 12px 40px rgba(0,0,0,.6);
   --mat-fino:rgba(24,29,34,.6);--mat-reg:rgba(24,29,34,.72);--mat-grosso:rgba(24,29,34,.86);--mat-borda:rgba(255,255,255,.08);
   --swim-ink:#6AB7FF;--track:#313941}
 /* materiais: vidro com blur; sólido quando o usuário pede menos transparência ou o navegador não suporta */
-.mat,.mat-reg,.mat-grosso{border:1px solid var(--mat-borda)}
+.mat,.mat-reg{border:1px solid var(--mat-borda)}
 .mat{background:var(--mat-fino);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
 .mat-reg{background:var(--mat-reg);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
-.mat-grosso{background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%)}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.mat,.mat-reg,.mat-grosso{background:var(--surface)}}
-@media (prefers-reduced-transparency:reduce){.mat,.mat-reg,.mat-grosso{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
-@media (prefers-contrast:more){:root{--sep:rgba(0,0,0,.4);--tx-2:#3F464E}:root[data-tema="escuro"]{--sep:rgba(255,255,255,.4);--tx-2:#D2D8DE}.mat,.mat-reg,.mat-grosso{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.mat,.mat-reg{background:var(--surface)}}
+@media (prefers-reduced-transparency:reduce){.mat,.mat-reg{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){:root{--sep:rgba(0,0,0,.4);--tx-2:#3F464E}:root[data-tema="escuro"]{--sep:rgba(255,255,255,.4);--tx-2:#D2D8DE}.mat,.mat-reg{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 [hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--tx);-webkit-text-size-adjust:100%}
 body{font-family:var(--f);font-size:1rem;line-height:1.45;margin:0;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+:focus-visible{outline:2px solid var(--go-fill);outline-offset:2px}
+:root[data-tema="escuro"] :focus-visible{outline-color:var(--go)}
+.lst>:focus-visible,.dia-sec>summary:focus-visible,.grp>:focus-visible,.rkl :focus-visible,.post :focus-visible{outline-offset:-2px}   /* dentro de contêineres com overflow:hidden o anel de fora seria cortado */
 img{max-width:100%}
 .wrap{max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow:clip;padding-bottom:calc(112px + var(--safe-b))}
 #app{display:flex;flex-direction:column;gap:12px;padding-inline:16px;padding-block:calc(12px + env(safe-area-inset-top,0px)) 24px;transform-origin:50% 0}
@@ -54,8 +55,9 @@ p{margin:0}
 .wm{font-family:var(--f-wm);font-style:italic;font-weight:900;font-size:1.15rem;letter-spacing:.03em;text-transform:uppercase;display:inline-flex;align-items:center;gap:8px}
 .wm i{width:26px;height:18px;background:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%2070%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23FF9A1F%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%23FF3D00%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20fill=%22url(%23g)%22%20d=%22M38%204%20Q50%202%2062%204%20L98%2066%20L78%2066%20L56%2026%20L24%2027%20Z%22/%3E%3Cpath%20fill=%22url(%23g)%22%20d=%22M52%2029%20L10%2042%20L0%2066%20L22%2066%20Q31%2064%2038%2056%20Z%22/%3E%3C/svg%3E") center/contain no-repeat;display:inline-block}
 /* pressão: feedback no pointerdown, sem espera */
-.btn,.chip,.seg button,.opt,.pl,.ci,.pf-link,.lst>button,.lst>a,.wrow,.mhead button,.mcal button,.lk,.thumbs button,.ck,.kudo,.proxc,.pf-chip{transition:transform .1s ease-out,background-color .15s ease-out,box-shadow .15s ease-out}
-.btn:active,.chip:active,.seg button:active,.ck:active,.kudo:active,.mhead button:active,.thumbs button:active{transform:scale(.97)}
+.btn,.chip,.seg button,.opt,.pl,.ci,.pf-link,.lst>button,.lst>a,.wrow,.mhead button,.mcal button,.lk,.thumbs button,.ck,.kudo,.proxc,.pf-chip,.back,.tlink,.sugg button,.ph-row,.macro>button,button.box,.dia-sec>summary,button.ti{transition:transform .1s ease-out,background-color .15s ease-out,box-shadow .15s ease-out}
+.btn:active,.chip:active,.seg button:active,.ck:active,.kudo:active,.mhead button:active,.thumbs button:active,.lk:active,.back:active,.tlink:active,.sugg button:active,.ph-row:active,.macro>button:active,button.box:active,button.ti:active{transform:scale(.97)}
+.dia-sec>summary:active{transform:scale(.985)}   /* linhas e cartões largos ficam em .985: com .97 o movimento de uma linha inteira parece exagerado (exceção registrada na spec) */
 .opt:active,.pl:active,.ci:active,.pf-link:active,.lst>button:active,.lst>a:active,.mcal button:active{transform:scale(.985)}
 .wrow:active,.pf-chip:active{transform:scale(.97)}
 /* botões */
@@ -69,7 +71,6 @@ p{margin:0}
 .back{border:0;background:none;font-weight:600;font-size:1.0625rem;padding:10px 10px 10px 0;margin-left:-4px;align-self:flex-start;display:inline-flex;gap:4px;align-items:center;color:var(--go-ink);min-height:44px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .between{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.stack{display:flex;flex-direction:column;gap:10px}
 /* formulário */
 .fld{display:flex;flex-direction:column;gap:6px}
 .fld>label,.lbl{font-size:.8125rem;font-weight:600;color:var(--tx-2)}
@@ -88,7 +89,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .opt[aria-pressed="true"] .ic{background:var(--go-fill);color:#fff}
 .chk{display:flex;gap:12px;align-items:flex-start;font-size:.9375rem;line-height:1.4;cursor:pointer}
 .chk input{width:24px;height:24px;flex:none;accent-color:var(--go-fill);margin:0}
-.prog{display:flex;gap:4px}.prog i{flex:1;height:4px;border-radius:2px;background:var(--sep);transition:background-color .3s}.prog i.on{background:var(--go)}
+.prog{display:flex;gap:4px}.prog i{flex:1;height:4px;border-radius:2px;background:var(--track);transition:background-color .3s}.prog i.on{background:var(--go)}
 .msg{font-size:.875rem;font-weight:600;min-height:1em}
 .msg.err{color:var(--stop-ink)}
 .hint{background:var(--surface-2);border-radius:var(--r1);padding:12px 14px;font-size:.875rem;color:var(--tx-2)}
@@ -101,20 +102,19 @@ textarea.inp{resize:vertical;min-height:88px}
 .chip[aria-pressed="true"]{background:var(--go-soft);color:var(--go-ink);box-shadow:inset 0 0 0 1.5px var(--go)}
 .pill{font-size:.6875rem;font-weight:600;padding:3px 8px;border-radius:999px;color:var(--go-ink);background:var(--go-soft);display:inline-block}
 .pill.ok{background:var(--done-soft);color:var(--done-ink)}.pill.wait{background:var(--caution-soft);color:var(--warn-ink)}.pill.no{background:var(--stop-soft);color:var(--stop-ink)}
-.line{border-top:1px solid var(--sep)}
 .box{border-radius:var(--r2);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface);box-shadow:var(--sh1)}
 .box.strong{box-shadow:var(--sh2),inset 0 0 0 1.5px var(--go)}
 /* área de toque mínima de 44px: tamanho visual igual, alvo invisível maior */
 .btn.sm,.chip,.lk,.pf-chip{position:relative}
 .btn.sm::after,.chip::after,.lk::after,.pf-chip::after{content:"";position:absolute}
 .btn.sm::after{inset:-3px 0}.chip::after,.pf-chip::after{inset:-7px -2px}.lk::after{inset:-3px 0}
-.lk.in{padding:0}.lk.in::after{inset:-12px -8px}   /* link dentro de texto: sem padding, alvo de 44px invisível */
+.lk.vb::after{inset:-12px -6px}.lk.in{padding:0}.lk.in::after{inset:-12px -8px}   /* link dentro de texto: sem padding, alvo de 44px invisível */
 @media (prefers-contrast:more){.box,.opt,.ci{box-shadow:inset 0 0 0 1px var(--sep)}}
 .lst>label{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--sep);padding:14px 16px;font-weight:600;min-height:50px}
 .lst>label input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--go-fill);margin:0}
 .lst>.cor-go{color:var(--go-ink)}.lst>.cor-ruim{color:var(--stop-ink)}
 .pv8{padding-block:8px}
-.mt0{margin-top:0}.mt8{margin-top:8px}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-warn{color:var(--warn-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.as0{align-self:flex-start}.ae{align-self:flex-end}.h2.lg{font-size:1.7rem}.mw0{min-width:0}.grow{flex:1;min-width:0}
+.mt8{margin-top:8px}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-warn{color:var(--warn-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.as0{align-self:flex-start}.ae{align-self:flex-end}.h2.lg{font-size:1.7rem}.mw0{min-width:0}.grow{flex:1;min-width:0}
 /* abertura */
 .open{min-height:100vh;background:var(--noite);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px calc(34px + var(--safe-b));gap:14px;overflow:hidden}
 .open .photo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,16,.1),rgba(11,13,16,.25) 40%,rgba(11,13,16,.95) 80%),repeating-linear-gradient(115deg,#2a2f36 0 2px,#23272d 2px 9px)}
@@ -229,9 +229,10 @@ textarea.inp{resize:vertical;min-height:88px}
 .sheet{position:fixed;left:0;right:0;margin:0 auto;bottom:0;width:min(480px,100%);max-height:92vh;overflow-y:auto;overscroll-behavior:contain;background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);border-radius:var(--r4) var(--r4) 0 0;box-shadow:var(--sh3);padding:8px 16px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px;z-index:41;will-change:transform}
 .sheet .box,.sheet .opt{background:var(--surface)}
 .grab{position:relative;display:block;height:44px;margin:-8px -16px -16px;flex:none;cursor:grab}
-.grab::after{content:"";position:absolute;left:50%;top:14px;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--sep);filter:brightness(.8)}
+.grab::after{content:"";position:absolute;left:50%;top:14px;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--tx-2);opacity:.5}
 #rsb,#rsx{display:flex;flex-direction:column;gap:12px}
-.sheet-aberta #app{transform:scale(.97);transition:transform .4s cubic-bezier(.32,.72,0,1)}
+.sheet-aberta #app,.sheet-saindo #app{transform-origin:50% calc(var(--sy,0px) + 50vh);transition:transform .4s cubic-bezier(.32,.72,0,1)}
+.sheet-aberta #app{transform:scale(.97)}   /* ao fechar, .sheet-aberta sai no começo e .sheet-saindo só mantém a transição, para a página voltar a 1 sem salto; nunca há transição no #app base (briga com o Mov) */
 @media (prefers-reduced-motion:reduce){.sheet-aberta #app{transform:none}}
 @media (prefers-reduced-transparency:reduce){.sheet{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){.sheet{background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh3)}}
@@ -254,7 +255,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .tabs-pill button[aria-current="page"]{color:var(--go-ink)}
 .tabs-pill em{position:absolute;top:3px;left:calc(50% + 6px);background:var(--go-fill);color:#fff;font-style:normal;font-size:.625rem;font-weight:600;min-width:16px;height:16px;border-radius:8px;display:grid;place-content:center;padding:0 4px}
 #borda{position:fixed;top:0;bottom:0;left:max(0px,calc(50% - 240px));width:20px;z-index:20;touch-action:pan-y}
-.sheet-aberta #borda{display:none}
+.sheet-aberta #borda,.sheet-saindo #borda{display:none}
 .fab{flex:none;width:56px;height:56px;border-radius:50%;padding:0;display:grid;place-content:center;color:var(--go-ink);box-shadow:var(--sh2);transition:transform .1s ease-out}
 .fab:active{transform:scale(.97)}
 .fab svg{width:26px;height:26px}
@@ -395,7 +396,8 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .m.a{align-self:flex-start;background:var(--surface-2)}
 .m.sys{align-self:stretch;max-width:none;border:1px solid var(--done-line);background:var(--done-soft);font-size:.8rem;font-weight:700;color:var(--done-ink)}
 .thumbs{display:flex;gap:6px;align-self:flex-start;margin-top:-4px}
-.thumbs button{border:1px solid var(--sep);background:var(--surface);font-size:.8rem;padding:2px 8px}
+.thumbs button{position:relative;border:1px solid var(--sep);background:var(--surface);font-size:.8rem;padding:2px 8px}
+.thumbs button::after,.lk.vb::after{content:"";position:absolute;inset:-10px -7px}
 .thumbs button[aria-pressed="true"]{background:var(--go-fill);color:#fff;border-color:var(--go-fill)}
 .cin{position:sticky;bottom:0;display:flex;gap:8px;align-items:flex-end;padding:10px 16px calc(12px + var(--safe-b));border-width:0}
 .cin textarea{flex:1;min-height:46px;max-height:140px;border:0;border-radius:23px;background:var(--surface-2);padding:12px 16px;resize:none}
@@ -421,7 +423,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .toast{position:fixed;left:50%;bottom:calc(112px + var(--safe-b));transform:translate(-50%,16px) scale(.96);background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);color:var(--tx);box-shadow:var(--sh3);border-radius:999px;padding:12px 18px;font-weight:600;font-size:.9375rem;opacity:0;transition:opacity .25s ease-out,transform .35s cubic-bezier(.32,.72,0,1);z-index:60;max-width:min(440px,calc(100% - 32px));text-align:center;pointer-events:none}
 .toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
 @media (prefers-reduced-motion:reduce){.toast{transform:translate(-50%,0)}}
-@media (prefers-reduced-transparency:reduce){.toast{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more){.toast{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.toast,.sheet{background:var(--surface)}.open .btn{background:rgba(255,255,255,.2)}}
 @media (prefers-reduced-transparency:reduce),(prefers-contrast:more){.open .btn{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.2)}}
 .lvl{background:var(--noite);color:#fff;position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;text-align:center;overflow-y:auto}
@@ -491,7 +493,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.toast{transition:opacity .2s ease!important}}
 
 #cele{position:fixed;inset:0;z-index:90;pointer-events:none;display:grid;place-content:center}
-#cele .cele-m{display:flex;flex-direction:column;align-items:center;gap:6px;animation:cele-in 1.6s cubic-bezier(.2,.8,.2,1) both;color:var(--tx);font-family:var(--f-wm);font-style:italic;font-weight:900;font-size:1.6rem;text-transform:uppercase}
+#cele .cele-m{display:flex;flex-direction:column;align-items:center;gap:6px;animation:cele-in 1.6s cubic-bezier(.2,.8,.2,1) both;color:var(--tx);font-family:var(--f);font-style:normal;font-weight:700;font-size:1.6rem}
 #cele i{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;background:var(--c);opacity:0;animation:cele-p 1.3s ease-out both}
 @keyframes cele-in{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.12);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
 @keyframes cele-p{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0}}
@@ -1143,12 +1145,13 @@ function velocidade(am){
 }
 function maisProximo(valor, alvos){ return alvos.reduce((a, b) => Math.abs(b-valor) < Math.abs(a-valor) ? b : a); }
 // Como a tela nova entra, a partir da rota que saiu e da que chegou.
-function tipoTransicao(a, b){
+// voltando: a navegação veio de um botão "←" (ou do gesto de borda); entre duas sub-telas, isso vira pop
+function tipoTransicao(a, b, voltando){
   if (a.tab===b.tab && a.sub===b.sub && a.arg===b.arg) return "nenhuma";
   if (a.tab!==b.tab) return b.tab==="chat" ? "sobe" : a.tab==="chat" ? "desce" : "aba";
   if (!a.sub && b.sub) return "push";
   if (a.sub && !b.sub) return "pop";
-  return "push";
+  return voltando ? "pop" : "push";
 }
 /* @movimento:end */
 
@@ -1211,16 +1214,17 @@ const Mov = (() => {
       if (projetar(m.y, v) > h*0.5) o.aoFechar(v);
       else para(el, {y:0}, "lancado", {y:v});
     };
-    alca.addEventListener("pointerup", fim); alca.addEventListener("pointercancel", fim);
+    alca.addEventListener("pointerup", fim); alca.addEventListener("pointercancel", fim); alca.addEventListener("lostpointercapture", fim);
   }
   return {reduz, estado, aplicar, para, arrastarFechar};
 })();
 
 /* sheets: quem abre continua escrevendo em #ov; o observador monta o sheet (entrada por mola, alça, scrim) antes do primeiro quadro */
 function fecharSheet(vy){
-  const ov = $("ov"), s = ov.querySelector(".sheet"), limpar = () => { ov.innerHTML = ""; document.documentElement.classList.remove("sheet-aberta"); };
+  const ov = $("ov"), s = ov.querySelector(".sheet"), limpar = () => { ov.innerHTML = ""; document.documentElement.classList.remove("sheet-aberta", "sheet-saindo"); };
   if (!s){ limpar(); return; }
   if (s.dataset.fechando) return;
+  document.documentElement.classList.remove("sheet-aberta"); document.documentElement.classList.add("sheet-saindo");
   s.dataset.fechando = "1"; s.style.pointerEvents = "none";   // fechando: sem toques duplos nos botões do sheet
   const h = s.offsetHeight || 400;
   Mov.para(s, Mov.reduz() ? {o:0} : {y:h}, "suave", vy ? {y:vy} : null).then(() => { if (ov.querySelector(".sheet")===s) limpar(); });
@@ -1230,7 +1234,8 @@ function montarSheet(ov, s, instante){
   const dim = ov.querySelector(".dim"), h = () => s.offsetHeight || 400, m = Mov.estado(s);
   m.alAplicar = () => { if (dim) dim.style.opacity = String(Math.max(0, Math.min(1, m.y > 0 ? 1 - m.y/h() : 1))); };
   if (dim && !dim.dataset.m){ dim.dataset.m = "1"; dim.addEventListener("click", () => fecharSheet()); }
-  document.documentElement.classList.add("sheet-aberta");
+  document.documentElement.style.setProperty("--sy", (window.scrollY || 0) + "px");   // origem do recuo da página: o centro do que está visível
+  document.documentElement.classList.remove("sheet-saindo"); document.documentElement.classList.add("sheet-aberta");
   if (instante){ m.y = 0; Mov.aplicar(s); }   // redesenho no lugar de um sheet já aberto: sem repetir a entrada
   else if (Mov.reduz()){ m.y = 0; m.o = 0; Mov.aplicar(s); void s.offsetWidth; Mov.para(s, {o:1}); }
   else { m.y = h(); Mov.aplicar(s); Mov.para(s, {y:0}, "suave"); }
@@ -1241,7 +1246,7 @@ function montarSheet(ov, s, instante){
 new MutationObserver(recs => { const ov = $("ov"), s = ov && ov.querySelector(".sheet:not([data-m])");
   // substituiu um sheet montado e que não estava fechando (ex.: sheetDocumento redesenha a cada passo): troca na hora
   const trocou = recs.some(r => [...r.removedNodes].some(n => n.nodeType===1 && n.classList.contains("sheet") && n.dataset.m && !n.dataset.fechando));
-  if (s) montarSheet(ov, s, trocou); else if (ov && !ov.querySelector(".sheet")) document.documentElement.classList.remove("sheet-aberta"); }).observe($("ov"), {childList:true});
+  if (s) montarSheet(ov, s, trocou); else if (ov && !ov.querySelector(".sheet")) document.documentElement.classList.remove("sheet-aberta", "sheet-saindo"); }).observe($("ov"), {childList:true});
 
 document.addEventListener("keydown", e => { if (e.key==="Escape" && !e.defaultPrevented && $("ov").querySelector(".sheet:not([data-fechando])")) fecharSheet(); });
 
@@ -1250,6 +1255,7 @@ document.addEventListener("keydown", e => { if (e.key==="Escape" && !e.defaultPr
 let proxTransicao = "nenhuma";
 function entrada(app, tipo){
   if (tipo==="nenhuma") return;
+  document.documentElement.classList.remove("sheet-saindo");   // a transição CSS do recuo não pode suavizar o transform por quadro da entrada
   const m = Mov.estado(app);
   if (Mov.reduz()){ m.x = 0; m.y = 0; m.o = 0; m.s = 1; Mov.aplicar(app); void app.offsetWidth; Mov.para(app, {o:1}); return; }
   const L = app.parentElement.clientWidth || 390, H = window.innerHeight;
@@ -1321,7 +1327,7 @@ function voltarPorGesto(){
       });
     } else Mov.para(app, {x:0, o:1}, "lancado", {x:v});
   };
-  borda.addEventListener("pointerup", fim); borda.addEventListener("pointercancel", fim);
+  borda.addEventListener("pointerup", fim); borda.addEventListener("pointercancel", fim); borda.addEventListener("lostpointercapture", fim);
 }
 voltarPorGesto();
 
@@ -1957,7 +1963,7 @@ function obsHTML(v, k, i){
   const ja = LOG["tr_"+k+"_"+i];
   return '<div class="coach"><span class="av">IA</span><span><b>Você:</b> '+esc(v.txt)+'<br><b>Coach:</b> '+esc(v.resposta)+'</span></div>'+
     (v.novo && !ja ? '<div class="rcard"><b>Treino sugerido: '+esc(v.novo.t)+'</b><span class="s">'+esc([v.novo.km?kmTxt(v.novo.km)+" km":"", v.novo.min?v.novo.min+" min":"", v.novo.m?v.novo.m+" m":"", v.novo.ef?"esforço "+v.novo.ef:""].filter(Boolean).join(" · "))+(v.novo.motivo?'. '+esc(v.novo.motivo):'')+'</span><button type="button" class="btn ink" id="obtroca">Trocar pelo sugerido</button></div>' : '')+
-    (ja ? '<span class="s">Treino trocado pelo coach. <button type="button" class="tlinkb" id="obvolta" style="background:none;border:0;padding:0;text-decoration:underline;font:inherit;color:inherit">Voltar ao original</button></span>' : '');
+    (ja ? '<span class="s">Treino trocado pelo coach. <button type="button" class="tlinkb lk vb" id="obvolta" style="background:none;border:0;padding:0;text-decoration:underline;font:inherit;color:inherit">Voltar ao original</button></span>' : '');
 }
 
 /* ===================== TELA BASE ===================== */
@@ -2020,8 +2026,7 @@ function telaMenor(){ tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 cla
 /* ===================== PERGUNTAS ===================== */
 const ETAPAS = ["Você","Objetivo","Me conta","Seu nível","Rotina","Saúde"];
 function onb(i){
-  // difere do brief: a entrada vinda de fora do onboarding (Perfil, abertura) é sempre push, nunca nenhuma
-  // entre perguntas: direita ao avançar, esquerda ao voltar; vindo de outra tela (Perfil, abertura), entra como push
+  // entre perguntas: direita ao avançar, esquerda ao voltar; vindo de outra tela (Perfil, abertura), entra sempre como push (difere do brief)
   proxTransicao = $("app").querySelector(".prog") ? (i > step ? "push" : i < step ? "pop" : "nenhuma") : "push";
   step = i; salvarRascunho();
   const prog = '<div class="prog">'+ETAPAS.map((_,j)=>'<i class="'+(j<i?'on':'')+'"></i>').join("")+'</div><span class="k">'+(i+1)+' de '+ETAPAS.length+' · '+ETAPAS[i]+'</span>';
@@ -2246,10 +2251,13 @@ function telaRevisao(){
 }
 
 /* ===================== NAVEGAÇÃO ===================== */
+let voltandoPor = false;   // liga no clique de um botão "←" e vale só para a navegação que ele provoca
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".back, [data-back]")){ voltandoPor = true; setTimeout(() => { voltandoPor = false; }, 300); } }, true);
 function ir(tab, sub, arg){
   const antes = {tab:R.tab, sub:R.sub, arg:R.arg};
   R.tab = tab; R.sub = sub||null; R.arg = arg==null?null:arg;
-  proxTransicao = tipoTransicao(antes, {tab:R.tab, sub:R.sub, arg:R.arg});
+  proxTransicao = tipoTransicao(antes, {tab:R.tab, sub:R.sub, arg:R.arg}, voltandoPor);
+  voltandoPor = false;
   render();
 }
 function render(keep){
@@ -2327,7 +2335,7 @@ function telaHoje(o){
     (pa ? '' : '<button type="button" class="lk" id="pz">Doente ou machucado? Pausar o plano</button>')+
     sec("ci", "Check-in",
       '<button type="button" class="ci'+(c?' done':'')+'" id="ci"><span><b>'+(c?'✓ Check-in feito · prontidão '+pr:'Check-in da manhã')+'</b><small>'+(c?esc(num(c.sono,1)+" h de sono · energia "+c.humor+"/5 · dor "+c.dor+"/10"):'sono, energia e dor · 10 segundos')+'</small></span><span class="n">'+(c?(pr>=75?"●":pr>=50?"◐":"○"):"→")+'</span></button>'+
-      (agora>=20 && !LOG["co_"+k] ? '<button type="button" class="ci hot" data-go="hoje|checkout"><span><b>Hora de fechar o dia</b><small>30 segundos: como foi, nota e feedback</small></span><span class="n">→</span></button>' : ''), false)+
+      (agora>=20 && !LOG["co_"+k] ? '<button type="button" class="ci hot" data-go="hoje|checkout"><span><b>Hora de fechar o dia</b><small>30 segundos: como foi, nota e feedback</small></span><span class="n">→</span></button>' : ''), agora>=20 && !LOG["co_"+k] && !!c)+
     sec("miss", "Missões",
       balancoHTML(today, true)+
       '<div class="box"><div class="between"><span class="k">missões de hoje</span><span class="k cor-go">'+ms.filter(m=>m.ok).length+'/3</span></div>'+ms.map(m=>'<div class="between mi"><span>'+(m.ok?'✓ ':'○ ')+esc(m.t)+'</span><b class="n '+(m.ok?'cor-ok':'cor-go')+'">+'+m.xp+'</b></div>').join("")+

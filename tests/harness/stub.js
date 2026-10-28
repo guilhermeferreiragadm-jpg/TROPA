@@ -4,7 +4,6 @@
   const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   const mais = n => { const d = new Date(hoje); d.setDate(d.getDate()+n); return d; };
   const q = new URLSearchParams(location.search);
-  if (q.get("tema")==="escuro") document.documentElement.dataset.tema = "escuro";
   const me = "teste-1";
   if (q.get("perfil")!=="0"){
     S["data/users/"+me+"/perfil"] = {perfil:{

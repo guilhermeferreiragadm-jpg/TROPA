@@ -1,6 +1,6 @@
 # Roteiro de telas do harness
 
-Abrir `http://localhost:5173/` (perfil de exemplo) e, no console da página, chamar `__T`. Largura de verificação: 390 px, também 360 e 430. Repetir com `?tema=escuro` e com `prefers-reduced-motion` ligado.
+Abrir `http://localhost:5173/` (perfil de exemplo) e, no console da página, chamar `__T`. Largura de verificação: 390 px, também 360 e 430. Repetir com o tema escuro (`localStorage.setItem("tropa-tema", "escuro")` e recarregar) e com `prefers-reduced-motion` ligado.
 
 | Grupo | Como abrir |
 |---|---|

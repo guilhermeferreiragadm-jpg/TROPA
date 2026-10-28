@@ -91,6 +91,9 @@ test("tipoTransicao classifica as navegações", () => {
   assert.equal(T({tab:"treino", sub:"treino", arg:"x"}, {tab:"treino", sub:null, arg:null}), "pop");
   assert.equal(T({tab:"treino", sub:"treino", arg:"x"}, {tab:"treino", sub:"ex", arg:"Agachamento"}), "push");
   assert.equal(T({tab:"perf", sub:"grupo", arg:"1"}, {tab:"perf", sub:"grupo", arg:"2"}), "push");
+  assert.equal(F.tipoTransicao({tab:"treino", sub:"ex", arg:"x"}, {tab:"treino", sub:"forca", arg:null}, true), "pop");
+  assert.equal(F.tipoTransicao({tab:"treino", sub:"ex", arg:"x"}, {tab:"treino", sub:"forca", arg:null}, false), "push");
+  assert.equal(F.tipoTransicao(hoje, {tab:"treino", sub:null, arg:null}, true), "aba");
   assert.equal(T(hoje, {tab:"chat", sub:null, arg:null}), "sobe");
   assert.equal(T({tab:"chat", sub:null, arg:null}, hoje), "desce");
   assert.equal(T({tab:"hoje", sub:"checkout", arg:null}, {tab:"perfil", sub:null, arg:null}), "aba");
