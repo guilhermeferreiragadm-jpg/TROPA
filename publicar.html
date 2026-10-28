@@ -169,6 +169,8 @@ textarea.inp{resize:vertical;min-height:88px}
 .me{width:40px;height:40px;border-radius:50%;background:var(--go-fill);color:#fff;display:grid;place-content:center;font-size:.8125rem;font-weight:600;border:0;flex:none;padding:0;box-shadow:var(--sh1);position:relative}
 .me::after{content:"";position:absolute;inset:-2px}
 .me img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.acts{display:flex;gap:12px;flex:none}.sino{background:var(--surface-2);color:var(--tx);box-shadow:none}.sino svg{width:20px;height:20px}
+.sino b{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--go-fill);color:#fff;font-size:.6875rem;line-height:18px;text-align:center}.sino b[hidden]{display:none}.modo{margin-top:12px}
 .fire{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-variant-numeric:tabular-nums}
 .fire i{width:12px;height:16px;background:var(--go);clip-path:polygon(50% 0,100% 60%,80% 100%,20% 100%,0 60%);display:inline-block}
 .fire.off i{background:var(--sep);filter:brightness(.85)}
@@ -246,7 +248,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .cab.on{opacity:1;border-color:var(--sep)}
 .cab span{font-weight:600;font-size:1.0625rem;letter-spacing:-.01em;max-width:calc(100% - 96px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tabs{position:fixed;left:0;right:0;margin:0 auto;width:min(480px,100%);bottom:calc(8px + var(--safe-b));padding:0 12px;display:flex;gap:8px;align-items:center;z-index:30}
-.tabs-pill{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-radius:999px;padding:4px;position:relative;box-shadow:var(--sh2)}
+.tabs-pill{flex:1;min-width:0;display:grid;grid-template-columns:repeat(var(--n,5),minmax(0,1fr));border-radius:999px;padding:4px;position:relative;box-shadow:var(--sh2)}
 .tabs-ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--go-soft);z-index:0;will-change:transform}
 .tabs-pill button{position:relative;z-index:1;border:0;background:none;padding:6px 0 5px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.625rem;line-height:1.2;font-weight:600;color:var(--tx-2);min-height:48px;transition:transform .1s ease-out,color .15s}
 .tabs-pill button:active{transform:scale(.97)}
@@ -2029,7 +2031,7 @@ function obsHTML(v, k, i){
 /* ===================== TELA BASE ===================== */
 function tela(html, opts){
   opts = opts || {};
-  $("tabs").hidden = !opts.tabs; $("fab").hidden = !opts.fab;
+  $("tabs").hidden = !opts.tabs; $("fab").hidden = !opts.fab || MODO!=="aluno";
   const app = $("app"); app.className = opts.full ? "full" : ""; delete app.dataset.fechando; app.innerHTML = html;
   if (!opts.keepScroll) rolagem().scrollTop = 0;
   $("ban").innerHTML = DEMO ? '<div class="demo-ban"><b>Modo demonstração: você está vendo o app como um amigo. Nada é salvo.</b><button type="button" class="btn sm ink" id="demo-out">Sair da demonstração</button></div>' : "";
@@ -2322,6 +2324,9 @@ function ir(tab, sub, arg){
 }
 function render(keep){
   try{ aplicarTeto(); }catch(e){ registrarErro("teto", e); }
+  MODO = modoValido(MODO); renderBarra();
+  const bar = barraAbas(MODO);
+  if (!bar.includes(R.tab) && !["perfil","chat","painel","sino"].includes(R.tab)){ R.tab = bar[0]; R.sub = null; R.arg = null; }
   const t = R.tab, s = R.sub;
   document.querySelectorAll("#tabs .tabs-pill button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===t ? "page" : "false"));
   const fb = document.querySelector('#tabs [data-tab="feed"]'); if (fb){ const nl = SOC.notifs.filter(n=>!n.lido).length; fb.innerHTML = '<span class="tico">'+ICONE.feed+'</span>Feed'+(nl?'<em>'+nl+'</em>':''); }
@@ -2331,13 +2336,77 @@ function render(keep){
   if (t==="feed") return telaFeed(o);
   if (t==="comida") return telaComida(o);
   if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="ngrupo") return telaNovoGrupo(); if (s==="grupo") return telaGrupo(R.arg); if (s==="dupla") return telaDupla(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
+  if (t==="alunos") return telaProAlunos(o);
+  if (t==="propostas") return telaPropostas(o);
+  if (t==="biblioteca") return telaProBiblioteca(o);
+  if (t==="planos") return telaProPlanos(o);
+  if (t==="sino") return telaSino();
   if (t==="chat") return telaChat();
   if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="corpo") return telaCorpo(o); return telaPerfil(); }
   if (t==="painel") return telaPainel();
   telaHoje(o);
 }
 const fotoSrc = () => (P && P.perfil && fotoValida(P.perfil.foto)) ? P.perfil.foto : meAv;
-function topo(k, h1){ return '<div class="top"><div class="mw0"><span class="k">'+k+'</span><h1 class="h1">'+h1+'</h1></div><button type="button" class="me" data-go="perfil" aria-label="Perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(P&&P.perfil&&P.perfil.apelido||meName)))+'</button></div>'; }
+function topo(k, h1){ return '<div class="top"><div class="mw0"><span class="k">'+k+'</span><h1 class="h1">'+h1+'</h1></div><div class="acts">'+sinoHTML()+'<button type="button" class="me" data-go="perfil" aria-label="Perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(P&&P.perfil&&P.perfil.apelido||meName)))+'</button></div></div>'+seletorModo(); }
+/* ===== modos: Aluno, Personal, Nutri (barra, sino e rotas de esqueleto; as telas vêm nas próximas tarefas) ===== */
+const ABAS_PRO = {personal:[["alunos","Alunos"],["propostas","Propostas"],["biblioteca","Biblioteca"]], nutri:[["alunos","Alunos"],["propostas","Propostas"],["planos","Planos"]]};
+const NOMEMODO = {aluno:"Aluno", personal:"Personal", nutri:"Nutri"};
+const barraAbas = m => m==="aluno" ? ["hoje","treino","feed","comida","perf"] : ABAS_PRO[m].map(x=>x[0]);
+const modosDisp = () => ["aluno"].concat(["personal","nutri"].filter(m=>Pro.papeis[m]));
+const modoValido = m => modosDisp().includes(m) ? m : "aluno";
+let MODO = "aluno", barraDe = "aluno", BARRA_ALUNO = "", modoIni = false;
+function setModo(m){
+  MODO = modoValido(m);
+  try{ localStorage.setItem("tropa-modo", MODO); }catch(e){}
+  renderBarra(); ir(barraAbas(MODO)[0]);
+}
+function renderBarra(){
+  const pill = document.querySelector(".tabs-pill"); if (!pill) return;
+  if (barraDe===MODO) return;
+  barraDe = MODO;
+  pill.style.setProperty("--n", barraAbas(MODO).length);
+  pill.innerHTML = MODO==="aluno" ? BARRA_ALUNO : '<span class="tabs-ind" id="tabs-ind" aria-hidden="true"></span>'+ABAS_PRO[MODO].map(([t,n])=>'<button type="button" class="t-'+t+'" data-tab="'+t+'"><span class="tico">'+ICONE[t]+'</span>'+n+'</button>').join("");
+  remedirIndicador();
+}
+const iconeSino = () => ICONE.sino;
+function sinoHTML(){ const n = Pro.naoLidas(); return '<button type="button" class="me sino" data-go="sino" aria-label="Notificações">'+iconeSino()+'<b'+(n?'':' hidden')+'>'+(n>9?"9+":n)+'</b></button>'; }
+function atualizarSino(){ const n = Pro.naoLidas(); document.querySelectorAll(".sino b").forEach(b=>{ b.hidden = !n; b.textContent = n>9 ? "9+" : n; }); }
+function seletorModo(){
+  const ms = modosDisp(); if (ms.length<2 || (MODO==="aluno" && R.tab!=="hoje")) return "";
+  return '<div class="seg modo" style="--c:'+ms.length+'" role="group" aria-label="Modo">'+ms.map(m=>'<button type="button" data-m="'+m+'" aria-pressed="'+(m===MODO)+'">'+NOMEMODO[m]+'</button>').join("")+'</div>';
+}
+document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest(".modo button[data-m]"); if (b && b.dataset.m!==MODO) setModo(b.dataset.m); });
+function aoMudarPro(){
+  atualizarSino();
+  const ant = MODO, ini = !modoIni && modosDisp().length>1;
+  if (ini){ modoIni = true; let m = "aluno"; try{ m = localStorage.getItem("tropa-modo")||"aluno"; }catch(e){} MODO = modoValido(m); } else MODO = modoValido(MODO);
+  renderBarra();
+  ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
+  if (MODO!==ant && P && P.perfil && !$("tabs").hidden && (R.tab==="hoje" || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
+}
+function telaPro(h1, msg, o){ const app = tela(topo(NOMEMODO[MODO],h1)+'<div class="box"><p class="s">'+msg+'</p></div>', {tabs:true, keepScroll:o&&o.keepScroll}); bindGo(app); return app; }
+const telaProAlunos = o => telaPro("Alunos","Nenhum aluno ainda.",o), telaPropostas = o => telaPro("Propostas","Nenhuma proposta por enquanto.",o), telaProBiblioteca = o => telaPro("Biblioteca","Biblioteca vazia.",o), telaProPlanos = o => telaPro("Planos","Nenhum plano ainda.",o);
+function telaSino(){
+  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><h1 class="h1">Notificações</h1><div class="box"><p class="s">Sem notificações.</p></div>', {tabs:true});
+  $("vb").addEventListener("click", ()=>ir(barraAbas(MODO)[0]));
+}
+const msgPro = e => { const m = e && e.message; return m==="pro_indisponivel" ? "Só funciona no app oficial." : m==="ocupado" ? "Aguarde a ação anterior." : /^chave/.test(m) ? "Não consegui abrir suas chaves de segurança." : "Não deu certo. Tente de novo."; };
+async function aplicarPapel(m, lig, ativos){
+  try{
+    for (const v of ativos) await Pro.encerrar(v.id);
+    const r = await Pro.ativarPapel(m, lig); if (r && r.erro) throw new Error("falha");
+    toast("Modo "+NOMEMODO[m]+(lig ? " ligado." : " desligado."));
+  }catch(e){ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; toast(msgPro(e)); }
+}
+function mudarPapel(m, c){
+  const ativos = c.checked ? [] : [...Pro.vinc.values()].filter(v=>v.profId===me && v.papel===m && v.estado==="ativo");
+  if (!ativos.length) return aplicarPapel(m, c.checked, ativos);
+  c.checked = true;
+  const n = ativos.length;
+  $("ov").innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Desligar modo"><span class="grab"></span><h2 class="h2 lg">Desligar o modo '+NOMEMODO[m]+'?</h2><p>Há '+n+(n===1?' aluno ativo':' alunos ativos')+'. Os vínculos serão encerrados.</p><button type="button" class="btn go" id="dok">Desligar e encerrar</button><button type="button" class="lk" id="dno">Cancelar</button></div>';
+  $("dim").addEventListener("click", ()=>fecharSheet()); $("dno").addEventListener("click", ()=>fecharSheet());
+  $("dok").addEventListener("click", ()=>{ fecharSheet(); c.checked = false; aplicarPapel(m, false, ativos); });
+}
 function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click", ()=>{ const [t,s,a] = b.dataset.go.split("|"); ir(t, s||null, a==null?null:a); })); }
 function nivelAntes(){ return nivelXP().n; }
 function checarNivel(antes){ const n = nivelXP(); if (n.n > antes) telaSubiu(n); }
@@ -4130,6 +4199,9 @@ const ICONE = {
   feed: SV('<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.5-3.3 2.6-5 5.5-5s5 1.7 5.5 5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M16.5 14.2c2.4.1 3.8 1.6 4.3 4.3"/>'),
   comida: SV('<path d="M4 12h16a8 8 0 0 1-16 0z"/><path d="M9 4.5c-1 1-1 2 0 3M13 3.5c-1 1.2-1 2.4 0 3.5"/>'),
   perf: SV('<path d="M3.5 18.5 9 12l4 3.5 7.5-9"/><path d="M15 6.5h5.5V12"/>'),
+  propostas: SV('<path d="M6 3.5h9l3 3v14H6z"/><path d="M9 12h6M9 16h4"/>'),
+  biblioteca: SV('<path d="M5 4h4v16H5zM11 4h4v16h-4z"/>'),
+  sino: SV('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15zM10 21h4"/>'),
   coach: SV('<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M12 8.3l.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9z"/>'),
 };
 function montarIcones(){
@@ -4137,6 +4209,8 @@ function montarIcones(){
   const fab = $("fab"); if (fab && !fab.firstChild) fab.innerHTML = ICONE.coach;
 }
 montarIcones();
+ICONE.alunos = ICONE.feed; ICONE.planos = ICONE.comida;
+BARRA_ALUNO = document.querySelector(".tabs-pill").innerHTML;
 
 /* animação de conquista: a marca da Tropa aparece, faíscas sobem e tudo some sozinho */
 function celebrar(rotulo){
@@ -4662,6 +4736,7 @@ function telaPerfil(){
       lr("foto", "", 'Foto de perfil', fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+
       lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
+      (Pro.ok() ? ["personal","nutri"].map(m=>'<label class="lst-i"><span>Sou '+NOMEMODO[m]+'<small>'+(m==="personal"?'treinos dos seus alunos':'planos dos seus alunos')+'</small></span><input type="checkbox" id="pp_'+m+'"'+(Pro.papeis[m]?' checked':'')+'></label>').join("") : '')+
       lr("fb", "", 'Mandar feedback para a equipe', 'o que travou, o que curtiu, se pagaria')+
       lr("exp", "", 'Baixar meus dados', 'arquivo com tudo que o app guarda de você')+
       lr("sair", "", 'Sair', 'voltar para a tela inicial do app')+
@@ -4684,6 +4759,7 @@ function telaPerfil(){
   $("foto").addEventListener("click", sheetFoto); $("fotob").addEventListener("click", sheetFoto); $("sair").addEventListener("click", sheetSair);
   $("sh").addEventListener("change", async ()=>{ P.perfil.compartilha = $("sh").checked; await salvarPerfil(); toast(P.perfil.compartilha?"Amigos veem seu progresso.":"Progresso escondido."); });
   $("fb").addEventListener("click", telaFeedback);
+  ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.addEventListener("change", ()=>mudarPapel(m, c)); });
   $("exp").addEventListener("click", ()=>baixar("meus-dados-"+BRAND.toLowerCase()+".json", JSON.stringify({perfil:P.perfil, plano:planoAtual(), log:LOG, social:SOC}, null, 2), "application/json"));
   const del = $("del"); del.addEventListener("click", async ()=>{
     if (del.dataset.armed!=="1"){ del.dataset.armed = "1"; del.firstChild.firstChild.textContent = "Toque de novo para apagar tudo "; return; }
@@ -4783,7 +4859,7 @@ function rotear(clique){
   if (!planoAtual()){ telaRevisao(); return; }
   render();
 }
-document.querySelectorAll("#tabs .tabs-pill button").forEach(b=>b.addEventListener("click", ()=>{ if (b.dataset.tab==="feed") feedView = "feed"; if (b.dataset.tab==="treino") semOff = 0; ir(b.dataset.tab); }));
+document.querySelector(".tabs-pill").addEventListener("click", e=>{ const b = e.target.closest("button[data-tab]"); if (!b) return; if (b.dataset.tab==="feed") feedView = "feed"; if (b.dataset.tab==="treino") semOff = 0; ir(b.dataset.tab); });
 $("fab").addEventListener("click", ()=>ir("chat"));
 (async ()=>{
   try{ const r = JSON.parse(localStorage.getItem("ar2-draft")||"null"); if (r){ Object.assign(draft, r.draft||{}); step = r.step||0; } }catch(e){}
@@ -4821,6 +4897,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
   }
   carregarPostsDono(realDb);
   carregarGrupos();
+  Pro.aoMudar = aoMudarPro;
   try{ Pro.iniciar().catch(()=>{}); }catch(e){}
   entrou = !!(P && P.perfil);
   rotear();
