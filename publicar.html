@@ -1202,42 +1202,96 @@ const propostaAtual = (prop, planoJson) => !!prop && prop.base === hash32(planoJ
 const PROPDIA = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"], PROPROT = {km:"distância (km)", min:"duração (min)", z:"zona", ef:"esforço", t:"nome"}, METAROT = {kcal:"calorias", prot:"proteína", carb:"carboidrato", gord:"gordura"};
 const metaU = k => k==="kcal" ? " kcal" : " g";
 const exTxt = s => { const m = /^(.+?)\s+(\d+)\s*[×x]\s*(\d+)(\s*s\b)?(?:\s*·\s*([\d.,]+)\s*kg)?/i.exec(String(s||"")); return m ? {n:m[1].trim(), sr:m[2]+"×"+m[3]+(m[4]?" s":""), kg:m[5]||""} : null; };
+const TETO = {km:500, min:1000, ser:99, rep:999, kg:1000, meta:20000};
+const numOk = (x, max) => typeof x==="number" && Number.isFinite(x) && x>0 && x<=max;
+const txtOk = (x, max) => typeof x==="string" && x.length<=max;
+const tipoDe = papel => papel==="nutri" ? "alimentar" : "treino";   // o tipo vem SEMPRE do papel do vínculo, nunca do payload
 // Descreve em português, por campo, o que muda de a para b (usa o mesmo patch que viaja na proposta)
 function diffTxt(a, b){
   const o = [], f = x=>x==null||x==="" ? "nenhum" : String(x).replace(".", ","), kgT = k=>k ? String(k).replace(".", ",")+" kg" : "sem carga", cut = x=>String(x==null?"":x).slice(0, 80);
+  let extra = 0;
+  const exDif = (rot, x, y) => {
+    const e1 = exTxt(x), e2 = exTxt(y);
+    if (e1 && e2 && e1.n===e2.n){ const ps = []; if (e1.sr!==e2.sr) ps.push(e1.sr+" → "+e2.sr); if (e1.kg!==e2.kg) ps.push(kgT(e1.kg)+" → "+kgT(e2.kg)); if (ps.length) o.push(cut(e1.n)+": "+ps.join(", ")); }
+    else o.push(rot+": "+cut(x)+" → "+cut(y));
+  };
+  const passoDif = (rot, xs, ys) => {
+    const nm = s=>{ const e = exTxt(s); return e ? e.n : s; }, mx = new Map((xs||[]).map(s=>[nm(s), s]));
+    (ys||[]).forEach(y=>{ const x = mx.get(nm(y)); if (x===undefined) o.push(rot+": "+cut(y)+" adicionado"); else { mx.delete(nm(y)); if (x!==y) exDif(rot, x, y); } });
+    mx.forEach(x=>o.push(rot+": "+cut(x)+" removido"));
+  };
+  const trDif = (dia, ta, tb) => {
+    const rot = dia+" ("+cut(ta.t)+")";
+    [...new Set([...Object.keys(ta), ...Object.keys(tb)])].forEach(g=>{
+      if (mesmoJson(ta[g], tb[g])) return;
+      if (g==="passos") passoDif(rot, ta.passos, tb.passos); else o.push(rot+": "+(PROPROT[g]||cut(g))+" "+f(cut(ta[g]))+" → "+f(cut(tb[g])));
+    });
+  };
   for (const op of criarPatch(a, b)){
-    const p = op.p, v = op.del ? undefined : op.v;
+    const p = op.p, v = op.del ? undefined : op.v, n0 = o.length;
     try{
       if (p[0]==="semanas" && p[2]==="dias" && p.length>=5){
         const dia = PROPDIA[p[3]], ant = a.semanas[p[1]].dias[p[3]].treinos;
         if (p.length===5){
-          const x = ant.map(t=>t.t), y = (v||[]).map(t=>t.t), rem = x.filter(t=>!y.includes(t)), add = y.filter(t=>!x.includes(t));
-          rem.forEach(t=>o.push(dia+": "+cut(t)+" removido")); add.forEach(t=>o.push(dia+": "+cut(t)+" adicionado"));
-          if (!rem.length && !add.length) o.push(dia+": ordem dos treinos mudou");
-          continue;
+          const nov = v||[], usado = new Set(), par = nov.map((t, j)=>{ let i = ant[j] && ant[j].t===t.t && !usado.has(j) ? j : ant.findIndex((x, k)=>x.t===t.t && !usado.has(k)); if (i>=0) usado.add(i); return i; });
+          par.forEach((i, j)=>{ if (i>=0) trDif(dia, ant[i], nov[j]); else o.push(dia+": "+cut(nov[j].t)+" adicionado"); });
+          ant.forEach((t, i)=>{ if (!usado.has(i)) o.push(dia+": "+cut(t.t)+" removido"); });
+          if (o.length===n0 && par.some((i, j)=>i!==j)) o.push(dia+": ordem dos treinos mudou");
+        }else{
+          const tr = ant[p[5]], g = p[6], rot = dia+" ("+cut(tr.t)+")";
+          if (g==="passos" && p.length===8) exDif(rot, tr.passos[p[7]], v);
+          else if (g==="passos") passoDif(rot, tr.passos, v);
+          else o.push(rot+": "+(PROPROT[g]||cut(g))+" "+f(cut(tr[g]))+" → "+f(cut(v)));
         }
-        const tr = ant[p[5]], g = p[6], rot = dia+" ("+cut(tr.t)+")";
-        if (g==="passos" && p.length===8){
-          const e1 = exTxt(tr.passos[p[7]]), e2 = exTxt(v);
-          if (e1 && e2 && e1.n===e2.n){ const ps = []; if (e1.sr!==e2.sr) ps.push(e1.sr+" → "+e2.sr); if (e1.kg!==e2.kg) ps.push(kgT(e1.kg)+" → "+kgT(e2.kg)); o.push(cut(e1.n)+": "+ps.join(", ")); }
-          else o.push(rot+": "+cut(tr.passos[p[7]])+" → "+cut(v));
-        }else if (g==="passos"){
-          const x = tr.passos, y = v||[];
-          x.filter(s=>!y.includes(s)).forEach(s=>o.push(rot+": "+cut(s)+" removido")); y.filter(s=>!x.includes(s)).forEach(s=>o.push(rot+": "+cut(s)+" adicionado"));
-        }else o.push(rot+": "+(PROPROT[g]||cut(g))+" "+f(cut(tr[g]))+" → "+f(cut(v)));
       }else if (p[0]==="metas"){
         const ant = a.metas || {}, ks = p.length===1 ? Object.keys(Object.assign({}, ant, v||{})) : [p[1]];
-        ks.forEach(k=>{ const n = p.length===1 ? (v||{})[k] : v; if (ant[k]!==n) o.push("Meta de "+(METAROT[k]||cut(k))+": "+(ant[k]==null ? "nenhuma" : ant[k]+metaU(k))+" → "+(n==null ? "nenhuma" : n+metaU(k)));});
+        ks.forEach(k=>{ const n = p.length===1 ? (v||{})[k] : v; if (ant[k]!==n) o.push("Meta de "+(METAROT[k]||cut(k))+": "+(ant[k]==null ? "nenhuma" : ant[k]+metaU(k))+" → "+(n==null ? "nenhuma" : n+metaU(k))); });
       }else if (p[0]==="orient"){
         const x = a.orient || [];
         if (p.length===1){
           const m = l=>new Map((l||[]).map(r=>[r.ref, r.t])), mx = m(x), my = m(v);
           [...new Set([...mx.keys(), ...my.keys()])].forEach(k=>{ if (!mx.has(k)) o.push(cut(k)+": orientação adicionada, "+cut(my.get(k))); else if (!my.has(k)) o.push(cut(k)+": orientação removida"); else if (mx.get(k)!==my.get(k)) o.push(cut(k)+": "+cut(mx.get(k))+" → "+cut(my.get(k))); });
         }else{ const r = x[p[1]] || {}; o.push(cut(r.ref||"Orientação")+": "+f(cut(r[p[2]]))+" → "+f(cut(v))); }
-      }else o.push("Outra mudança no plano");
-    }catch(e){ o.push("Outra mudança no plano"); }
+      }
+    }catch(e){}
+    if (o.length===n0) extra++;
   }
+  if (extra) o.push("e mais "+extra+(extra>1 ? " mudanças" : " mudança"));
   return [...new Set(o)];
+}
+// Só caminhos que o tipo de proposta pode mexer, em quantidade e tamanho limitados
+function opsPermitidas(tipo, ops){
+  if (!Array.isArray(ops) || !ops.length || ops.length>400) return false;
+  return ops.every(op=>{
+    if (!ehObj(op) || Array.isArray(op) || !Array.isArray(op.p) || op.p.length>10 || !caminhoSeguro(op.p)) return false;
+    if (op.v!==undefined && JSON.stringify(op.v).length>2000) return false;
+    const p = op.p;
+    if (tipo==="treino") return p[0]==="semanas" && p.length>=2 && Number.isInteger(p[1]) && p[1]<200;
+    if (tipo==="alimentar") return (p[0]==="metas" && p.length===2 && ["kcal", "prot", "carb", "gord"].includes(p[1])) || (p[0]==="orient" && (p.length===1 || (Number.isInteger(p[1]) && p[1]<50 && (p.length===2 || (p.length===3 && ["ref", "t"].includes(p[2]))))));
+    return false;
+  });
+}
+// Formato mínimo que o app usa; vale para o plano de treino e para o planoAlim
+function planoValido(tipo, o){
+  try{
+    if (!ehObj(o) || Array.isArray(o) || JSON.stringify(o).length>400000) return false;
+    if (tipo==="alimentar"){
+      if (Object.keys(o).some(k=>!["metas", "orient"].includes(k))) return false;
+      if (o.metas!==undefined && (!ehObj(o.metas) || Array.isArray(o.metas) || Object.keys(o.metas).some(k=>!["kcal", "prot", "carb", "gord"].includes(k) || !numOk(o.metas[k], TETO.meta)))) return false;
+      return o.orient===undefined || (Array.isArray(o.orient) && o.orient.length<=20 && o.orient.every(r=>ehObj(r) && txtOk(r.ref, 40) && txtOk(r.t, 300)));
+    }
+    if (tipo!=="treino" || !Array.isArray(o.semanas) || !o.semanas.length || o.semanas.length>60 || typeof o.inicio!=="string") return false;
+    return o.semanas.every(s=>ehObj(s) && Array.isArray(s.dias) && s.dias.length===7 && s.dias.every(d=>ehObj(d) && Array.isArray(d.treinos) && d.treinos.length<=8 && d.treinos.every(t=>ehObj(t) && txtOk(t.t, 60) && t.t && txtOk(t.k, 10) &&
+      [["km", TETO.km], ["min", TETO.min], ["m", 20000]].every(([c, mx])=>t[c]===undefined || numOk(t[c], mx)) && (t.z===undefined || txtOk(t.z, 30)) && (t.ef===undefined || txtOk(t.ef, 30)) &&
+      (t.passos===undefined || (Array.isArray(t.passos) && t.passos.length<=40 && t.passos.every(x=>{ if (!txtOk(x, 300)) return false; const e = exTxt(x); if (!e) return true; const [sr, rp] = e.sr.split("×"); return +sr<=TETO.ser && parseInt(rp)<=TETO.rep && (!e.kg || +String(e.kg).replace(",", ".")<=TETO.kg); }))))));
+  }catch(e){ return false; }
+}
+// st: ok (pode aplicar, com novo), velha (a base não é o plano de hoje) ou invalida (tipo trocado, ops ou resultado fora do permitido)
+function avaliarProposta(tipo, p, antes){
+  if (!p || p.tipo!==tipo) return {st:"invalida"};
+  if (antes==null || !propostaAtual(p, JSON.stringify(antes))) return {st:"velha"};
+  if (!opsPermitidas(tipo, p.ops)) return {st:"invalida"};
+  try{ const novo = aplicarPatch(antes, p.ops); return planoValido(tipo, novo) ? {st:"ok", novo} : {st:"invalida"}; }catch(e){ return {st:"velha"}; }
 }
 const TIPOS_INBOX = ["convite","vinculo","encerrado","proposta","resposta","perm","comentario"];
 const itemInboxValido = it => !!it && TIPOS_INBOX.includes(it.tipo) && typeof it.ref === "string" && it.ref.length > 0 && it.ref.length <= 80 && Number.isFinite(it.quando);
@@ -2559,63 +2613,60 @@ function telaProDetalhe(vid, o){
 }
 /* ===== propostas: lista, sheet, editor ===== */
 const ESTPROP = {pendente:["Pendente","wait"], aceita:["Aceita","ok"], recusada:["Recusada","no"], desatualizada:["Desatualizada","wait"]};
-const propsDoPapel = alu => [...Pro.props.values()].filter(p=>{ const v = Pro.vinc.get(p.vincId); return v && (alu ? v.alunoId===me : v.profId===me && v.papel===MODO); });
+const SUBST = new Set();   // propostas reenviadas nesta sessão: o profissional não as conta como pendentes
+const propsDoPapel = alu => [...Pro.props.values()].filter(p=>{ const v = Pro.vinc.get(p.vincId); return v && p.tipo===tipoDe(v.papel) && (alu ? v.alunoId===me : v.profId===me && v.papel===MODO); }).map(p=>SUBST.has(p.id) && p.estado==="pendente" ? Object.assign({}, p, {estado:"desatualizada"}) : p);
 const propsPendAluno = () => propsDoPapel(true).filter(p=>p.estado==="pendente").length;
-const propSig = alu => JSON.stringify(propsDoPapel(alu).map(p=>[p.id, p.estado]).sort());
-let propSigVista = "", shTk = 0, ED = null;
+const propSig = alu => JSON.stringify([!!Pro._resolvido, propsDoPapel(alu).map(p=>[p.id, p.estado]).sort()]);
+let propSigVista = "", shTk = 0, ED = null, propTent = false;
 function propAoVivo(){
   const alu = R.tab==="perfil" && R.sub==="props";
-  if (!(alu || R.tab==="propostas") || !P || $("tabs").hidden || propSig(alu)===propSigVista || $("ov").innerHTML) return;
+  if (!(alu || R.tab==="propostas") || !P || $("tabs").hidden || propSig(alu)===propSigVista) return;
+  if ($("ov").innerHTML){ if (!propTent){ propTent = true; setTimeout(()=>{ propTent = false; propAoVivo(); }, 2000); } return; }
   render(true);
 }
+// Lista até 60 propostas (as mais recentes); o corpo vem do cache decifrado do Pro, sem ler o banco por linha
 function telaPropostas(o, alu){
-  const ps = propsDoPapel(alu).sort((a, b)=>(a.estado==="pendente" ? 0 : 1)-(b.estado==="pendente" ? 0 : 1) || (+b.em||0)-(+a.em||0)).slice(0, 60), tk = ++listTk;
+  const ps = propsDoPapel(alu).sort((a, b)=>(a.estado==="pendente" ? 0 : 1)-(b.estado==="pendente" ? 0 : 1) || (+b.em||0)-(+a.em||0)).slice(0, 60);
   propSigVista = propSig(alu);
-  const lin = p=>{ const v = Pro.vinc.get(p.vincId), e = ESTPROP[p.estado] || [esc(p.estado), "wait"];
-    return lr(esc("pp_"+p.id), "", esc(alu ? (v.papel==="nutri" ? "Nutri " : "Personal ")+(v.nomeP||"") : v.nomeA||"Aluno")+' <span class="pill '+e[1]+'">'+e[0]+'</span>', (p.tipo==="alimentar" ? "Alimentação" : "Treino")+(+p.em ? " · "+esc(fmt(new Date(+p.em))) : "")); };
+  const lin = p=>{ const v = Pro.vinc.get(p.vincId), e = ESTPROP[p.estado] || [esc(p.estado), "wait"], c = Pro._pc.get(p.id), x = c && c.p, t = x ? (p.estado==="recusada" && x.motivo ? "Motivo: "+x.motivo : x.texto||"") : "";
+    return lr(esc("pp_"+p.id), "", esc(alu ? (v.papel==="nutri" ? "Nutri " : "Personal ")+(v.nomeP||"") : v.nomeA||"Aluno")+' <span class="pill '+e[1]+'">'+e[0]+'</span>', (p.tipo==="alimentar" ? "Alimentação" : "Treino")+(+p.em ? " · "+esc(fmt(new Date(+p.em))) : "")+(t ? " · "+esc(String(t).slice(0, 60)) : "")); };
   const pe = ps.filter(p=>p.estado==="pendente"), hi = ps.filter(p=>p.estado!=="pendente");
   const app = tela((alu ? '<button type="button" class="back" data-go="perfil">← Perfil</button><div><h1 class="h1">Propostas</h1></div>' : topo(NOMEMODO[MODO], "Propostas"))+
     (ps.length ? (pe.length ? '<span class="k">pendentes</span><div class="lst">'+pe.map(lin).join("")+'</div>' : '')+(hi.length ? '<span class="k">histórico</span><div class="lst">'+hi.map(lin).join("")+'</div>' : '')
-      : '<div class="box"><b>Nenhuma proposta por enquanto</b><p class="s">'+(alu ? 'Quando seu Personal ou sua Nutri propuser uma mudança, ela aparece aqui para você aceitar ou recusar.' : 'Abra um aluno e toque em Propor mudança.')+'</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
+      : Pro.ok() && !Pro._resolvido ? '<p class="s">Carregando…</p>' : '<div class="box"><b>Nenhuma proposta por enquanto</b><p class="s">'+(alu ? 'Quando seu Personal ou sua Nutri propuser uma mudança, ela aparece aqui para você aceitar ou recusar.' : 'Abra um aluno e toque em Propor mudança.')+'</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
   bindGo(app);
-  ps.forEach(p=>{
-    const b = $("pp_"+p.id); if (!b) return;
-    const sid = p.id.slice(p.vincId.length+1);   // Pro.props usa o id do documento (vínculo.id)
-    b.addEventListener("click", ()=>sheetPropostaAluno(p.vincId, sid));
-    Pro.lerProposta(p.vincId, sid).then(x=>{ const s = b.isConnected && tk===listTk && x && b.querySelector("small"); if (s){ const t = p.estado==="recusada" && x.motivo ? "Motivo: "+x.motivo : x.texto||""; if (t) s.append(" · "+String(t).slice(0, 60)); } }).catch(()=>{});
-  });
+  ps.forEach(p=>{ const b = $("pp_"+p.id); if (b) b.addEventListener("click", ()=>sheetPropostaAluno(p.vincId, p.id.slice(p.vincId.length+1))); });   // Pro.props usa o id do documento (vínculo.id)
 }
 async function sheetPropostaAluno(vid, id){
   const corpo = abrirSheet("Proposta"), tk = ++shTk, v = Pro.vinc.get(vid), fim = h=>{ if (tk===shTk && corpo.isConnected){ corpo.innerHTML = h; return true; } };
   if (!v) return;
-  const prof = v.profId===me, nome = v.papel==="nutri" ? "Nutri" : "Personal";
+  const prof = v.profId===me, nome = v.papel==="nutri" ? "Nutri" : "Personal", tipo = tipoDe(v.papel);
   fim('<h2 class="h2 lg">Proposta</h2><p class="s">Carregando…</p>');
   try{
     const p = await Pro.lerProposta(vid, id); if (!p) throw 0;
     let antes, ler = true;
-    if (prof){ const sn = await snapPro(vid, p.tipo==="alimentar" ? "comida" : "treino", true); if (sn) antes = p.tipo==="alimentar" ? sn.planoAlim || {} : sn.plano; else ler = false; }   // sem leitura do plano, o profissional não afirma nada
-    else antes = p.tipo==="alimentar" ? P.planoAlim || {} : planoAtual();
-    const atual = !ler || (antes!=null && propostaAtual(p, JSON.stringify(antes)));
-    let dep = null; if (ler && atual){ try{ dep = aplicarPatch(antes, p.ops); }catch(e){ dep = false; } }
-    const velha = p.estado==="pendente" && ler && (!atual || dep===false), est = velha ? "desatualizada" : p.estado, e = ESTPROP[est] || [esc(est), "wait"];
-    const lin = dep ? diffTxt(antes, dep) : [];
+    if (prof){ const sn = await snapPro(vid, tipo==="alimentar" ? "comida" : "treino", true); if (sn) antes = tipo==="alimentar" ? sn.planoAlim || {} : sn.plano; else ler = false; }   // sem leitura do plano, o profissional não afirma nada
+    else antes = tipo==="alimentar" ? P.planoAlim || {} : planoAtual();
+    const av = p.tipo!==tipo ? {st:"invalida"} : ler ? avaliarProposta(tipo, p, antes) : {st:"?"};   // o tipo é o do vínculo, não o do payload
+    const velha = p.estado==="pendente" && (av.st==="velha" || av.st==="invalida" || (prof && SUBST.has(vid+"."+id))), est = velha ? "desatualizada" : p.estado, e = ESTPROP[est] || [esc(est), "wait"];
+    const lin = av.novo ? diffTxt(antes, av.novo) : [];
     if (!fim('<h2 class="h2 lg">'+(prof ? 'Proposta enviada' : 'Proposta de '+esc(v.nomeP||nome))+'</h2><p><span class="pill '+e[1]+'">'+e[0]+'</span></p>'+
       (p.texto ? '<p>'+esc(p.texto)+'</p>' : '')+
       (lin.length ? '<div class="box"><b>O que muda</b>'+lin.map(l=>'<p>'+esc(l)+'</p>').join("")+'</div>' : '')+
       (est==="recusada" && p.motivo ? '<p class="s">Motivo: '+esc(p.motivo)+'</p>' : '')+
-      (est==="desatualizada" ? '<div class="flag">'+(dep===false ? 'Essa proposta não pôde ser aplicada.' : prof ? 'O plano do aluno mudou depois desta proposta.' : 'O seu plano mudou depois desta proposta. Peça uma nova ao seu profissional.')+'</div>' : '')+
+      (est==="desatualizada" ? '<div class="flag">'+(av.st==="invalida" ? 'Essa proposta não pôde ser aplicada.' : prof ? 'O plano do aluno mudou depois desta proposta.' : 'O seu plano mudou depois desta proposta. Peça uma nova ao seu profissional.')+'</div>' : '')+
       (!prof && est==="pendente" ? '<button type="button" class="btn go" id="pa">Aceitar</button><button type="button" class="btn ghost" id="pr">Recusar</button><div id="prm" hidden><textarea class="inp" id="pmt" rows="3" maxlength="300" placeholder="Motivo (opcional)" aria-label="Motivo da recusa"></textarea><button type="button" class="btn" id="pr2">Confirmar recusa</button></div>' : '')+
-      (prof && est==="desatualizada" && v.estado==="ativo" ? '<button type="button" class="btn go" id="pre">Reenviar</button>' : '')+
+      (prof && est==="desatualizada" && v.estado==="ativo" && av.st!=="invalida" ? '<button type="button" class="btn go" id="pre">Reenviar</button>' : '')+
       (prof && est==="pendente" ? '<p class="s">Aguardando a resposta do aluno.</p>' : '')+'<button type="button" class="lk" id="pfe">Fechar</button>')) return;
     $("pfe").addEventListener("click", ()=>fecharSheet());
-    if (!prof && velha) Pro.responderProposta(vid, id, "aceitar").catch(()=>{});   // grava "desatualizada" no estado cifrado, sem alterar o plano
-    const pre = $("pre"); if (pre) pre.addEventListener("click", ()=>{ fecharSheet(); proporMudanca(vid, p.texto); });
+    if (!prof && velha) Pro.responderProposta(vid, id, "invalidar").catch(()=>{});   // só grava "desatualizada" (cifrado); nunca aplica nada sem o clique em Aceitar
+    const pre = $("pre"); if (pre) pre.addEventListener("click", ()=>{ fecharSheet(); proporMudanca(vid, p.texto, vid+"."+id); });
     const bs = () => ["pa", "pr", "pr2"].map($).filter(Boolean);
     const resp = async (acao, motivo)=>{
       bs().forEach(b=>{ b.disabled = true; });
       try{
         const r = await Pro.responderProposta(vid, id, acao, motivo);
-        toast(r.erro==="ocupado" ? "Aguarde a ação anterior." : r.erro ? "Essa proposta já foi respondida." : r.ok===false ? "Essa proposta não pôde ser aplicada." : acao==="aceitar" ? "Proposta aceita e aplicada." : "Proposta recusada.");
+        toast(r.erro==="ocupado" ? "Aguarde a ação anterior." : r.erro==="invalida" || r.ok===false ? "Essa proposta não pôde ser aplicada." : r.erro ? "Essa proposta já foi respondida." : acao==="aceitar" ? "Proposta aceita e aplicada." : "Proposta recusada.");
       }catch(x){ toast(msgPro(x)); bs().forEach(b=>{ b.disabled = false; }); return; }
       fecharSheet(); render(true);
     };
@@ -2626,86 +2677,107 @@ async function sheetPropostaAluno(vid, id){
     }
   }catch(x){ fim('<h2 class="h2 lg">Proposta</h2><p class="msg err" role="alert">Não consegui abrir esta proposta agora.</p><button type="button" class="lk" id="pfe">Fechar</button>'); const b = $("pfe"); if (b) b.addEventListener("click", ()=>fecharSheet()); }
 }
-const propsPend = vid => [...Pro.props.values()].filter(p=>p.vincId===vid && p.estado==="pendente").length;   // só o estado cifrado: sem dica pelo cabeçalho em claro
-function proporMudanca(vid, texto){ ED = {vid, texto:String(texto||"").slice(0, 500)}; ir("alunos", "propor", vid); }
+const propsPend = vid => { const v = Pro.vinc.get(vid); return v ? [...Pro.props.values()].filter(p=>p.vincId===vid && p.estado==="pendente" && p.tipo===tipoDe(v.papel) && !SUBST.has(p.id)).length : 0; };   // só o estado cifrado
+function proporMudanca(vid, texto, subst){ ED = {vid, texto:String(texto||"").slice(0, 500), subst}; ir("alunos", "propor", vid); }
 const edFinal = () => {
   const d = copia(ED.dep);
   if (ED.tipo==="alimentar"){
-    const m = {}; ["kcal", "prot", "carb", "gord"].forEach(k=>{ const n = Math.round(+(d.metas||{})[k]); if (n>0 && n<20000) m[k] = n; });
+    const m = {}; ["kcal", "prot", "carb", "gord"].forEach(k=>{ const n = Math.round(+(d.metas||{})[k]); if (n>0 && n<=TETO.meta) m[k] = n; });
     if (Object.keys(m).length) d.metas = m; else delete d.metas;
-    d.orient = (Array.isArray(d.orient) ? d.orient : []).filter(r=>r && String(r.t||"").trim()).map(r=>({ref:String(r.ref||"").trim().slice(0, 40)||"Geral", t:String(r.t).trim().slice(0, 300)}));
+    d.orient = (Array.isArray(d.orient) ? d.orient : []).filter(r=>r && String(r.t||"").trim()).slice(0, 20).map(r=>({ref:String(r.ref||"").trim().slice(0, 40)||"Geral", t:String(r.t).trim().slice(0, 300)}));
     if (!d.orient.length && ED.ant.orient===undefined) delete d.orient;
   }
   return d;
 };
 const NOVOTR = {run:{k:"run", t:"Corrida leve", min:30, z:"fácil", ef:"3/10", passos:["30 min em ritmo de conversa"]}, gym:{k:"gym", t:"Força", min:40, ef:"RIR 2", passos:["Agachamento 3×10"]}};
+// Dia da semana atual já passou, é hoje ou tem treino registrado: não dá para remover, mover nem inserir (os registros ck_ usam a posição do treino)
+const diaTravado = i => { const k = key(addDays(ED.ini, i)); return k<=key(today) || Object.keys(ED.feitos).some(x=>x.startsWith("ck_"+k+"_")); };
+const treinoFeito = (i, j) => !!ED.feitos["ck_"+key(addDays(ED.ini, i))+"_"+j];
 function edHTML(){
   const inp = (rot, df, val, tp, st)=>'<label class="fld"><span class="k">'+rot+'</span><input class="inp" data-f="'+df+'"'+(tp ? ' type="number" inputmode="decimal" step="'+st+'" min="0"' : ' maxlength="40"')+' value="'+esc(val)+'"></label>';
   if (ED.tipo==="alimentar"){
     const m = ED.dep.metas || {}, or = ED.dep.orient || [];
     return '<div class="box"><b>Metas do dia</b><p class="s">Opcional. O aluno vê estes números, mas eles não mudam os cálculos do app.</p><div class="grid2">'+Object.keys(METAROT).map(k=>inp(METAROT[k]+metaU(k), "m|"+k, m[k]==null ? "" : m[k], 1, 1)).join("")+'</div></div>'+
-      '<div class="box"><b>Orientações por refeição</b>'+or.map((r, i)=>'<div class="ped"><label class="fld"><span class="k">Refeição</span><input class="inp" data-f="o|'+i+'|ref" maxlength="40" value="'+esc(r.ref)+'"></label><label class="fld"><span class="k">Orientação</span><textarea class="inp" data-f="o|'+i+'|t" rows="3" maxlength="300">'+esc(r.t)+'</textarea></label><button type="button" class="lk" data-orm="'+i+'">Remover</button></div>').join("")+'<button type="button" class="btn" id="ora">Adicionar orientação</button></div>';
+      '<div class="box"><b>Orientações por refeição</b>'+or.map((r, i)=>'<div class="ped"><label class="fld"><span class="k">Refeição</span><input class="inp" data-f="o|'+i+'|ref" maxlength="40" value="'+esc(r.ref)+'"></label><label class="fld"><span class="k">Orientação</span><textarea class="inp" data-f="o|'+i+'|t" rows="3" maxlength="300">'+esc(r.t)+'</textarea></label><button type="button" class="lk" data-orm="'+i+'">Remover</button></div>').join("")+(or.length<20 ? '<button type="button" class="btn" id="ora">Adicionar orientação</button>' : '<p class="s">Limite de 20 orientações.</p>')+'</div>';
   }
-  return ED.dep.semanas[ED.wi].dias.map((d, i)=>'<div class="box"><b>'+PROPDIA[i]+'</b>'+(d.treinos.length ? "" : '<p class="s">Descanso</p>')+d.treinos.map((t, j)=>{
+  return ED.dep.semanas[ED.wi].dias.map((d, i)=>{ const tr = diaTravado(i);
+    return '<div class="box"><b>'+PROPDIA[i]+'</b>'+(tr ? '<div class="flag">Esse dia já tem treino registrado ou já passou: só os campos podem mudar, não dá para remover, mover nem inserir treinos.</div>' : "")+(d.treinos.length ? "" : '<p class="s">Descanso</p>')+d.treinos.map((t, j)=>{
     const id = i+"|"+j;
-    return '<div class="ped">'+inp("Treino", "t|"+id+"|t", t.t)+'<div class="grid2">'+
+    return '<div class="ped">'+(treinoFeito(i, j) ? '<p class="s">Esse treino já foi feito pelo aluno.</p>' : '')+inp("Treino", "t|"+id+"|t", t.t)+'<div class="grid2">'+
       (t.km!=null ? inp("Distância (km)", "t|"+id+"|km", t.km, 1, "0.5") : t.min!=null ? inp("Duração (min)", "t|"+id+"|min", t.min, 1, "5") : "")+
       (t.z!=null ? '<label class="fld"><span class="k">Zona</span><select class="inp" data-f="t|'+id+'|z">'+[...new Set(["muito fácil", "fácil", "forte", t.z])].map(z=>'<option'+(z===t.z ? ' selected' : '')+'>'+esc(z)+'</option>').join("")+'</select></label>' : "")+'</div>'+
       (t.k==="gym" ? (t.passos||[]).map((s, x)=>{ const e = exTxt(s);
         return e ? '<div class="exr"><input class="inp" data-f="e|'+id+'|'+x+'" maxlength="40" aria-label="Exercício" value="'+esc(e.n)+'"><div class="grid2"><input class="inp" type="number" inputmode="numeric" min="1" aria-label="Séries" placeholder="Séries" value="'+esc(e.sr.split("×")[0])+'"><input class="inp" type="number" inputmode="numeric" min="1" aria-label="'+(/s$/.test(e.sr) ? 'Segundos' : 'Repetições')+'" placeholder="Reps" value="'+esc(e.sr.split("×")[1].replace(/\D/g, ""))+'"></div><input class="inp" type="number" inputmode="decimal" step="0.5" min="0" aria-label="Carga em kg" placeholder="Carga (kg)" value="'+esc(e.kg.replace(",", "."))+'"><button type="button" class="lk" data-xe="'+id+'|'+x+'">Remover exercício</button></div>'
-          : '<p class="s">'+esc(s)+' <button type="button" class="lk in" data-xe="'+id+'|'+x+'">remover</button></p>'; }).join("")+'<button type="button" class="lk" data-ae="'+id+'">Adicionar exercício</button>' : "")+
-      '<div class="grid2"><label class="fld"><span class="k">Mover para</span><select class="inp" data-mv="'+id+'"><option value="">Escolher dia</option>'+PROPDIA.map((n, y)=>y===i ? "" : '<option value="'+y+'">'+n+'</option>').join("")+'</select></label><button type="button" class="btn ghost cor-ruim" data-rm="'+id+'">Remover treino</button></div></div>'; }).join("")+
-    '<div class="between"><button type="button" class="lk" data-add="'+i+'|run">Adicionar corrida</button><button type="button" class="lk" data-add="'+i+'|gym">Adicionar força</button></div></div>').join("");
+          : '<p class="s">'+esc(s)+' <button type="button" class="lk in" data-xe="'+id+'|'+x+'">remover</button></p>'; }).join("")+(t.passos.length<40 ? '<button type="button" class="lk" data-ae="'+id+'">Adicionar exercício</button>' : "") : "")+
+      (tr ? "" : '<div class="grid2"><label class="fld"><span class="k">Mover para</span><select class="inp" data-mv="'+id+'"><option value="">Escolher dia</option>'+PROPDIA.map((n, y)=>y===i || diaTravado(y) ? "" : '<option value="'+y+'">'+n+'</option>').join("")+'</select></label><button type="button" class="btn ghost cor-ruim" data-rm="'+id+'">Remover treino</button></div>')+'</div>'; }).join("")+
+    (tr ? "" : '<div class="between"><button type="button" class="lk" data-add="'+i+'|run">Adicionar corrida</button><button type="button" class="lk" data-add="'+i+'|gym">Adicionar força</button></div>')+'</div>'; }).join("");
 }
 function telaProPropor(vid){
   const v = Pro.vinc.get(vid);
   if (!v || v.estado!=="ativo" || v.profId!==me || v.papel!==MODO){ ED = null; R.sub = null; R.arg = null; return telaProAlunos({}); }
-  const tipo = v.papel==="personal" ? "treino" : "alimentar", tk = ++detTk;
+  const tipo = tipoDe(v.papel), tk = ++detTk;
   if (!ED || ED.vid!==vid) ED = {vid, texto:""};
   const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">Propor mudança</h1><p class="s">Para '+esc(v.nomeA||"Aluno")+'. O aluno vê o que muda e decide se aceita.</p></div><div id="edc"><p class="s">Carregando…</p></div>', {tabs:true});
   $("vb").addEventListener("click", ()=>{ ED = null; ir("alunos", "det", vid); });
   const vivo = () => { const el = $("edc"); return tk===detTk && el && app.contains(el) && R.tab==="alunos" && R.sub==="propor" && R.arg===vid && ED && ED.vid===vid ? el : null; };
-  const difAtual = () => { const el = $("pdf"); if (!el) return; const l = diffTxt(ED.ant, edFinal()); el.innerHTML = l.length ? l.map(x=>'<p>'+esc(x)+'</p>').join("") : '<p class="s">Nenhuma mudança ainda.</p>'; $("pse").disabled = !l.length; };
+  const comErro = () => [...ED.err].some(e=>e.isConnected);
+  const difAtual = () => { const el = $("pdf"); if (!el) return; const l = diffTxt(ED.ant, edFinal()); el.innerHTML = l.length ? l.map(x=>'<p>'+esc(x)+'</p>').join("") : '<p class="s">Nenhuma mudança ainda.</p>'; $("pse").disabled = !l.length || comErro(); };
   const monta = () => {
-    const el = vivo(); if (!el) return;
+    const el = vivo(); if (!el) return; ED.err = new Set();
     el.innerHTML = '<div class="box"><b>O que muda</b><div id="pdf"></div></div>'+edHTML()+'<label class="fld"><span class="k">Mensagem para o aluno (opcional)</span><textarea class="inp" id="pmsg" rows="3" maxlength="500" placeholder="Ex.: vamos subir um pouco a carga, você está indo bem">'+esc(ED.texto)+'</textarea></label><button type="button" class="btn go" id="pse">Enviar para o aluno</button>';
     difAtual();
   };
   const trs = (i, j) => ED.dep.semanas[ED.wi].dias[i].treinos[j];
-  const num0 = x => { const n = parseFloat(String(x).replace(",", ".")); return Number.isFinite(n) && n>=0 ? n : null; };
   const idx = s => s.split("|").map(Number);
+  const marca = (el, txt) => {   // mensagem inline no campo; enquanto houver erro, o envio fica desligado
+    let m = el.nextElementSibling; m = m && m.classList.contains("err") ? m : null;
+    if (txt && !m){ m = document.createElement("span"); m.className = "msg err"; m.setAttribute("role", "alert"); el.after(m); }
+    if (m) m.textContent = txt||"";
+    if (txt){ ED.err.add(el); el.setAttribute("aria-invalid", "true"); } else { ED.err.delete(el); el.removeAttribute("aria-invalid"); }
+  };
+  const lido = (el, max, int, vazio) => {   // número válido ou null (e a mensagem no campo)
+    const s = String(el.value).trim(); if (!s){ marca(el, vazio ? "" : "Informe um número."); return vazio ? {n:null} : null; }
+    const n = parseFloat(s.replace(",", ".")), ok = Number.isFinite(n) && n>0 && n<=max && (!int || Number.isInteger(n));
+    marca(el, ok ? "" : "Use um número maior que 0 e até "+max+(int ? ", inteiro" : "")+"."); return ok ? {n} : null;
+  };
   const edita = el => {   // texto e número: atualiza a cópia e o diff sem redesenhar (o foco fica)
     if (el.id==="pmsg"){ ED.texto = el.value.slice(0, 500); return; }
     if (!el.dataset.f){ const k = el.closest(".exr"); if (k) edita(k.querySelector("[data-f]")); return; }
     const a = el.dataset.f.split("|");
-    if (a[0]==="m"){ ED.dep.metas = ED.dep.metas || {}; const n = num0(el.value); if (n==null) delete ED.dep.metas[a[1]]; else ED.dep.metas[a[1]] = n; }
+    if (a[0]==="m"){ const r = lido(el, TETO.meta, true, true); if (r){ ED.dep.metas = ED.dep.metas || {}; if (r.n==null) delete ED.dep.metas[a[1]]; else ED.dep.metas[a[1]] = r.n; } }
     else if (a[0]==="o"){ const r = ED.dep.orient[+a[1]]; if (r) r[a[2]] = el.value; }
-    else if (a[0]==="t"){ const t = trs(+a[1], +a[2]); if (!t) return; if (a[3]==="t" || a[3]==="z") t[a[3]] = el.value.slice(0, 40) || t[a[3]]; else { const n = num0(el.value); if (n>0) t[a[3]] = n; } }
-    else if (a[0]==="e"){
+    else if (a[0]==="t"){
+      const t = trs(+a[1], +a[2]); if (!t) return;
+      if (a[3]==="t"){ const s = el.value.trim(); marca(el, s ? "" : "Dê um nome ao treino."); if (s) t.t = s.slice(0, 40); }
+      else if (a[3]==="z") t.z = el.value.slice(0, 30);
+      else { const r = lido(el, TETO[a[3]], false, false); if (r) t[a[3]] = r.n; }
+    }else if (a[0]==="e"){
       const t = trs(+a[1], +a[2]), row = el.closest(".exr"); if (!t || !row) return;
-      const [n, s, r, k] = [...row.querySelectorAll("input")].map(x=>x.value), seg = /\ss$/.test((exTxt(t.passos[+a[3]])||{sr:""}).sr);
-      if (!n.trim() || !(parseInt(s)>0) || !(parseInt(r)>0)) return;
-      const kg = num0(k); t.passos[+a[3]] = n.trim().slice(0, 40)+" "+parseInt(s)+"×"+parseInt(r)+(seg ? " s" : "")+(kg ? " · "+kg+" kg" : "");
+      const [ne, se, re, ke] = [...row.querySelectorAll("input")], nm = ne.value.trim(); marca(ne, nm ? "" : "Dê um nome ao exercício.");
+      const s = lido(se, TETO.ser, true, false), r = lido(re, TETO.rep, true, false), k = lido(ke, TETO.kg, false, true), seg = /\ss$/.test((exTxt(t.passos[+a[3]])||{sr:""}).sr);
+      if (nm && s && r && k) t.passos[+a[3]] = nm.slice(0, 40)+" "+s.n+"×"+r.n+(seg ? " s" : "")+(k.n ? " · "+k.n+" kg" : "");
     }
     difAtual();
   };
   async function enviar(b){
+    if (comErro()){ toast("Corrija os campos marcados."); return; }
     const depois = edFinal(); if (!diffTxt(ED.ant, depois).length){ toast("Faça alguma mudança primeiro."); return; }
     b.disabled = true;
     try{
       const r = await Pro.enviarProposta(vid, tipo, ED.ant, depois, ED.texto);
-      if (r && r.erro) throw new Error(r.erro==="vinculo" ? "vinculo" : "falha");
+      if (r && r.erro) throw new Error(r.erro);
+      if (ED.subst) SUBST.add(ED.subst);
       ED = null; toast("Proposta enviada ao aluno."); ir("propostas");
-    }catch(e){ toast(e.message==="vinculo" ? "Esse vínculo não está mais ativo." : msgPro(e)); if (b.isConnected) b.disabled = false; }
+    }catch(e){ toast(e.message==="vinculo" ? "Esse vínculo não está mais ativo." : e.message==="invalida" ? "Essa proposta não pôde ser enviada. Revise os valores." : msgPro(e)); if (b.isConnected) b.disabled = false; }
   }
   const carrega = () => ED.ant ? Promise.resolve() : snapPro(vid, tipo==="treino" ? "treino" : "comida", true).then(s=>{
     if (!vivo()) return;
     if (!s) throw "Aguardando o aluno abrir o app para você ver o plano dele.";
     if (tipo==="treino"){
-      const r = s.plano && Array.isArray(s.plano.semanas) && semanaEm(s.plano, [], key(today));
+      const r = planoValido("treino", s.plano) && semanaEm(s.plano, [], key(today));
       if (!r || !r.sem) throw "O plano do aluno não está em andamento nesta semana.";
-      ED.ant = s.plano; ED.wi = r.w-1;
-    }else ED.ant = s.planoAlim && typeof s.planoAlim==="object" ? s.planoAlim : {};
+      ED.ant = s.plano; ED.wi = r.w-1; ED.ini = addDays(parseD(s.plano.inicio), 7*(r.w-1)); ED.feitos = s.feitos && typeof s.feitos==="object" ? s.feitos : {};
+    }else ED.ant = planoValido("alimentar", s.planoAlim || {}) ? s.planoAlim || {} : {};
     ED.tipo = tipo; ED.dep = copia(ED.ant);
   });
   carrega().then(()=>{
@@ -2713,17 +2785,17 @@ function telaProPropor(vid){
     el.addEventListener("input", e=>{ const t = e.target; if (t.tagName==="INPUT" || t.tagName==="TEXTAREA") edita(t); });
     el.addEventListener("change", e=>{ const t = e.target; if (t.tagName!=="SELECT") return;
       if (t.dataset.f) edita(t);
-      else if (t.dataset.mv && t.value!==""){ const [i, j] = idx(t.dataset.mv), ds = ED.dep.semanas[ED.wi].dias, [x] = ds[i].treinos.splice(j, 1); ds[+t.value].treinos.push(x); monta(); } });
+      else if (t.dataset.mv && t.value!==""){ const [i, j] = idx(t.dataset.mv), ds = ED.dep.semanas[ED.wi].dias; if (diaTravado(i) || diaTravado(+t.value)) return; const [x] = ds[i].treinos.splice(j, 1); ds[+t.value].treinos.push(x); monta(); } });
     el.addEventListener("click", e=>{
       const b = e.target.closest("button"); if (!b) return;
       if (b.id==="pse") return enviar(b);
-      const d = b.dataset;
-      if (d.rm){ const [i, j] = idx(d.rm); ED.dep.semanas[ED.wi].dias[i].treinos.splice(j, 1); }
-      else if (d.add){ const [i, k] = d.add.split("|"); ED.dep.semanas[ED.wi].dias[+i].treinos.push(copia(NOVOTR[k])); }
+      const d = b.dataset, ds = ED.dep.semanas ? ED.dep.semanas[ED.wi].dias : null;
+      if (d.rm){ const [i, j] = idx(d.rm); if (diaTravado(i)) return; ds[i].treinos.splice(j, 1); }
+      else if (d.add){ const [i, k] = d.add.split("|"); if (diaTravado(+i) || ds[+i].treinos.length>=8) return; ds[+i].treinos.push(copia(NOVOTR[k])); }
       else if (d.ae){ const [i, j] = idx(d.ae); trs(i, j).passos.push("Novo exercício 3×10"); }
       else if (d.xe){ const [i, j, x] = idx(d.xe); trs(i, j).passos.splice(x, 1); }
       else if (d.orm!=null) ED.dep.orient.splice(+d.orm, 1);
-      else if (b.id==="ora") ED.dep.orient = (ED.dep.orient||[]).concat([{ref:"", t:""}]);
+      else if (b.id==="ora"){ if ((ED.dep.orient||[]).length>=20) return; ED.dep.orient = (ED.dep.orient||[]).concat([{ref:"", t:""}]); }
       else return;
       monta();
     });
@@ -3868,7 +3940,7 @@ const Pro = {
       }
       if (c.p) novo.set(id, {id, vincId:vid, estado:c.p.estado, em:Number.isFinite(c.p.em) ? c.p.em : h.em, tipo:c.p.tipo, de:c.p.de});
     }
-    if (tk!==Pro._tk) return; Pro.props = novo; Pro._mudou();
+    if (tk!==Pro._tk) return; Pro.props = novo; Pro._resolvido = true; Pro._mudou();
   },
   async ativarPapel(papel, ligado){
     if (!PAPEIS_PRO.includes(papel)) return {erro:"papel"};
@@ -4039,26 +4111,28 @@ const Pro = {
     await Pro._pronto();
     const v = Pro.vinc.get(vid); if (!v || v.profId!==me || v.estado!=="ativo") return {erro:"vinculo"};
     const k = await Pro._chave(v); if (!k) return {erro:"chave"};
+    const ops = criarPatch(antes, depois);
+    if (tipo!==tipoDe(v.papel) || !opsPermitidas(tipo, ops) || !planoValido(tipo, depois)) return {erro:"invalida"};
     const id = Date.now().toString(36)+Math.random().toString(36).slice(2, 6), em = Date.now();
-    const p = {id, de:me, tipo:String(tipo||"").slice(0, 30), base:hash32(JSON.stringify(antes)), ops:criarPatch(antes, depois), texto:String(texto||"").slice(0, 500), estado:"pendente", em};
+    const p = {id, de:me, tipo, base:hash32(JSON.stringify(antes)), ops, texto:String(texto||"").slice(0, 500), estado:"pendente", em};
     await realDb.collection("prop").doc(vid+"."+id).set(Object.assign({vinc:vid, estado:"pendente", em}, await cifrar(k, p)));
     Pro.avisar(v.alunoId, "proposta", vid+"."+id); return {ok:true, id};
   },
   async responderProposta(vid, id, acao, motivo){
     await Pro._pronto();
-    const v = Pro.vinc.get(vid); if (!v || v.alunoId!==me || !["aceitar", "recusar"].includes(acao)) return {erro:"vinculo"};
+    const v = Pro.vinc.get(vid); if (!v || v.alunoId!==me || !["aceitar", "recusar", "invalidar"].includes(acao)) return {erro:"vinculo"};
     const trava = vid+"."+id; if (Pro._resp.has(trava)) return {erro:"ocupado"};   // clique concorrente na mesma proposta
     Pro._resp.add(trava);
     try{
       const r = await Pro._lerProp(vid, id); if (!r || r.p.estado!=="pendente") return {erro:"estado"};   // já respondida: não sobrescreve
       let ev = acao, res = {ok:true}, novo = null;
       const campo = v.papel==="personal" ? "planoProf" : "planoAlim";
-      if (acao==="aceitar"){
-        try{
-          const antes = campo==="planoProf" ? planoAtual() : (P.planoAlim || {});
-          if (!propostaAtual(r.p, JSON.stringify(antes))) throw new Error("base");
-          novo = aplicarPatch(antes, r.p.ops);
-        }catch(e){ ev = "invalidar"; res = {ok:false, erro:"desatualizada"}; }
+      if (acao!=="recusar"){   // a base e o tipo são conferidos aqui, contra o plano certo do papel, não pela tela
+        const av = avaliarProposta(tipoDe(v.papel), r.p, campo==="planoProf" ? planoAtual() : (P.planoAlim || {}));
+        if (acao==="aceitar" && av.st==="invalida") return {erro:"invalida"};
+        if (acao==="aceitar" && av.st==="ok") novo = av.novo;
+        else if (av.st==="ok") return {erro:"atual"};   // invalidar só vale para proposta que não se aplica mais
+        else { ev = "invalidar"; res = {ok:false, erro:"desatualizada"}; }
       }
       const anterior = P[campo];
       if (novo){   // primeiro aplica e salva o plano; só então marca aceita (se salvar falhar, nada fica aceito e o erro sobe)

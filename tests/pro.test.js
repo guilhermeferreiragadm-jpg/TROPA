@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -154,4 +154,47 @@ test("diffTxt descreve carga, distância, dia removido e metas em português", (
   assert.deepEqual(F.diffTxt({}, {metas: {kcal: 2000}, orient: [{ref: "Café", t: "mais proteína"}]}), ["Meta de calorias: nenhuma → 2000 kcal", "Café: orientação adicionada, mais proteína"]);
   assert.deepEqual(F.diffTxt({metas: {kcal: 2000}}, {metas: {kcal: 2200}}), ["Meta de calorias: 2000 kcal → 2200 kcal"]);
   assert.equal(F.exTxt("Supino 4×8 · 42,5 kg").kg, "42,5");
+});
+
+const planoT = () => ({inicio: "2026-10-26", semanas: [{dias: [0, 1, 2, 3, 4, 5, 6].map(i => ({dia: "d" + i, treinos: i === 0 ? [{k: "gym", t: "Força", min: 40, passos: ["Supino 4×8 · 40 kg", "Remo 3×10"]}, {k: "run", t: "Corrida", km: 5}] : []}))}]});
+
+test("diffTxt cobre todos os treinos de um array que mudou de tamanho e conta o que não sabe descrever", () => {
+  const a = planoT(), b = JSON.parse(JSON.stringify(a));
+  b.semanas[0].dias[0].treinos[0].passos[0] = "Supino 4×8 · 45 kg";
+  b.semanas[0].dias[0].treinos[1].km = 8;
+  b.semanas[0].dias[0].treinos.push({k: "run", t: "Extra", min: 20});
+  assert.deepEqual(F.diffTxt(a, b), ["Supino: 40 kg → 45 kg", "Segunda (Corrida): distância (km) 5 → 8", "Segunda: Extra adicionado"]);
+  assert.deepEqual(F.diffTxt({a: 1}, {a: 2}), ["e mais 1 mudança"]);
+});
+
+test("opsPermitidas e planoValido barram caminho vazio, tipo trocado, lixo e valores acima do teto", () => {
+  const a = planoT();
+  assert.equal(F.opsPermitidas("treino", [{p: ["semanas", 0, "dias", 0, "treinos", 0, "km"], v: 5}]), true);
+  assert.equal(F.opsPermitidas("treino", [{p: [], v: {}}]), false);
+  assert.equal(F.opsPermitidas("treino", [{p: ["metas", "kcal"], v: 1}]), false);
+  assert.equal(F.opsPermitidas("alimentar", [{p: ["semanas", 0], v: 1}]), false);
+  assert.equal(F.opsPermitidas("treino", [{p: ["semanas", 0, "x"], v: "a".repeat(3000)}]), false);
+  assert.equal(F.opsPermitidas("alimentar", [{p: ["metas", "kcal"], v: 2000}, {p: ["orient"], v: [{ref: "Café", t: "x"}]}]), true);
+  assert.equal(F.opsPermitidas("treino", Array(401).fill({p: ["semanas", 0, "a"], v: 1})), false);
+  assert.equal(F.planoValido("treino", a), true);
+  assert.equal(F.planoValido("treino", "x"), false);
+  const b = JSON.parse(JSON.stringify(a)); b.semanas[0].dias[0].treinos[1].km = 501;
+  assert.equal(F.planoValido("treino", b), false);
+  const c = JSON.parse(JSON.stringify(a)); c.semanas[0].dias[0].treinos[0].passos[0] = "Supino 100×8";
+  assert.equal(F.planoValido("treino", c), false);
+  assert.equal(F.planoValido("alimentar", {metas: {kcal: 2000}, orient: [{ref: "a", t: "b"}]}), true);
+  assert.equal(F.planoValido("alimentar", {metas: {kcal: "2000"}}), false);
+  assert.equal(F.planoValido("alimentar", {orient: Array(21).fill({ref: "a", t: "b"})}), false);
+  assert.equal(F.planoValido("alimentar", {semanas: []}), false);
+});
+
+test("avaliarProposta usa o tipo do vínculo: payload com tipo trocado nunca vira ok", () => {
+  const a = planoT(), b = JSON.parse(JSON.stringify(a)); b.semanas[0].dias[0].treinos[1].km = 8;
+  const ops = F.criarPatch(a, b), base = F.hash32(JSON.stringify(a));
+  assert.equal(F.tipoDe("personal"), "treino");
+  assert.equal(F.avaliarProposta("treino", {tipo: "treino", base, ops}, a).st, "ok");
+  assert.equal(F.avaliarProposta("treino", {tipo: "alimentar", base, ops}, a).st, "invalida");
+  assert.equal(F.avaliarProposta("alimentar", {tipo: "alimentar", base, ops}, {}).st, "velha");
+  assert.equal(F.avaliarProposta("treino", {tipo: "treino", base, ops: [{p: [], v: "lixo"}]}, a).st, "invalida");
+  assert.equal(F.avaliarProposta("treino", {tipo: "treino", base: "zz", ops}, a).st, "velha");
 });
