@@ -241,7 +241,7 @@ test("textoAviso mostra a outra parte do vínculo e o texto por tipo", () => {
   assert.equal(t("resposta", "p", {estado: "pendente"}), "Ana respondeu sua proposta");
   assert.equal(t("perm", "p"), "Ana mudou o que você pode ver");
   assert.equal(t("comentario", "p"), "Ana comentou um exercício");
-  assert.equal(F.textoAviso({tipo: "vinculo"}, {eu: "p", v: {...v, nomeA: ""}}), "Seu aluno aceitou seu convite de Nutri");
+  assert.equal(F.textoAviso({tipo: "vinculo"}, {eu: "p", v: {...v, nomeA: ""}}), "Seu paciente aceitou seu convite de Nutri");
   assert.equal(F.textoAviso({tipo: "x"}, {eu: "p", v}), "");
   assert.equal(F.textoAviso({tipo: "perm"}, {eu: "p"}), "");
 });

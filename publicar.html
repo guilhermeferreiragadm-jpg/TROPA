@@ -1318,7 +1318,7 @@ const itemInboxValido = it => !!it && TIPOS_INBOX.includes(it.tipo) && typeof it
 // Texto do aviso (sem HTML; quem chama aplica esc). ctx: {eu, v (vínculo), estado, motivo}
 function textoAviso(it, ctx){
   const v = ctx && ctx.v; if (!it || !v) return "";
-  const n = (ctx.eu===v.alunoId ? v.nomeP : v.nomeA) || (ctx.eu===v.alunoId ? (v.papel==="nutri" ? "Sua nutri" : "Seu personal") : "Seu aluno"), pap = v.papel==="nutri" ? "Nutri" : "Personal";
+  const n = (ctx.eu===v.alunoId ? v.nomeP : v.nomeA) || (ctx.eu===v.alunoId ? (v.papel==="nutri" ? "Sua nutri" : "Seu personal") : "Seu "+(v.papel==="nutri" ? "paciente" : "aluno")), pap = v.papel==="nutri" ? "Nutri" : "Personal";
   switch (it.tipo){
     case "vinculo": return n+" aceitou seu convite de "+pap;
     case "encerrado": return n+" encerrou o vínculo";
@@ -2504,8 +2504,9 @@ function render(keep){
 const fotoSrc = () => (P && P.perfil && fotoValida(P.perfil.foto)) ? P.perfil.foto : meAv;
 function topo(k, h1){ return '<div class="top"><div class="mw0"><span class="k">'+k+'</span><h1 class="h1">'+h1+'</h1></div><div class="acts">'+sinoHTML()+'<button type="button" class="me" data-go="perfil" aria-label="Perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(P&&P.perfil&&P.perfil.apelido||meName)))+'</button></div></div>'+seletorModo(); }
 /* ===== modos: Aluno, Personal, Nutri (barra, sino e rotas de esqueleto; as telas vêm nas próximas tarefas) ===== */
-const ABAS_PRO = {personal:[["alunos","Alunos"],["propostas","Propostas"],["biblioteca","Biblioteca"]], nutri:[["alunos","Alunos"],["propostas","Propostas"],["planos","Planos"]]};
+const ABAS_PRO = {personal:[["alunos","Alunos"],["propostas","Propostas"],["biblioteca","Biblioteca"]], nutri:[["alunos","Pacientes"],["propostas","Propostas"],["planos","Planos"]]};
 const NOMEMODO = {aluno:"Aluno", personal:"Personal", nutri:"Nutri"};
+const quem = (p, pl, cap) => { const w = (p==="nutri" ? "paciente" : "aluno")+(pl ? "s" : ""); return cap ? w[0].toUpperCase()+w.slice(1) : w; };   // quem a Nutri atende é paciente; o Personal, aluno
 const barraAbas = m => m==="aluno" ? ["hoje","treino","feed","comida","perf"] : ABAS_PRO[m].map(x=>x[0]);
 const modosDisp = () => ["aluno"].concat(["personal","nutri"].filter(m=>Pro.papeis[m]));
 const modoValido = m => modosDisp().includes(m) ? m : "aluno";
@@ -2560,7 +2561,7 @@ async function ativAluno(v){
   const per = v.papel==="personal", lib = (per ? ["treino","perf"] : ["comida"]).filter(c=>podeVer(v, c));
   if (!lib.length) return {t: per ? "Treino não liberado" : "Comida não liberada"};
   const ss = await Promise.all(lib.map(c=>snapPro(v.id, c)));
-  if (ss.every(s=>!s)) return {t:"Aguardando o aluno abrir o app"};
+  if (ss.every(s=>!s)) return {t:"Aguardando o "+quem(v.papel)+" abrir o app"};
   let ult = "";
   try{ ss.forEach((s, i)=>{ if (!s) return;
     if (lib[i]==="treino") Object.keys(s.feitos||{}).forEach(k=>{ const m = /^ck_(\d{4}-\d{2}-\d{2})_/.exec(k); if (m && m[1]>ult) ult = m[1]; });
@@ -2593,9 +2594,9 @@ function proAoVivo(){
 function telaProAlunos(o){
   const papel = MODO, vs = alunosDe(papel), pend = vs.reduce((n, v)=>n+propsPend(v.id), 0);
   proSigVista = proSig();
-  const app = tela(topo(NOMEMODO[papel], "Alunos")+'<button type="button" class="btn go" id="alc">Convidar aluno</button>'+
-    (vs.length ? '<p class="s">'+vs.length+(vs.length===1?" aluno":" alunos")+' · '+pend+(pend===1?" proposta pendente":" propostas pendentes")+'</p><div class="lst">'+vs.map(v=>lr(esc("al_"+v.id), "", esc(v.nomeA||"Aluno")+(propsPend(v.id) ? ' <span class="pill">'+propsPend(v.id)+'</span>' : ''), '…')).join("")+'</div>'
-      : '<div class="box"><b>Nenhum aluno ainda</b><p class="s">Toque em Convidar aluno e mande o código. Ele escolhe o que você pode ver.</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
+  const app = tela(topo(NOMEMODO[papel], quem(papel, 1, 1))+'<button type="button" class="btn go" id="alc">Convidar '+quem(papel)+'</button>'+
+    (vs.length ? '<p class="s">'+vs.length+(vs.length===1?" "+quem(papel):" "+quem(papel, 1))+' · '+pend+(pend===1?" proposta pendente":" propostas pendentes")+'</p><div class="lst">'+vs.map(v=>lr(esc("al_"+v.id), "", esc(v.nomeA||quem(papel, 0, 1))+(propsPend(v.id) ? ' <span class="pill">'+propsPend(v.id)+'</span>' : ''), '…')).join("")+'</div>'
+      : '<div class="box"><b>Nenhum '+quem(papel)+' ainda</b><p class="s">Toque em Convidar '+quem(papel)+' e mande o código. '+(papel==="nutri" ? "Ele" : "Ele")+' escolhe o que você pode ver.</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
   bindGo(app);
   $("alc").addEventListener("click", ()=>sheetNovoConvite(papel));
   const tk = ++listTk;
@@ -2606,14 +2607,14 @@ function telaProAlunos(o){
 }
 function sheetNovoConvite(papel){
   const corpo = abrirSheet("Novo convite");
-  corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="s">Gerando o código…</p>';
+  corpo.innerHTML = '<h2 class="h2 lg">Convidar '+quem(papel)+'</h2><p class="s">Gerando o código…</p>';
   Pro.gerarConvite(papel).then(r=>{
     if (!corpo.isConnected) return;
     if (!r || !r.cod) throw new Error("falha");
     const cod = r.cod.slice(0,4)+"-"+r.cod.slice(4), txt = "Entra no "+BRAND+": https://claude.ai/artifact/"+ARTIFACT_ID+". Código: "+cod+". Vale por 7 dias.";
-    corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="s">Mande este código. O aluno digita em Perfil, Entrar com código de um profissional.</p><div class="box tc"><span class="code" id="cvcod">'+esc(cod)+'</span></div><p class="s" id="cvtx">'+esc(txt)+'</p><a class="btn go" id="cvwa" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt)+'">Enviar pelo WhatsApp</a><button type="button" class="btn" id="cvcp">Copiar</button><button type="button" class="lk" id="cvfe">Fechar</button>';
+    corpo.innerHTML = '<h2 class="h2 lg">Convidar '+quem(papel)+'</h2><p class="s">Mande este código. O '+quem(papel)+' digita em Perfil, Entrar com código de um profissional.</p><div class="box tc"><span class="code" id="cvcod">'+esc(cod)+'</span></div><p class="s" id="cvtx">'+esc(txt)+'</p><a class="btn go" id="cvwa" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt)+'">Enviar pelo WhatsApp</a><button type="button" class="btn" id="cvcp">Copiar</button><button type="button" class="lk" id="cvfe">Fechar</button>';
     $("cvcp").addEventListener("click", ()=>copiar(txt)); $("cvfe").addEventListener("click", ()=>fecharSheet());
-  }).catch(e=>{ if (!corpo.isConnected) return; corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="msg err" role="alert">'+esc(msgPro(e))+'</p><button type="button" class="lk" id="cvfe">Fechar</button>'; $("cvfe").addEventListener("click", ()=>fecharSheet()); });
+  }).catch(e=>{ if (!corpo.isConnected) return; corpo.innerHTML = '<h2 class="h2 lg">Convidar '+quem(papel)+'</h2><p class="msg err" role="alert">'+esc(msgPro(e))+'</p><button type="button" class="lk" id="cvfe">Fechar</button>'; $("cvfe").addEventListener("click", ()=>fecharSheet()); });
 }
 const CATPRO = {treino:"Treino", perf:"Performance", comida:"Comida", corpo:"Peso e medidas", feed:"Feed"};
 const kgTxt = n => num(+n, 1)+" kg", linhaPro = (a, b) => '<div class="between"><span>'+a+'</span><span class="s">'+b+'</span></div>';
@@ -2653,12 +2654,12 @@ function telaProDetalhe(vid, o){
   if (!v || v.estado!=="ativo" || v.profId!==me || v.papel!==MODO){ R.sub = null; R.arg = null; return telaProAlunos({}); }
   proSigVista = proSig();
   const cats = CATS_POR_PAPEL[v.papel], tk = ++detTk;
-  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">'+esc(v.nomeA||"Aluno")+'</h1></div><button type="button" class="btn go" id="vpr">Propor mudança</button>'+
-    cats.map(c=>podeVer(v, c) ? '<div class="ds" id="ds_'+c+'"><div class="box"><b>'+CATPRO[c]+'</b><p class="s">Carregando…</p></div></div>' : '<div class="box"><div class="between"><b>'+CATPRO[c]+'</b><span class="cor-2">'+cadeado()+'</span></div><p class="s">O aluno não liberou</p></div>').join(""), {tabs:true, keepScroll:o&&o.keepScroll});
+  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">'+esc(v.nomeA||quem(v.papel, 0, 1))+'</h1></div><button type="button" class="btn go" id="vpr">Propor mudança</button>'+
+    cats.map(c=>podeVer(v, c) ? '<div class="ds" id="ds_'+c+'"><div class="box"><b>'+CATPRO[c]+'</b><p class="s">Carregando…</p></div></div>' : '<div class="box"><div class="between"><b>'+CATPRO[c]+'</b><span class="cor-2">'+cadeado()+'</span></div><p class="s">O '+quem(v.papel)+' não liberou</p></div>').join(""), {tabs:true, keepScroll:o&&o.keepScroll});
   $("vb").addEventListener("click", ()=>ir("alunos")); $("vpr").addEventListener("click", ()=>proporMudanca(vid));
   cats.filter(c=>podeVer(v, c)).forEach(c=>snapPro(vid, c, true).then(s=>{ const el = $("ds_"+c); if (!el || tk!==detTk || R.tab!=="alunos" || R.sub!=="det" || R.arg!==vid || !app.contains(el)) return;
-    let h = ""; if (s){ try{ h = htmlSnap(c, s); }catch(e){ h = '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Não consegui ler os dados deste aluno</p></div>'; } }
-    el.innerHTML = s ? h : '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Aguardando o aluno abrir o app</p></div>'; }));
+    let h = ""; if (s){ try{ h = htmlSnap(c, s); }catch(e){ h = '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Não consegui ler os dados deste '+quem(v.papel)+'</p></div>'; } }
+    el.innerHTML = s ? h : '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Aguardando o '+quem(v.papel)+' abrir o app</p></div>'; }));
 }
 /* ===== propostas: lista, sheet, editor ===== */
 const ESTPROP = {pendente:["Pendente","wait"], aceita:["Aceita","ok"], recusada:["Recusada","no"], desatualizada:["Desatualizada","wait"]};
@@ -2678,11 +2679,11 @@ function telaPropostas(o, alu){
   const ps = propsDoPapel(alu).sort((a, b)=>(a.estado==="pendente" ? 0 : 1)-(b.estado==="pendente" ? 0 : 1) || (+b.em||0)-(+a.em||0)).slice(0, 60);
   propSigVista = propSig(alu);
   const lin = p=>{ const v = Pro.vinc.get(p.vincId), e = ESTPROP[p.estado] || [esc(p.estado), "wait"], c = Pro._pc.get(p.id), x = c && c.p, t = x ? (p.estado==="recusada" && x.motivo ? "Motivo: "+x.motivo : x.texto||"") : "";
-    return lr(esc("pp_"+p.id), "", esc(alu ? (v.papel==="nutri" ? "Nutri " : "Personal ")+(v.nomeP||"") : v.nomeA||"Aluno")+' <span class="pill '+e[1]+'">'+e[0]+'</span>', (p.tipo==="alimentar" ? "Alimentação" : "Treino")+(+p.em ? " · "+esc(fmt(new Date(+p.em))) : "")+(t ? " · "+esc(String(t).slice(0, 60)) : "")); };
+    return lr(esc("pp_"+p.id), "", esc(alu ? (v.papel==="nutri" ? "Nutri " : "Personal ")+(v.nomeP||"") : v.nomeA||quem(v.papel, 0, 1))+' <span class="pill '+e[1]+'">'+e[0]+'</span>', (p.tipo==="alimentar" ? "Alimentação" : "Treino")+(+p.em ? " · "+esc(fmt(new Date(+p.em))) : "")+(t ? " · "+esc(String(t).slice(0, 60)) : "")); };
   const pe = ps.filter(p=>p.estado==="pendente"), hi = ps.filter(p=>p.estado!=="pendente");
   const app = tela((alu ? '<button type="button" class="back" data-go="perfil">← Perfil</button><div><h1 class="h1">Propostas</h1></div>' : topo(NOMEMODO[MODO], "Propostas"))+
     (ps.length ? (pe.length ? '<span class="k">pendentes</span><div class="lst">'+pe.map(lin).join("")+'</div>' : '')+(hi.length ? '<span class="k">histórico</span><div class="lst">'+hi.map(lin).join("")+'</div>' : '')
-      : Pro.ok() && !Pro._resolvido ? '<p class="s">Carregando…</p>' : '<div class="box"><b>Nenhuma proposta por enquanto</b><p class="s">'+(alu ? 'Quando seu Personal ou sua Nutri propuser uma mudança, ela aparece aqui para você aceitar ou recusar.' : 'Abra um aluno e toque em Propor mudança.')+'</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
+      : Pro.ok() && !Pro._resolvido ? '<p class="s">Carregando…</p>' : '<div class="box"><b>Nenhuma proposta por enquanto</b><p class="s">'+(alu ? 'Quando seu Personal ou sua Nutri propuser uma mudança, ela aparece aqui para você aceitar ou recusar.' : 'Abra um '+quem(MODO)+' e toque em Propor mudança.')+'</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
   bindGo(app);
   ps.forEach(p=>{ const b = $("pp_"+p.id); if (b) b.addEventListener("click", ()=>sheetPropostaAluno(p.vincId, p.id.slice(p.vincId.length+1))); });   // Pro.props usa o id do documento (vínculo.id)
 }
@@ -2704,10 +2705,10 @@ async function sheetPropostaAluno(vid, id){
       (p.texto ? '<p>'+esc(p.texto)+'</p>' : '')+
       (lin.length ? '<div class="box"><b>O que muda</b>'+lin.map(l=>'<p>'+esc(l)+'</p>').join("")+'</div>' : '')+
       (est==="recusada" && p.motivo ? '<p class="s">Motivo: '+esc(p.motivo)+'</p>' : '')+
-      (est==="desatualizada" ? '<div class="flag">'+(av.st==="invalida" ? 'Essa proposta não pôde ser aplicada.' : prof ? 'O plano do aluno mudou depois desta proposta.' : 'O seu plano mudou depois desta proposta. Peça uma nova ao seu profissional.')+'</div>' : '')+
+      (est==="desatualizada" ? '<div class="flag">'+(av.st==="invalida" ? 'Essa proposta não pôde ser aplicada.' : prof ? 'O plano do '+quem(v.papel)+' mudou depois desta proposta.' : 'O seu plano mudou depois desta proposta. Peça uma nova ao seu profissional.')+'</div>' : '')+
       (!prof && est==="pendente" ? '<button type="button" class="btn go" id="pa">Aceitar</button><button type="button" class="btn ghost" id="pr">Recusar</button><div id="prm" hidden><textarea class="inp" id="pmt" rows="3" maxlength="300" placeholder="Motivo (opcional)" aria-label="Motivo da recusa"></textarea><button type="button" class="btn" id="pr2">Confirmar recusa</button></div>' : '')+
       (prof && est==="desatualizada" && v.estado==="ativo" && av.st!=="invalida" ? '<button type="button" class="btn go" id="pre">Reenviar</button>' : '')+
-      (prof && est==="pendente" ? '<p class="s">Aguardando a resposta do aluno.</p>' : '')+'<button type="button" class="lk" id="pfe">Fechar</button>')) return;
+      (prof && est==="pendente" ? '<p class="s">Aguardando a resposta do '+quem(v.papel)+'.</p>' : '')+'<button type="button" class="lk" id="pfe">Fechar</button>')) return;
     $("pfe").addEventListener("click", ()=>fecharSheet());
     if (!prof && velha) Pro.responderProposta(vid, id, "invalidar").catch(()=>{});   // só grava "desatualizada" (cifrado); nunca aplica nada sem o clique em Aceitar
     const pre = $("pre"); if (pre) pre.addEventListener("click", ()=>{ fecharSheet(); proporMudanca(vid, p.texto, vid+"."+id); });
@@ -2747,13 +2748,13 @@ function edHTML(){
   const inp = (rot, df, val, tp, st)=>'<label class="fld"><span class="k">'+rot+'</span><input class="inp" data-f="'+df+'"'+(tp ? ' type="number" inputmode="decimal" step="'+st+'" min="0"' : ' maxlength="40"')+' value="'+esc(val)+'"></label>';
   if (ED.tipo==="alimentar"){
     const m = ED.dep.metas || {}, or = ED.dep.orient || [];
-    return '<div class="box"><b>Metas do dia</b><p class="s">Opcional. O aluno vê estes números, mas eles não mudam os cálculos do app.</p><div class="grid2">'+Object.keys(METAROT).map(k=>inp(METAROT[k]+metaU(k), "m|"+k, m[k]==null ? "" : m[k], 1, 1)).join("")+'</div></div>'+
+    return '<div class="box"><b>Metas do dia</b><p class="s">Opcional. O '+quem(MODO)+' vê estes números, mas eles não mudam os cálculos do app.</p><div class="grid2">'+Object.keys(METAROT).map(k=>inp(METAROT[k]+metaU(k), "m|"+k, m[k]==null ? "" : m[k], 1, 1)).join("")+'</div></div>'+
       '<div class="box"><b>Orientações por refeição</b>'+(ED.cortou ? '<p class="s">Mostrando só as 20 primeiras orientações</p>' : '')+or.map((r, i)=>'<div class="ped"><label class="fld"><span class="k">Refeição</span><input class="inp" data-f="o|'+i+'|ref" maxlength="40" value="'+esc(r.ref)+'"></label><label class="fld"><span class="k">Orientação</span><textarea class="inp" data-f="o|'+i+'|t" rows="3" maxlength="300">'+esc(r.t)+'</textarea></label><button type="button" class="lk" data-orm="'+i+'">Remover</button></div>').join("")+(or.length<20 ? '<button type="button" class="btn" id="ora">Adicionar orientação</button>' : '<p class="s">Limite de 20 orientações.</p>')+'</div>';
   }
   return ED.dep.semanas[ED.wi].dias.map((d, i)=>{ const tr = diaTravado(i);
     return '<div class="box"><b>'+PROPDIA[i]+'</b>'+(tr ? '<div class="flag">Esse dia já tem treino registrado ou já passou: só os campos podem mudar, não dá para remover, mover nem inserir treinos.</div>' : "")+(d.treinos.length ? "" : '<p class="s">Descanso</p>')+d.treinos.map((t, j)=>{
     const id = i+"|"+j;
-    return '<div class="ped">'+(treinoFeito(i, j) ? '<p class="s">Esse treino já foi feito pelo aluno.</p>' : '')+inp("Treino", "t|"+id+"|t", t.t)+'<div class="grid2">'+
+    return '<div class="ped">'+(treinoFeito(i, j) ? '<p class="s">Esse treino já foi feito pelo '+quem(MODO)+'.</p>' : '')+inp("Treino", "t|"+id+"|t", t.t)+'<div class="grid2">'+
       (t.km!=null ? inp("Distância (km)", "t|"+id+"|km", t.km, 1, "0.5") : t.min!=null ? inp("Duração (min)", "t|"+id+"|min", t.min, 1, "5") : "")+
       (t.z!=null ? '<label class="fld"><span class="k">Zona</span><select class="inp" data-f="t|'+id+'|z">'+[...new Set(["muito fácil", "fácil", "forte", t.z])].map(z=>'<option'+(z===t.z ? ' selected' : '')+'>'+esc(z)+'</option>').join("")+'</select></label>' : "")+'</div>'+
       (t.k==="gym" ? (t.passos||[]).map((s, x)=>{ const e = exTxt(s);
@@ -2767,14 +2768,14 @@ function telaProPropor(vid){
   if (!v || v.estado!=="ativo" || v.profId!==me || v.papel!==MODO){ ED = null; R.sub = null; R.arg = null; return telaProAlunos({}); }
   const tipo = tipoDe(v.papel), tk = ++detTk;
   if (!ED || ED.vid!==vid) ED = {vid, texto:""};
-  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">Propor mudança</h1><p class="s">Para '+esc(v.nomeA||"Aluno")+'. O aluno vê o que muda e decide se aceita.</p></div><div id="edc"><p class="s">Carregando…</p></div>', {tabs:true});
+  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">Propor mudança</h1><p class="s">Para '+esc(v.nomeA||quem(v.papel, 0, 1))+'. O '+quem(v.papel)+' vê o que muda e decide se aceita.</p></div><div id="edc"><p class="s">Carregando…</p></div>', {tabs:true});
   $("vb").addEventListener("click", ()=>{ ED = null; ir("alunos", "det", vid); });
   const vivo = () => { const el = $("edc"); return tk===detTk && el && app.contains(el) && R.tab==="alunos" && R.sub==="propor" && R.arg===vid && ED && ED.vid===vid ? el : null; };
   const comErro = () => [...ED.err].some(e=>e.isConnected);
   const difAtual = () => { const el = $("pdf"); if (!el) return; const l = diffTxt(ED.ant, edFinal()); el.innerHTML = l.length ? l.map(x=>'<p>'+esc(x)+'</p>').join("") : '<p class="s">Nenhuma mudança ainda.</p>'; $("pse").disabled = !l.length || comErro(); };
   const monta = () => {
     const el = vivo(); if (!el) return; ED.err = new Set();
-    el.innerHTML = '<div class="box"><b>O que muda</b><div id="pdf"></div></div>'+edHTML()+'<label class="fld"><span class="k">Mensagem para o aluno (opcional)</span><textarea class="inp" id="pmsg" rows="3" maxlength="500" placeholder="Ex.: vamos subir um pouco a carga, você está indo bem">'+esc(ED.texto)+'</textarea></label><button type="button" class="btn go" id="pse">Enviar para o aluno</button>';
+    el.innerHTML = '<div class="box"><b>O que muda</b><div id="pdf"></div></div>'+edHTML()+'<label class="fld"><span class="k">Mensagem para o '+quem(MODO)+' (opcional)</span><textarea class="inp" id="pmsg" rows="3" maxlength="500" placeholder="Ex.: vamos subir um pouco a carga, você está indo bem">'+esc(ED.texto)+'</textarea></label><button type="button" class="btn go" id="pse">Enviar para o '+quem(MODO)+'</button>';
     difAtual();
   };
   const trs = (i, j) => ED.dep.semanas[ED.wi].dias[i].treinos[j];
@@ -2817,15 +2818,15 @@ function telaProPropor(vid){
       const r = await Pro.enviarProposta(vid, tipo, ED.ant, depois, ED.texto);
       if (r && r.erro) throw new Error(r.erro);
       if (ED.subst) SUBST.add(ED.subst);
-      ED = null; toast("Proposta enviada ao aluno."); ir("propostas");
+      ED = null; toast("Proposta enviada ao "+quem(MODO)+"."); ir("propostas");
     }catch(e){ toast(e.message==="vinculo" ? "Esse vínculo não está mais ativo." : e.message==="invalida" ? "Essa proposta não pôde ser enviada. Revise os valores." : msgPro(e)); if (b.isConnected) b.disabled = false; }
   }
   const carrega = () => ED.ant ? Promise.resolve() : snapPro(vid, tipo==="treino" ? "treino" : "comida", true).then(s=>{
     if (!vivo()) return;
-    if (!s) throw "Aguardando o aluno abrir o app para você ver o plano dele.";
+    if (!s) throw "Aguardando o "+quem(MODO)+" abrir o app para você ver o plano dele.";
     if (tipo==="treino"){
       const r = planoValido("treino", s.plano) && semanaEm(s.plano, [], key(today));
-      if (!r || !r.sem) throw "O plano do aluno não está em andamento nesta semana.";
+      if (!r || !r.sem) throw "O plano do "+quem(MODO)+" não está em andamento nesta semana.";
       ED.ant = s.plano; ED.wi = r.w-1; ED.ini = addDays(parseD(s.plano.inicio), 7*(r.w-1)); ED.feitos = s.feitos && typeof s.feitos==="object" ? s.feitos : {};
     }else{ const pa = s.planoAlim || {}, c = corteAlim(pa); ED.cortou = c!==pa; ED.ant = planoValido("alimentar", c) ? c : {}; }
     ED.tipo = tipo; ED.dep = copia(ED.ant);
@@ -2849,7 +2850,7 @@ function telaProPropor(vid){
       else return;
       monta();
     });
-  }).catch(m=>{ const el = vivo(); if (el) el.innerHTML = '<div class="box"><p class="s">'+esc(typeof m==="string" ? m : "Não consegui carregar o plano do aluno agora.")+'</p></div>'; });
+  }).catch(m=>{ const el = vivo(); if (el) el.innerHTML = '<div class="box"><p class="s">'+esc(typeof m==="string" ? m : "Não consegui carregar o plano do "+quem(MODO)+" agora.")+'</p></div>'; });
 }
 /* modelos do profissional: privados, em data/users/<eu>/modelos */
 let MODELOS = null;
@@ -2954,7 +2955,7 @@ function mudarPapel(m, c){
   if (!ativos.length) return aplicarPapel(m, c.checked, ativos);
   c.checked = true;
   const n = ativos.length;
-  $("ov").innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Desligar modo"><span class="grab"></span><h2 class="h2 lg">Desligar o modo '+NOMEMODO[m]+'?</h2><p>Há '+n+(n===1?' aluno ativo':' alunos ativos')+'. Os vínculos serão encerrados.</p><button type="button" class="btn go" id="dok">Desligar e encerrar</button><button type="button" class="lk" id="dno">Cancelar</button></div>';
+  $("ov").innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Desligar modo"><span class="grab"></span><h2 class="h2 lg">Desligar o modo '+NOMEMODO[m]+'?</h2><p>Há '+n+(n===1?' '+quem(m)+' ativo':' '+quem(m, 1)+' ativos')+'. Os vínculos serão encerrados.</p><button type="button" class="btn go" id="dok">Desligar e encerrar</button><button type="button" class="lk" id="dno">Cancelar</button></div>';
   $("dim").addEventListener("click", ()=>fecharSheet()); $("dno").addEventListener("click", ()=>fecharSheet());
   $("dok").addEventListener("click", ()=>{ fecharSheet(); c.checked = false; aplicarPapel(m, false, ativos); });
 }
@@ -5439,7 +5440,7 @@ function telaPerfil(){
       lr("foto", "", 'Foto de perfil', fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+
       lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
-      (Pro.ok() ? ["personal","nutri"].map(m=>'<label class="lst-i"><span>Sou '+NOMEMODO[m]+'<small>'+(m==="personal"?'treinos dos seus alunos':'planos dos seus alunos')+'</small></span><input type="checkbox" id="pp_'+m+'"'+(Pro.papeis[m]?' checked':'')+'></label>').join("") : '')+
+      (Pro.ok() ? ["personal","nutri"].map(m=>'<label class="lst-i"><span>Sou '+NOMEMODO[m]+'<small>'+(m==="personal"?'treinos dos seus alunos':'planos dos seus pacientes')+'</small></span><input type="checkbox" id="pp_'+m+'"'+(Pro.papeis[m]?' checked':'')+'></label>').join("") : '')+
       (Pro.ok() ? lr("mpro", "", 'Meus profissionais', meusVinc().length ? meusVinc().length+' vínculo'+(meusVinc().length>1?'s':'')+' ativo'+(meusVinc().length>1?'s':'') : 'Personal ou Nutri que acompanham você')+lr("cvp", "", 'Entrar com código de um profissional', 'cole o código que ele te mandou')+lr("pps", "", 'Propostas'+(propsPendAluno() ? ' <span class="pill">'+propsPendAluno()+'</span>' : ''), 'mudanças que seu Personal ou sua Nutri propuseram') : '')+
       lr("fb", "", 'Mandar feedback para a equipe', 'o que travou, o que curtiu, se pagaria')+
       lr("exp", "", 'Baixar meus dados', 'arquivo com tudo que o app guarda de você')+
