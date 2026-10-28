@@ -44,11 +44,11 @@
     return api;
   };
   const db = {collection:col, doc:p=>{ const i = p.lastIndexOf("/"); return col(p.slice(0,i)).doc(p.slice(i+1)); }};
-  window.claude = {use: async nome => {
-    if (nome==="db") return db;
-    if (nome==="user") return {me:async()=>({id:me, name:nome, avatarUrl:"", isOwner:!EU}), can:async()=>true, profiles:async()=>({})};
-    if (nome==="downloads") return {save:async()=>true};
-    throw new Error("sem "+nome);   // "sample" (IA) não existe no harness
+  window.claude = {use: async svc => {
+    if (svc==="db") return db;
+    if (svc==="user") return {me:async()=>({id:me, name:nome, avatarUrl:"", isOwner:!EU}), can:async()=>true, profiles:async()=>({})};
+    if (svc==="downloads") return {save:async()=>true};
+    throw new Error("sem "+svc);   // "sample" (IA) não existe no harness
   }};
   // Outra aba escreveu: recarrega o banco e dispara só os ouvintes dos documentos que mudaram (e da coleção pai).
   if (EU) window.addEventListener("storage", e=>{
