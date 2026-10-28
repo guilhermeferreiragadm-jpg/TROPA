@@ -206,3 +206,11 @@ O app só roda no claude.ai, porque depende de `window.claude`. Para ver cada te
 - **Card de compartilhar** (canvas): os textos continuam em caixa alta porque os textos não mudam neste redesign.
 - **Reduced motion:** as trocas que viram fade passam por `Mov.para` com `transition` inline `!important` de 200 ms, que vence a regra global `transition:none`; o aviso (`.toast`) tem a mesma exceção.
 - **Abas:** a aba atual usa `aria-current="page"` em vez de `aria-selected`, porque a barra não tem `role="tablist"`.
+- **Sheets:** usam o material grosso (não o regular), sem blur animado na entrada e na saída, e não acompanham o teclado por `visualViewport`.
+- **Controle segmentado:** sem indicador por mola, a seleção troca de fundo.
+- **Pressão:** `.97` em botões, chips, links e linhas pequenas; cartões e linhas largas (`.opt`, `.pl`, `.ci`, listas, calendário, resumo de seção) ficam em `.985`, porque com `.97` o movimento de uma linha inteira parece exagerado.
+- **Recuo da página atrás do sheet:** `scale(.97)` sem o raio de 14 px, com origem no centro do que está visível; "sheet sobre sheet em degraus" e "ancorado no botão que o abriu" não foram feitos.
+- **Cabeçalho:** o separador é uma borda de 1 px, não um degradê com máscara.
+- **Anéis e barras** animam `width` ou `stroke-dasharray` por transição CSS, não por mola.
+- **Voltar entre sub-telas:** o botão "←" e o gesto de borda marcam a navegação como retorno (`tipoTransicao` recebe `voltando`), então sub-tela para sub-tela volta com pop.
+- **Perfil:** o nome fica num `h2` ao lado da foto, sem título grande que encolhe.
