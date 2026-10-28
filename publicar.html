@@ -53,50 +53,60 @@ p{margin:0}
 .n{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .wm{font-family:var(--f-wm);font-style:italic;font-weight:900;font-size:1.15rem;letter-spacing:.03em;text-transform:uppercase;display:inline-flex;align-items:center;gap:8px}
 .wm i{width:26px;height:18px;background:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%2070%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23FF9A1F%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%23FF3D00%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20fill=%22url(%23g)%22%20d=%22M38%204%20Q50%202%2062%204%20L98%2066%20L78%2066%20L56%2026%20L24%2027%20Z%22/%3E%3Cpath%20fill=%22url(%23g)%22%20d=%22M52%2029%20L10%2042%20L0%2066%20L22%2066%20Q31%2064%2038%2056%20Z%22/%3E%3C/svg%3E") center/contain no-repeat;display:inline-block}
+/* pressão: feedback no pointerdown, sem espera */
+.btn,.chip,.seg button,.opt,.pl,.ci,.pf-link,.nav4 button,.lst>button,.lst>a,.wrow,.mhead button,.mcal button,.lk,.thumbs button,.ck,.kudo{transition:transform .1s ease-out,background-color .15s ease-out,box-shadow .15s ease-out}
+.btn:active,.chip:active,.seg button:active,.ck:active,.kudo:active,.mhead button:active,.thumbs button:active{transform:scale(.97)}
+.opt:active,.pl:active,.ci:active,.pf-link:active,.nav4 button:active,.lst>button:active,.lst>a:active,.wrow:active,.mcal button:active{transform:scale(.985)}
 /* botões */
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;font-weight:700;font-size:.98rem;border:1px solid var(--ink);background:var(--surface);color:var(--tx);width:100%;padding:0 14px;text-decoration:none;text-align:center}
-.btn.go{background:var(--go);border-color:var(--go-ink);color:#fff}
-.btn.ink{background:var(--ink);color:#fff}
-.btn.ghost{border-color:var(--sep)}
-.btn.sm{min-height:38px;font-size:.85rem;width:auto}
-.btn:disabled{opacity:.4;cursor:default}
-.lk{border:0;background:none;font-weight:700;text-decoration:underline;font-size:.86rem;padding:6px;align-self:center;color:var(--tx)}
-.back{border:0;background:none;font-weight:800;font-size:1rem;padding:4px 0;align-self:flex-start;display:inline-flex;gap:6px;align-items:center}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border:0;border-radius:var(--r2);background:var(--surface-2);color:var(--tx);font-weight:600;font-size:1.0625rem;letter-spacing:-.01em;width:100%;padding:0 16px;text-decoration:none;text-align:center}
+.btn.go{background:var(--go-fill);color:#fff}.btn.go:active{background:var(--go-press)}
+.btn.ink{background:var(--go-soft);color:var(--go-ink)}
+.btn.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--sep)}
+.btn.sm{min-height:38px;font-size:.9375rem;width:auto;border-radius:999px;padding:0 14px}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.lk{border:0;background:none;font-weight:600;font-size:.9375rem;padding:10px;align-self:center;color:var(--go-ink)}
+.back{border:0;background:none;font-weight:600;font-size:1.0625rem;padding:10px 10px 10px 0;margin-left:-4px;align-self:flex-start;display:inline-flex;gap:4px;align-items:center;color:var(--go-ink);min-height:44px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .between{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .stack{display:flex;flex-direction:column;gap:10px}
 /* formulário */
-.fld{display:flex;flex-direction:column;gap:5px}
-.fld>label,.lbl{font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--tx-2)}
-.inp{min-height:48px;border:1px solid var(--sep);background:var(--surface-2);padding:10px 12px;width:100%;border-radius:0}
-.inp:focus{background:var(--surface);border-color:var(--ink);outline:none}
-textarea.inp{resize:vertical;min-height:80px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld>label,.lbl{font-size:.8125rem;font-weight:600;color:var(--tx-2)}
+.inp{min-height:48px;border:0;border-radius:var(--r1);background:var(--surface-2);padding:10px 14px;width:100%;box-shadow:inset 0 0 0 1px transparent;transition:box-shadow .15s ease-out,background-color .15s}
+.inp:focus{background:var(--surface);box-shadow:inset 0 0 0 2px var(--go);outline:none}
+textarea.inp{resize:vertical;min-height:88px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.seg{display:grid;gap:6px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
-.seg button{border:1px solid var(--sep);min-height:44px;font-weight:700;font-size:.86rem;background:var(--surface);padding:4px}
-.seg button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-.opt{border:1px solid var(--sep);padding:11px;display:flex;align-items:center;gap:12px;background:var(--surface);width:100%;text-align:left}
-.opt b{display:block}.opt small{color:var(--tx-2);font-size:.8rem;display:block}
-.opt[aria-pressed="true"]{border:2px solid var(--ink);padding:10px}
-.opt .ic{width:36px;height:36px;flex:none;display:grid;place-content:center;font-family:var(--f);font-weight:700;font-size:.82rem;background:var(--surface-2)}
-.opt[aria-pressed="true"] .ic{background:var(--ink);color:#fff}
-.chk{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;line-height:1.35;cursor:pointer}
-.chk input{width:22px;height:22px;flex:none;accent-color:var(--ink);margin:0}
-.prog{display:flex;gap:4px}.prog i{flex:1;height:3px;background:var(--sep)}.prog i.on{background:var(--ink)}
-.msg{font-size:.86rem;font-weight:600;min-height:1em}
+.seg{display:grid;gap:2px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr));background:var(--surface-2);border-radius:var(--r1);padding:2px}
+.seg button{border:0;border-radius:8px;min-height:40px;font-weight:600;font-size:.9375rem;background:transparent;padding:4px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--go-ink);box-shadow:var(--sh1),inset 0 0 0 1.5px var(--go)}
+.opt{border:0;border-radius:var(--r2);padding:12px;display:flex;align-items:center;gap:12px;background:var(--surface);box-shadow:var(--sh1);width:100%;text-align:left}
+.opt b{display:block;font-weight:600}.opt small{color:var(--tx-2);font-size:.8125rem;display:block}
+.opt[aria-pressed="true"]{background:var(--go-soft);box-shadow:inset 0 0 0 1.5px var(--go)}
+.opt .ic{width:36px;height:36px;flex:none;display:grid;place-content:center;font-weight:700;font-size:.8125rem;background:var(--surface-2);border-radius:10px}
+.opt[aria-pressed="true"] .ic{background:var(--go-fill);color:#fff}
+.chk{display:flex;gap:12px;align-items:flex-start;font-size:.9375rem;line-height:1.4;cursor:pointer}
+.chk input{width:24px;height:24px;flex:none;accent-color:var(--go-fill);margin:0}
+.prog{display:flex;gap:4px}.prog i{flex:1;height:4px;border-radius:2px;background:var(--sep);transition:background-color .3s}.prog i.on{background:var(--go)}
+.msg{font-size:.875rem;font-weight:600;min-height:1em}
 .msg.err{color:var(--stop-ink)}
-.hint{background:var(--surface-2);padding:10px 12px;font-size:.85rem;color:var(--tx-2)}
+.hint{background:var(--surface-2);border-radius:var(--r1);padding:12px 14px;font-size:.875rem;color:var(--tx-2)}
 .hint b{color:var(--tx)}
-.flag{border-left:3px solid var(--caution);background:var(--caution-soft);padding:10px 12px;font-size:.86rem}
-.flag.red{border-color:var(--stop);background:var(--stop-soft)}
-.flag.ok{border-color:var(--done);background:var(--done-soft)}
+.flag{border-radius:var(--r2);background:var(--caution-soft);padding:12px 14px;font-size:.9375rem;box-shadow:inset 3px 0 0 var(--caution)}
+.flag.red{background:var(--stop-soft);box-shadow:inset 3px 0 0 var(--stop)}
+.flag.ok{background:var(--done-soft);box-shadow:inset 3px 0 0 var(--done)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips span,.chip{font-size:.74rem;font-weight:700;padding:5px 9px;background:var(--surface-2);border:1px solid var(--sep)}
-.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-.pill{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;color:#fff;background:var(--ink);display:inline-block}
+.chips span,.chip{font-size:.8125rem;font-weight:600;padding:6px 12px;border-radius:999px;background:var(--surface-2);border:0}
+.chip[aria-pressed="true"]{background:var(--go-soft);color:var(--go-ink);box-shadow:inset 0 0 0 1.5px var(--go)}
+.pill{font-size:.6875rem;font-weight:600;padding:3px 8px;border-radius:999px;color:var(--go-ink);background:var(--go-soft);display:inline-block}
 .line{border-top:1px solid var(--sep)}
-.box{border:1px solid var(--sep);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
-.box.strong{border:2px solid var(--ink)}
+.box{border-radius:var(--r2);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface);box-shadow:var(--sh1)}
+.box.strong{box-shadow:var(--sh2),inset 0 0 0 1.5px var(--go)}
+@media (prefers-contrast:more){.box,.opt,.ci{box-shadow:inset 0 0 0 1px var(--sep)}}
+.lst>label{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--sep);padding:14px 16px;font-weight:600;min-height:50px}
+.lst>label input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--go-fill);margin:0}
+.lst>.cor-go{color:var(--go-ink)}.lst>.cor-ruim{color:var(--stop-ink)}
+.pv8{padding-block:8px}
+.mt0{margin-top:0}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.mw0{min-width:0}.grow{flex:1;min-width:0}
 /* abertura */
 .open{min-height:100vh;background:var(--ink);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px 34px;gap:14px;overflow:hidden}
 .open .photo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,16,.1),rgba(11,13,16,.25) 40%,rgba(11,13,16,.95) 80%),repeating-linear-gradient(115deg,#2a2f36 0 2px,#23272d 2px 9px)}
@@ -335,17 +345,20 @@ tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 /* perfil, painel */
 .prof{display:flex;gap:12px;align-items:center}
 .prof .me{width:58px;height:58px;font-size:1rem}
-.lst{display:flex;flex-direction:column}
-.lst>button,.lst>a{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--surface-2);background:none;padding:13px 0;font-weight:700;text-align:left;width:100%;color:var(--tx);text-decoration:none}
-.lst small{display:block;font-weight:500;color:var(--tx-2);font-size:.78rem}
-.code{font-family:var(--f);font-weight:700;font-size:1.8rem;letter-spacing:.12em}
-.tbl{width:100%;border-collapse:collapse;font-size:.82rem}
-.tbl th{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-2);text-align:left;padding:6px 4px;border-bottom:1px solid var(--sep)}
-.tbl td{padding:8px 4px;border-bottom:1px solid var(--surface-2);vertical-align:top}
+.lst{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);overflow:hidden}
+.lst>button,.lst>a{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--sep);background:none;padding:14px 16px;font-weight:600;text-align:left;width:100%;color:var(--tx);text-decoration:none;min-height:50px}
+.lst>button:last-child,.lst>a:last-child{border-bottom:0}
+.lst small{display:block;font-weight:400;color:var(--tx-2);font-size:.8125rem}
+.code{font-weight:700;font-size:1.8rem;letter-spacing:.12em;font-variant-numeric:tabular-nums}
+.tbl{width:100%;border-collapse:collapse;font-size:.875rem}
+.tbl th{font-size:.75rem;font-weight:600;color:var(--tx-2);text-align:left;padding:6px 4px;border-bottom:1px solid var(--sep)}
+.tbl td{padding:8px 4px;border-bottom:1px solid var(--sep);vertical-align:top}
 .tblw{overflow-x:auto}
-.demo-ban{background:var(--caution-soft);border-bottom:2px solid var(--caution);padding:10px 18px;font-size:.82rem;display:flex;flex-direction:column;gap:6px}
-.toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:11px 14px;font-weight:700;font-size:.88rem;opacity:0;transition:.25s;z-index:60;max-width:calc(100% - 32px);pointer-events:none}
-.toast.on{opacity:1;transform:translate(-50%,0)}
+.demo-ban{background:var(--caution-soft);padding:10px 16px;font-size:.8125rem;display:flex;flex-direction:column;gap:6px}
+.toast{position:fixed;left:50%;bottom:calc(112px + var(--safe-b));transform:translate(-50%,16px) scale(.96);background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);color:var(--tx);box-shadow:var(--sh3);border-radius:999px;padding:12px 18px;font-weight:600;font-size:.9375rem;opacity:0;transition:opacity .25s ease-out,transform .35s cubic-bezier(.32,.72,0,1);z-index:60;max-width:min(440px,calc(100% - 32px));text-align:center;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
+@media (prefers-reduced-motion:reduce){.toast{transform:translate(-50%,0)}}
+@media (prefers-reduced-transparency:reduce){.toast{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 .lvl{background:var(--ink);color:#fff;position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;text-align:center;overflow-y:auto}
 .lvl .big{font-family:var(--f);font-weight:700;font-size:8rem;line-height:.8;color:var(--go-ink)}
 /* performance */
@@ -1332,8 +1345,8 @@ function sheetDocumento(onboarding){
         campo("dl","Lesão",rascunho.lesao)+campo("dr","Região",rascunho.regiao)+campo("df","Fase do tratamento",rascunho.fase)+campo("de","O que evitar (separe com ponto e vírgula)",lst("evitar"))+campo("dp","O que está liberado",lst("permitido"))+
         '<div class="fld"><label for="dm">Limite de treino por semana (minutos, se o documento disser)</label><input class="inp" id="dm" type="number" inputmode="numeric" min="0" max="1200" value="'+(rascunho.limiteMinSemana||"")+'"></div>'+campo("dt","Prazo ou critério de retorno",rascunho.retorno)+
         '<label class="chk"><input type="checkbox" id="dc"><span>Autorizo usar este resumo, que contém dado de saúde, para ajustar meu plano e as respostas do coach e da nutri.</span></label>'+
-        '<button type="button" class="btn go" id="dok">Confirmar resumo</button>'+(atual?'<button type="button" class="lk" id="dapaga" style="color:var(--stop-ink)">Apagar meu resumo</button>':'')+'</div>' :
-        '<label class="btn ink" for="darq" style="display:block;text-align:center">Escolher foto ou PDF</label><input type="file" id="darq" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><button type="button" class="lk" id="dman">Prefiro digitar</button>')+
+        '<button type="button" class="btn go" id="dok">Confirmar resumo</button>'+(atual?'<button type="button" class="lk cor-ruim" id="dapaga">Apagar meu resumo</button>':'')+'</div>' :
+        '<label class="btn ink" for="darq">Escolher foto ou PDF</label><input type="file" id="darq" accept="image/jpeg,image/png,image/webp,application/pdf" hidden><button type="button" class="lk" id="dman">Prefiro digitar</button>')+
       '<p class="msg" id="dmsg"></p></div>';
     $("dim").addEventListener("click", ()=>{ ov.innerHTML = ""; });
     if ($("darq")) $("darq").addEventListener("change", async e=>{
@@ -1719,7 +1732,7 @@ function telaAbertura(){
   const app = tela('<section class="open"><div class="photo" aria-hidden="true"></div><span class="wm"><i></i>'+esc(BRAND)+'</span>'+
     '<div class="mani">Treino<br>não é<br><em>sorte.</em></div>'+
     '<p style="font-size:.95rem;opacity:.85">Plano feito para o seu objetivo, ajustado todo dia por IA. Coach e nutri no bolso, seus amigos no feed. Você só precisa aparecer.</p>'+
-    (logado ? '<button type="button" class="btn go" id="go">Começar como '+esc((meName||"você").split(" ")[0])+'</button><p class="s" style="text-align:center">Você entra com a sua conta do Claude. Fica conectado neste celular.</p>'
+    (logado ? '<button type="button" class="btn go" id="go">Começar como '+esc((meName||"você").split(" ")[0])+'</button><p class="s tc">Você entra com a sua conta do Claude. Fica conectado neste celular.</p>'
       : '<a class="btn go" id="cpa" href="https://claude.ai" target="_blank" rel="noopener">Criar conta grátis</a><p class="s">Toque no botão, crie sua conta do Claude (grátis, dá para usar o Google) ou entre. Quando terminar, toque de novo no link do app que te mandaram.</p><button type="button" class="btn" id="cp" style="border-color:#fff;background:transparent;color:#fff">Copiar o link do app</button><p class="msg" id="cpm" style="color:#fff"></p><p class="msg" id="cpm" style="color:#fff"></p>')+
     '</section>', {full:true});
   const g = $("go"); if (g) g.addEventListener("click", ()=>{ if (DEMO){ ACESSO = {status:"aceito", via:"demo"}; } rotear(true); });
@@ -1727,7 +1740,7 @@ function telaAbertura(){
 }
 function telaCodigo(){
   const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo.</p>'+
-    '<input class="inp n" id="cd" maxlength="11" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2" style="font-size:1.5rem;letter-spacing:.18em;text-transform:uppercase">'+
+    '<input class="inp n upper" id="cd" maxlength="11" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2" style="font-size:1.5rem;letter-spacing:.18em">'+
     '<button class="btn go" type="button" id="cdok">Entrar</button><p class="msg" id="cdm"></p><p class="s">Não tem? Peça para quem te mandou o link.</p>');
   const go = async ()=>{
     const v = $("cd").value.trim().toUpperCase();
@@ -1950,7 +1963,7 @@ function telaAssinatura(volta){
     '<button type="button" class="pl" data-pl="mensal" aria-pressed="'+(planoEsc==="mensal")+'"><span class="k">mensal</span><b>'+reais(men*(1-desc))+'</b><small>por mês</small>'+'<small>cancele quando quiser</small>'+'</button></div>'+
     (planoEsc==="anual" ? '<div class="cupom"><span>Você economiza</span><span>'+reais(eco)+' no ano</span></div>' : '')+
     (cupom ? '<div class="cupom"><span>Cupom '+esc(cupom.codigo)+'</span><span>−'+cupom.pct+'%</span></div>' : '')+
-    '<div class="row" style="flex-wrap:nowrap"><input class="inp" id="cp" placeholder="Cupom de desconto" value="'+esc(draft.cupom||"")+'" style="text-transform:uppercase"><button type="button" class="btn sm" id="cpok">Aplicar</button></div>'+
+    '<div class="row" style="flex-wrap:nowrap"><input class="inp upper" id="cp" placeholder="Cupom de desconto" value="'+esc(draft.cupom||"")+'"><button type="button" class="btn sm" id="cpok">Aplicar</button></div>'+
     '<ul class="ul"><li>Plano que se ajusta todo dia</li><li>Coach e Nutri no chat, 24 h</li><li>Treino de força com carga e histórico</li><li>Feed, desafios e liga com seus amigos</li></ul>'+
     '<div class="flag ok"><b>Fase de teste: hoje é grátis.</b> Escolha o plano que você pagaria. A cobrança (Pix Automático ou cartão) entra só no app oficial, e você é avisado antes.</div>'+
     '<button type="button" class="btn go" id="ok">Começar '+PRECOS.teste+' dias grátis</button>'+(volta?'':'<button type="button" class="lk" id="dep">Decidir depois</button>'));
@@ -2663,7 +2676,7 @@ function telaFeed(o){
       (!f.hojeOk?'<div class="flag">Seu foguinho de '+f.n+' dias espera um sinal hoje: poste, faça o check-in ou marque um treino.</div>':'')+
       '<div class="seg" style="--c:2" id="ff"><button type="button" data-v="seguindo" aria-pressed="'+(feedFiltro==="seguindo")+'">Seguindo</button><button type="button" data-v="todos" aria-pressed="'+(feedFiltro==="todos")+'">Todos</button></div>'+
       (posts.length ? posts.map(postCard).join("") : '<p class="s">Ninguém que você segue postou ainda. Toque em pessoas para achar seus amigos.</p>')+
-      '<p class="s" style="text-align:center">Fase de teste: os amigos marcados "exemplo" são de mentira. No app oficial, todo mundo vê o feed de todo mundo.</p>';
+      '<p class="s tc">Fase de teste: os amigos marcados "exemplo" são de mentira. No app oficial, todo mundo vê o feed de todo mundo.</p>';
   }
   const app = tela(h, o); bindFeed(app);
 }
@@ -2686,7 +2699,7 @@ function perfilAmigoHTML(id){
       : '<div class="hint">'+esc(p.nome.split(" ")[0])+' mostra o progresso só para amigos (quando os dois se seguem).</div>')+
     posts.map(postCard).join("");
 }
-function avisosHTML(){ return '<button type="button" class="back" data-fv="feed">← Feed</button><h1 class="h1">Avisos</h1>'+(SOC.notifs.length?SOC.notifs.map(n=>'<button type="button" class="ci'+(n.lido?'':' hot')+'" data-notif="'+esc(n.id)+'"><span><b style="font-weight:600">'+esc(n.txt)+'</b><small>'+esc(relTempo(n.at))+'</small></span></button>').join(""):'<p class="s">Nada por aqui.</p>')+'<p class="s">Notificação com o app fechado chega no app oficial.</p>'; }
+function avisosHTML(){ return '<button type="button" class="back" data-fv="feed">← Feed</button><h1 class="h1">Avisos</h1>'+(SOC.notifs.length?SOC.notifs.map(n=>'<button type="button" class="ci'+(n.lido?'':' hot')+'" data-notif="'+esc(n.id)+'"><span><b class="w600">'+esc(n.txt)+'</b><small>'+esc(relTempo(n.at))+'</small></span></button>').join(""):'<p class="s">Nada por aqui.</p>')+'<p class="s">Notificação com o app fechado chega no app oficial.</p>'; }
 let fotoTmp = "";
 function postarHTML(){
   const amigos = (SOC.follows[ME()]||[]).filter(x=>SOC.people[x]);
@@ -2742,7 +2755,7 @@ function telaComida(o){
     '<p class="msg" id="cmm"></p>'+
     '<div class="box"><div class="between"><b>Cardápio do dia</b>'+(cd?'<button type="button" class="lk" id="cg2">refazer</button>':'')+'</div>'+(cd ? cd.refeicoes.map(r=>'<div><b style="font-size:.88rem">'+esc(r.hora||"")+' · '+esc(r.nome)+'</b><p class="s">'+esc((r.itens||[]).join(", "))+' · P ~'+esc(r.prot||"?")+' g</p></div>').join("") : '<p class="s">Opcional. A Nutri conta o que você come e dá dicas. Se você quiser, ela também monta um cardápio com comida brasileira, dentro das suas metas'+((P.perfil.restricoes||[]).length?' e restrições ('+esc(P.perfil.restricoes.join(", "))+')':'')+'.</p><button type="button" class="btn ghost" id="cg">Quero um cardápio para hoje</button>')+'</div>'+
     '<button type="button" class="btn ghost" id="cpl">Lista de compras da semana</button>'+
-    '<p class="s" style="text-align:center">Guia de alimentação com base em consensos (ACSM, ISSN). Não substitui nutricionista.</p>';
+    '<p class="s tc">Guia de alimentação com base em consensos (ACSM, ISSN). Não substitui nutricionista.</p>';
   const app = tela(h, o); bindGo(app);
   $("agua").addEventListener("click", ()=>{ salvarLog("agua_"+k, Math.round(((LOG["agua_"+k]||0)+0.25)*100)/100).then(()=>render(true)); });
   app.querySelectorAll("input[data-ref]").forEach(inp=>inp.addEventListener("change", ()=>fotoRefeicao(inp.dataset.ref, inp.files&&inp.files[0])));
@@ -3956,8 +3969,8 @@ async function enviarChat(){
 function sheetFoto(){
   const ov = $("ov"), tem = fotoValida(P.perfil.foto);
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Foto de perfil"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Foto de perfil</h2><p class="s">Só você vê esta foto. Guardamos uma cópia pequena, não o arquivo original.</p>'+
-    '<label class="btn go" for="fup" style="display:block;text-align:center">Escolher foto</label><input type="file" id="fup" accept="image/*" hidden>'+
-    (tem ? '<button type="button" class="lk" id="frem" style="color:var(--stop-ink)">Remover foto</button>' : '')+
+    '<label class="btn go" for="fup">Escolher foto</label><input type="file" id="fup" accept="image/*" hidden>'+
+    (tem ? '<button type="button" class="lk cor-ruim" id="frem">Remover foto</button>' : '')+
     '<button type="button" class="lk" id="fno">Cancelar</button><p class="msg" id="fotom"></p></div>';
   const fecha = () => { ov.innerHTML = ""; };
   $("dim").addEventListener("click", fecha); $("fno").addEventListener("click", fecha);
@@ -4002,8 +4015,8 @@ function secaoCorpoExtra(menor){
   const dias = [["0","Seg"],["1","Ter"],["2","Qua"],["3","Qui"],["4","Sex"],["5","Sáb"],["6","Dom"]];
   return '<div class="box"><div class="between"><b>Fotos de progresso</b><span class="s">'+fs.length+' de 6</span></div>'+
     (fs.length ? '<div class="grid2">'+fs.map(k=>'<div><img alt="Foto de '+esc(fmt(parseD(k.slice(3))))+'" src="'+esc(LOG[k].th)+'" style="width:100%;height:auto;display:block"><div class="between"><span class="s">'+esc(fmt(parseD(k.slice(3))))+'</span><button type="button" class="lk" data-fdel="'+esc(k)+'" aria-label="Apagar foto de '+esc(fmt(parseD(k.slice(3))))+'">apagar</button></div></div>').join("")+'</div>'+(fs.length > 1 ? '<button type="button" class="btn ghost" id="fcmp">Comparar primeira e última</button>' : '') : '<p class="s">A foto fica só no seu registro: não aparece para amigos nem vai para a IA. Guardamos uma cópia pequena, não o arquivo original.</p>')+
-    '<label class="btn" for="fpup" style="display:block;text-align:center">Adicionar foto de hoje</label><input type="file" id="fpup" accept="image/*" hidden><p class="msg" id="fpm"></p></div>'+
-    (tem ? '<div class="box"><b>Lembrete de pesagem</b><label class="between" style="padding:8px 0"><span>Lembrar de me pesar</span><input type="checkbox" id="lbon"'+(cfg.lembrar ? ' checked' : '')+'></label>'+
+    '<label class="btn" for="fpup">Adicionar foto de hoje</label><input type="file" id="fpup" accept="image/*" hidden><p class="msg" id="fpm"></p></div>'+
+    (tem ? '<div class="box"><b>Lembrete de pesagem</b><label class="between pv8"><span>Lembrar de me pesar</span><input type="checkbox" id="lbon"'+(cfg.lembrar ? ' checked' : '')+'></label>'+
       '<div class="chips" id="lbdia" role="group" aria-label="Dia da pesagem">'+dias.map(([v,l])=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(String(cfg.dia != null ? cfg.dia : 0) === v)+'">'+l+'</button>').join("")+'</div><span class="s">Um cartão aparece na tela Hoje no dia escolhido, até você registrar. Não é notificação do celular.</span></div>' : '');
 }
 function bindCorpoExtra(){
@@ -4091,16 +4104,16 @@ function telaPerfil(){
       '<button type="button" id="doc">Laudo de fisioterapia<small>'+(p.fisio&&p.fisio.lesao?esc(p.fisio.lesao)+' · toque para editar':'suba um documento para o plano respeitar sua lesão')+'</small><span>→</span></button>'+
       '<button type="button" id="foto">Foto de perfil<small>'+(fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+'</small><span>→</span></button>'+
       '<button type="button" id="edt">Minha conta<small>nome, idade, peso, rotina</small><span>→</span></button>'+
-      '<label class="lst-i" style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--surface-2);padding:13px 0;font-weight:700"><span>Mostrar meu progresso para amigos<small style="display:block;font-weight:500;color:var(--tx-2);font-size:.78rem">foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+' style="width:22px;height:22px;accent-color:var(--ink)"></label>'+
+      '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
       '<button type="button" id="fb">Mandar feedback para a equipe<small>o que travou, o que curtiu, se pagaria</small><span>→</span></button>'+
       '<button type="button" id="exp">Baixar meus dados<small>arquivo com tudo que o app guarda de você</small><span>→</span></button>'+
       '<button type="button" id="sair">Sair<small>voltar para a tela inicial do app</small><span>→</span></button>'+
-      '<button type="button" id="del" style="color:var(--stop-ink)">Apagar minha conta e meus dados<small>não dá para desfazer</small><span>→</span></button>'+
-      (isOwner && !DEMO ? '<button type="button" id="pn" style="color:var(--go-ink)">Painel do dono<small>pedidos, afiliados, preços, cupons e comissões</small><span>→</span></button>' : '')+
+      '<button type="button" id="del" class="cor-ruim">Apagar minha conta e meus dados<small>não dá para desfazer</small><span>→</span></button>'+
+      (isOwner && !DEMO ? '<button type="button" id="pn" class="cor-go">Painel do dono<small>pedidos, afiliados, preços, cupons e comissões</small><span>→</span></button>' : '')+
     '</div>'+
     '<div class="box"><b>Conexões</b><p class="s">Apple Saúde, Strava e Garmin, treino na tela bloqueada e lembrete no celular chegam no app oficial. Aqui no teste, o lembrete aparece quando você abre o app.</p></div>'+
     (LOCAL ? '<div class="flag">Seus dados ficam salvos neste celular. Se trocar de celular ou limpar o navegador, eles somem.</div>' : '')+
-    '<p class="s" style="text-align:center">'+esc(BRAND)+' orienta e não substitui médico, profissional de educação física ou nutricionista. Termos v'+TERMOS_VERSAO+'.</p>', {tabs:true, fab:true});
+    '<p class="s tc">'+esc(BRAND)+' orienta e não substitui médico, profissional de educação física ou nutricionista. Termos v'+TERMOS_VERSAO+'.</p>', {tabs:true, fab:true});
   bindGo(app);
   if ($("cv")) $("cv").addEventListener("click", ()=>copiar(convite()));
   $("pau").addEventListener("click", ()=>pausaAtiva() ? sheetRetomar() : sheetPausar());
@@ -4161,12 +4174,12 @@ function telaPainel(){
     h += '<p class="s">Cada amigo tem um código no formato '+esc(CODIGO||"CODIGO")+'-XXXX. A origem de cada cadastro aparece aqui. Comissão padrão: '+(PRECOS.comissao||25)+'%.</p>'+
       '<div class="tblw"><table class="tbl"><thead><tr><th>Afiliado</th><th>Indicados</th><th>Com plano</th><th>Comissão</th><th>A pagar/mês</th></tr></thead><tbody>'+
       (linhas.length ? linhas.map(l=>'<tr><td><b>'+esc(l[0]==="dono"?"Você (código base)":l[0])+'</b>'+(l[5]?'<br><span class="s">'+esc(l[5])+'</span>':'')+'</td><td class="n">'+l[1]+'</td><td class="n">'+l[2]+'</td><td>'+(l[0]==="dono"?'—':'<input class="inp n" style="min-height:34px;width:64px;padding:4px" type="number" min="0" max="100" value="'+l[3]+'" data-pct="'+esc(l[0])+'" aria-label="Comissão de '+esc(l[0])+'">%')+'</td><td class="n">'+reais(l[4])+'</td></tr>').join("") : '<tr><td colspan="5" class="s">Nenhum cadastro por código ainda.</td></tr>')+'</tbody></table></div>'+
-      '<div class="box"><b>Dar comissão especial</b><div class="grid2"><input class="inp" id="af-t" placeholder="Código (XXXX)" style="text-transform:uppercase"><input class="inp" id="af-p" type="number" placeholder="% ex.: 50"></div><input class="inp" id="af-n" placeholder="Nome (ex.: padrasto)"><button type="button" class="btn ink" id="af-ok">Salvar comissão</button></div>'+
+      '<div class="box"><b>Dar comissão especial</b><div class="grid2"><input class="inp upper" id="af-t" placeholder="Código (XXXX)"><input class="inp" id="af-p" type="number" placeholder="% ex.: 50"></div><input class="inp" id="af-n" placeholder="Nome (ex.: padrasto)"><button type="button" class="btn ink" id="af-ok">Salvar comissão</button></div>'+
       '<p class="s">Regra sugerida: pagar depois dos 7 dias de arrependimento e da 1ª renovação, só sobre o valor líquido, 1 nível só.</p>';
   } else if (painelAba==="precos"){
     h += '<div class="box"><b>Preços</b><div class="grid2"><div class="fld"><label for="pr-m">Mensal (R$)</label><input class="inp" id="pr-m" type="number" step="0.1" value="'+PRECOS.mensal+'"></div><div class="fld"><label for="pr-a">Anual (R$)</label><input class="inp" id="pr-a" type="number" step="1" value="'+PRECOS.anual+'"></div><div class="fld"><label for="pr-t">Dias grátis</label><input class="inp" id="pr-t" type="number" value="'+PRECOS.teste+'"></div><div class="fld"><label for="pr-k">Comissão padrão (%)</label><input class="inp" id="pr-k" type="number" value="'+(PRECOS.comissao||25)+'"></div></div><p class="s">Anual sai '+reais(PRECOS.anual/12)+'/mês: economia de '+reais(PRECOS.mensal*12-PRECOS.anual)+' no ano.</p><button type="button" class="btn ink" id="pr-ok">Salvar preços</button></div>'+
       '<div class="box"><b>Cupons</b>'+(CUPONS.length?CUPONS.map((c,i)=>'<div class="between"><span><b class="n">'+esc(c.codigo)+'</b> · −'+c.pct+'%'+(c.ate?' · até '+esc(c.ate):'')+'</span><button type="button" class="btn sm ghost" data-cdel="'+i+'">Remover</button></div>').join(""):'<p class="s">Nenhum cupom.</p>')+
-      '<div class="grid2"><input class="inp" id="cu-c" placeholder="CÓDIGO" style="text-transform:uppercase"><input class="inp" id="cu-p" type="number" placeholder="% de desconto"></div><input class="inp" id="cu-a" type="date" aria-label="Válido até"><button type="button" class="btn ink" id="cu-ok">Criar cupom</button></div>';
+      '<div class="grid2"><input class="inp upper" id="cu-c" placeholder="CÓDIGO"><input class="inp" id="cu-p" type="number" placeholder="% de desconto"></div><input class="inp" id="cu-a" type="date" aria-label="Válido até"><button type="button" class="btn ink" id="cu-ok">Criar cupom</button></div>';
   } else {
     h += '<div class="box"><b>Código de convite</b><p class="s">Quem abre pelo link aberto precisa deste código. Se trocar, quem ainda não entrou precisa do novo.</p><div class="between"><span class="code">'+esc(CODIGO||"—")+'</span><button class="btn sm" type="button" id="cod">'+(CODIGO?"Gerar outro":"Gerar")+'</button></div></div>'+
       '<div class="box"><b>Convidar</b><p class="s">1) Copie o convite e mande no WhatsApp. 2) Uma vez só: no Claude, em Compartilhar, libere "qualquer pessoa com o link".</p><button class="btn ink" type="button" id="inv">Copiar convite</button></div>'+
