@@ -1173,6 +1173,15 @@ const conflitoVinculo = (existente, profId) => existente && existente.estado==="
 const proximoEstadoProposta = (estado, evento) => estado!=="pendente" ? estado : ({aceitar:"aceita", recusar:"recusada", invalidar:"desatualizada"})[evento] || estado;
 const mesmoJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const ehObj = x => !!x && typeof x === "object";
+// O vínculo que o app usa: id tem de ser aluno~papel. Do lado do aluno, profissional, papel, permissões e estado vêm da cópia privada dele (pin); o doc em claro só dá nomes e o estado do outro lado
+const vincEfetivo = (id, d, eu, pin) => {
+  if (!ehObj(d) || !PAPEIS_PRO.includes(d.papel) || typeof d.alunoId!=="string" || id!==vincId(d.alunoId, d.papel)) return null;
+  if (d.alunoId===eu){
+    if (!ehObj(pin) || pin.papel!==d.papel || typeof pin.profId!=="string" || !pin.profId || pin.profId===eu) return null;
+    return Object.assign({}, d, {id, profId:pin.profId, papel:pin.papel, perm:permissoesValidas(pin.papel, pin.perm), estado:pin.estado==="ativo" && d.estado==="ativo" ? "ativo" : "encerrado", estadoDoc:d.estado});
+  }
+  return d.profId===eu && d.profId ? Object.assign({}, d, {id}) : null;
+};
 function criarPatch(a, b, p = []){
   if (mesmoJson(a, b)) return [];
   if (ehObj(a) && ehObj(b) && Array.isArray(a) === Array.isArray(b) && !(Array.isArray(a) && a.length !== b.length)){
@@ -1457,6 +1466,7 @@ function entrada(app, tipo){
 /* indicador da barra de abas: capa a aba selecionada e desliza por mola */
 function moverIndicador(){
   const pill = document.querySelector(".tabs-pill"), ind = $("tabs-ind"), sel = pill && pill.querySelector('button[aria-current="page"]');
+  if (ind) ind.style.visibility = sel ? "" : "hidden";   // rota fora da barra: sem destaque
   if (!pill || !ind || !sel || $("tabs").hidden) return;
   const x = sel.offsetLeft, primeira = !ind.dataset.pos;
   ind.style.width = sel.offsetWidth + "px"; ind.dataset.pos = "1";
@@ -2340,8 +2350,9 @@ async function enviarPerfil(){
   const ant = P && P.perfil || {};
   p.flags = fl; p.enviadoAt = new Date().toISOString();
   ["compromisso","assinatura","compartilha","foto","extras"].forEach(k=>{ if (ant[k]!=null && p[k]==null) p[k] = ant[k]; });
-  const pausasAnt = (P && P.pausas) || [];
-  P = {perfil:p, plano, viol, pausas:pausasAnt};
+  const velho = P || {};
+  P = {perfil:p, plano, viol, pausas:velho.pausas || []};
+  ["planoAlim","planoProf"].forEach(k=>{ if (velho[k]) P[k] = velho[k]; });   // planos aceitos de profissionais não somem ao editar respostas
   try{
     await salvarPerfil();
     const resumo = {apelido:p.apelido, idade:+p.idade, sexo:p.sexo, objetivo:p.objetivo, dataProva:p.dataProva||"", meta:p.meta||"", corridasSem:+p.corridasSem||0, kmSemana:+p.kmSemana||0, maiorLongao:+p.maiorLongao||0, melhorTempo:p.melhorTempo||"", academiaMeses:+p.academiaMeses||0,
@@ -3930,7 +3941,7 @@ function carregarGrupos(){
 const jwkPubOk = k => ehObj(k) && k.kty==="EC" && k.crv==="P-256" && typeof k.x==="string" && typeof k.y==="string" && !k.d;
 const Pro = {
   papeis:{personal:false, nutri:false}, vinc:new Map(), props:new Map(), inbox:[], aoMudar:null,
-  _on:false, _ch:null, _chExiste:false, _chFalha:false, _pubs:{}, _ks:new Map(), _raw:[], _rawProps:new Map(), _pc:new Map(), _tk:0, _pap:null,
+  _on:false, _ch:null, _chExiste:false, _chFalha:false, _pubs:{}, _vp:new Map(), _rawV:new Map(), _ks:new Map(), _raw:[], _rawProps:new Map(), _pc:new Map(), _tk:0, _pap:null,
   _t:null, _fila:Promise.resolve(), _aceitando:new Set(), _resp:new Set(), _hs:new Map(), _apag:new Set(), _limpos:new Set(),
   ok(){ return !!(realDb && db && me && !DEMO && !LOCAL && !Pro._chFalha); },
   naoLidas(){ return Pro.inbox.filter(i=>!i.lida).length; },
@@ -3959,7 +3970,7 @@ const Pro = {
         if (!k.startsWith("v_") || !ehObj(d[k])) return;
         const np = Pro._normPar(d[k]); if (!np) return;
         const vid = typeof d[k].vid==="string" ? d[k].vid : k.slice(2);   // sem "vid" no valor = formato antigo v_<vincId>
-        if (!ch.v[vid] || typeof d[k].vid==="string") ch.v[vid] = {pub:np.pub, priv:np.priv};
+        if (!ch.v[vid] || typeof d[k].vid==="string") ch.v[vid] = {pub:np.pub, priv:np.priv, pin:ehObj(d[k].pin) ? JSON.parse(JSON.stringify(d[k].pin)) : null};
       });
       Pro._ch = ch; Pro._chExiste = !!s.exists; Pro._chFalha = false; return true;
     }catch(e){ Pro._chFalha = true; return false; }
@@ -3968,7 +3979,7 @@ const Pro = {
     if (!Pro._chFalha && Pro._ch) return true;
     if (!(realDb && db && me && !DEMO && !LOCAL)) return false;
     const ok = await Pro._lerChaves();
-    if (ok){ Pro._mudou(); Pro._resolverProps(); Pro.agendar(0); }
+    if (ok){ Pro._montarV(); Pro._mudou(); Pro._resolverProps(); Pro.agendar(0); }
     return ok;
   },
   async _pronto(){
@@ -3993,14 +4004,23 @@ const Pro = {
       await Pro._lerChaves();   // se falhar, os listeners ligam mesmo assim e _recuperar tenta de novo
       realDb.collection("papeis").doc(me).onSnapshot(s=>{ const d = s.exists ? (s.data()||{}) : {}; Pro._pap = s.exists ? d : null; Pro.papeis = {personal:!!d.personal, nutri:!!d.nutri}; Pro._mudou(); Pro._sincNomes(); }, ()=>{});
       realDb.collection("vinculos").onSnapshot(s=>{
-        Pro.vinc.clear();
-        s.docs.forEach(d=>{ const v = d.data()||{}; if (v.alunoId===me || v.profId===me) Pro.vinc.set(d.id, Object.assign({}, v, {id:d.id})); });
+        Pro._rawV = new Map(s.docs.map(d=>[d.id, d.data()||{}])); Pro._montarV();
         Pro._mudou(); Pro._resolverProps(); Pro._sincNomes(); Pro.agendar(0); if (Pro._chFalha) Pro._recuperar();
       }, ()=>{});
       realDb.collection("prop").onSnapshot(s=>{ Pro._rawProps = new Map(s.docs.map(d=>[d.id, d.data()||{}])); Pro._resolverProps(); }, ()=>{});
       realDb.collection("inbox").doc(me).collection("n").onSnapshot(s=>{ Pro._raw = s.docs.map(d=>Object.assign({}, d.data()||{}, {id:d.id})); Pro._mudou(); }, ()=>{});
     }catch(e){ Pro._on = false; }
   },
+  _montarV(){ Pro.vinc.clear(); for (const [id, d] of Pro._rawV){ const k = Pro._ch && Pro._ch.v[id], v = vincEfetivo(id, d, me, k && k.pin); if (v) Pro.vinc.set(id, v); } },
+  async _pin(vid, mud){   // grava a cópia privada do vínculo (o que vale para publicar) junto com o par do vínculo
+    const k = Pro._ch.v[vid], pin = Object.assign({}, k.pin, mud);
+    await Pro._salvarChave(Pro._campoV(vid), {vid, pub:k.pub, priv:k.priv, pin}); k.pin = pin;
+  },
+  async _vpub(papel, pub){   // a pública do vínculo vai no papeis do próprio aluno (só ele grava): o profissional lê daqui, não do vínculo em claro
+    const r = realDb.collection("papeis").doc(me), s = await r.get(), d = s.exists ? (s.data()||{}) : null, vpub = Object.assign({}, d && ehObj(d.vpub) ? d.vpub : {}, {[papel]:pub});
+    if (d) await r.update({vpub}); else await r.set({personal:false, nutri:false, nome:Pro._nome(), vpub});
+  },
+  _largarPlanoProf(){ if (P && P.planoProf){ delete P.planoProf; salvarPerfil(); } },   // sem Personal ativo, o plano aceito dele não pode esconder os planos seguintes
   async _sincNomes(){
     const n = Pro._nome(); if (!n || !Pro.ok()) return;
     try{
@@ -4030,7 +4050,8 @@ const Pro = {
     if (!PAPEIS_PRO.includes(papel)) return {erro:"papel"};
     await Pro._garantirPar();
     const novo = Object.assign({}, Pro.papeis, {[papel]: !!ligado});
-    await realDb.collection("papeis").doc(me).set({personal:!!novo.personal, nutri:!!novo.nutri, pub:Pro._ch.par.pub, nome:Pro._nome()});
+    const r = realDb.collection("papeis").doc(me), s = await r.get(), vp = s.exists ? (s.data()||{}).vpub : null;
+    await r.set(Object.assign({personal:!!novo.personal, nutri:!!novo.nutri, pub:Pro._ch.par.pub, nome:Pro._nome()}, ehObj(vp) ? {vpub:vp} : {}));
     Pro.papeis = {personal:!!novo.personal, nutri:!!novo.nutri}; Pro._mudou(); return {ok:true};
   },
   async gerarConvite(papel){
@@ -4056,7 +4077,7 @@ const Pro = {
       if (!conviteValido(c, Date.now())) return {erro: Number.isFinite(c.expira) && PAPEIS_PRO.includes(c.papel) ? "expirado" : "codigo"};
       if (c.profId===me) return {erro:"proprio"};
       const vid = vincId(me, c.papel), ev = await realDb.collection("vinculos").doc(vid).get();
-      const ex = ev.exists ? ev.data() : null, conf = conflitoVinculo(ex, c.profId);
+      const k0 = Pro._ch.v[vid], ex = ev.exists ? vincEfetivo(vid, ev.data(), me, k0 && k0.pin) : null, conf = conflitoVinculo(ex, c.profId);   // doc sem a cópia privada do aluno não conta
       if (conf) return {erro:conf};
       if (ex && ex.estado==="ativo") return {erro:"ja_vinculado"};
       const sp = await realDb.collection("papeis").doc(c.profId).get(), pp = sp.exists ? (sp.data()||{}) : {};
@@ -4065,11 +4086,12 @@ const Pro = {
       await cv.update({usado:true, por:me});
       const s2 = await cv.get(); if (!s2.exists || (s2.data()||{}).por!==me) return {erro:"usado"};   // outro aluno chegou junto e ganhou
       try{
-        const par = await gerarPar();
-        await Pro._salvarChave(Pro._campoV(vid), {vid, pub:par.pub, priv:par.priv}); Pro._ch.v[vid] = par; Pro._ks.delete(vid);
-        const doc = {alunoId:me, profId:c.profId, papel:c.papel, perm:permissoesValidas(c.papel, perm), estado:"ativo", pubA:par.pub, criado:Date.now(), nomeA:Pro._nome(), nomeP:String(pp.nome||"").slice(0, 40)};
+        const par = await gerarPar(), criado = Date.now(), pm = permissoesValidas(c.papel, perm), pin = {profId:c.profId, papel:c.papel, perm:pm, estado:"ativo", criado};
+        await Pro._salvarChave(Pro._campoV(vid), {vid, pub:par.pub, priv:par.priv, pin}); Pro._ch.v[vid] = Object.assign({}, par, {pin}); Pro._ks.delete(vid);
+        await Pro._vpub(c.papel, par.pub);
+        const doc = {alunoId:me, profId:c.profId, papel:c.papel, perm:pm, estado:"ativo", criado, nomeA:Pro._nome(), nomeP:String(pp.nome||"").slice(0, 40)};
         await realDb.collection("vinculos").doc(vid).set(doc);
-        Pro.vinc.set(vid, Object.assign({}, doc, {id:vid})); Pro._pubs[c.profId] = pp.pub;
+        Pro._rawV.set(vid, doc); Pro._montarV(); Pro._pubs[c.profId] = pp.pub;
         for (const cat of CATEGORIAS){ Pro._hs.delete(vid+"_"+cat); Pro._apag.delete(vid+"_"+cat); }
         Pro._limpos.delete(vid);
       }catch(e){
@@ -4084,8 +4106,9 @@ const Pro = {
   async salvarPerm(vid, perm){   // lança se a gravação falhar; o estado local só muda depois do banco
     await Pro._pronto();
     const v = Pro.vinc.get(vid); if (!v || v.alunoId!==me || v.estado!=="ativo") return {erro:"vinculo"};
-    const p = permissoesValidas(v.papel, perm);
-    await realDb.collection("vinculos").doc(vid).update({perm:p});
+    const p = permissoesValidas(v.papel, perm), ant = Pro._ch.v[vid].pin.perm;
+    await Pro._pin(vid, {perm:p});   // a cópia privada primeiro: é ela que decide o que publica
+    try{ await realDb.collection("vinculos").doc(vid).update({perm:p}); }catch(e){ try{ await Pro._pin(vid, {perm:ant}); }catch(e2){} throw e; }
     v.perm = p;
     Pro.avisar(v.profId, "perm", vid); await Pro.publicarSnaps(); Pro._mudou(); return {ok:true};
   },
@@ -4101,12 +4124,17 @@ const Pro = {
   },
   async encerrar(vid){   // lança se não conseguir marcar o vínculo; {ok:false} se algum snap não foi apagado (o aluno tenta de novo em publicarSnaps)
     await Pro._pronto();
-    const v = Pro.vinc.get(vid); if (!v || v.estado!=="ativo") return {erro:"vinculo"};
-    await realDb.collection("vinculos").doc(vid).update({estado:"encerrado", fim:Date.now()});
+    const v = Pro.vinc.get(vid), eu = v && v.alunoId===me; if (!v || v.estado!=="ativo") return {erro:"vinculo"};
+    let doc = true;
+    if (eu){   // o aluno marca a cópia privada: o profissional regravar "ativo" no doc não reabre nada
+      await Pro._pin(vid, {estado:"encerrado"});
+      try{ await realDb.collection("vinculos").doc(vid).update({estado:"encerrado", fim:Date.now()}); }catch(e){ doc = false; }   // publicarSnaps tenta de novo
+      if (v.papel==="personal") Pro._largarPlanoProf();
+    } else await realDb.collection("vinculos").doc(vid).update({estado:"encerrado", fim:Date.now()});
     v.estado = "encerrado";
     await Pro._fila.catch(()=>{});
-    const ok = await Pro._apagarSnaps(v);
-    if (ok && v.alunoId===me) Pro._limpos.add(vid);
+    const ok = await Pro._apagarSnaps(v) && doc;
+    if (ok && eu) Pro._limpos.add(vid);
     Pro.avisar(v.alunoId===me ? v.profId : v.alunoId, "encerrado", vid); Pro._mudou();
     return v.alunoId===me ? {ok} : {ok:true};
   },
@@ -4115,10 +4143,15 @@ const Pro = {
     const s = await realDb.collection("papeis").doc(uid).get(), p = s.exists ? (s.data()||{}).pub : null;
     if (jwkPubOk(p)){ Pro._pubs[uid] = p; return p; } return null;
   },
+  async _vpubDe(v){   // pública do aluno para este vínculo, do papeis dele; refaz a leitura quando o vínculo é recriado
+    const c = Pro._vp.get(v.id); if (c && c.criado===v.criado) return c.pub;
+    const s = await realDb.collection("papeis").doc(v.alunoId).get(), vp = s.exists ? (s.data()||{}).vpub : null, p = ehObj(vp) ? vp[v.papel] : null;
+    if (!jwkPubOk(p)) return null; Pro._vp.set(v.id, {criado:v.criado, pub:p}); return p;
+  },
   async _chave(v){
     let priv, pub;
     if (v.alunoId===me){ const k = Pro._ch && Pro._ch.v[v.id]; if (!k) return null; priv = k.priv; pub = await Pro._pubDe(v.profId); }
-    else { priv = Pro._ch && Pro._ch.par && Pro._ch.par.priv; pub = jwkPubOk(v.pubA) ? v.pubA : null; }
+    else { priv = Pro._ch && Pro._ch.par && Pro._ch.par.priv; pub = await Pro._vpubDe(v); }
     if (!priv || !pub) return null;
     const sig = hash32(JSON.stringify([priv.d, pub.x, pub.y])), ca = Pro._ks.get(v.id);
     if (ca && ca.sig===sig) return ca.k;
@@ -4151,6 +4184,12 @@ const Pro = {
       for (const v of [...Pro.vinc.values()]){
         if (v.alunoId!==me) continue;
         if (v.estado!=="ativo"){   // vínculo encerrado (talvez pelo profissional): limpa o que sobrou
+          const pin = Pro._ch.v[v.id].pin;
+          try{
+            if (pin.estado==="ativo" && pin.criado===v.criado) await Pro._pin(v.id, {estado:"encerrado"});   // o profissional encerrou: não reabre se ele regravar "ativo"
+            else if (pin.estado!=="ativo" && v.estadoDoc==="ativo") await realDb.collection("vinculos").doc(v.id).update({estado:"encerrado", fim:Date.now()});
+          }catch(e){}
+          if (v.papel==="personal") Pro._largarPlanoProf();
           if (!Pro._limpos.has(v.id) && await Pro._apagarSnaps(v)) Pro._limpos.add(v.id);
           continue;
         }
@@ -5260,7 +5299,7 @@ function sheetProfissionais(vid){
   const corpo = abrirSheet("Meus profissionais");
   const lista = ()=>{
     const vs = meusVinc().slice(0, 2);
-    corpo.innerHTML = '<h2 class="h2 lg">Meus profissionais</h2>'+(vs.length ? '<div class="lst">'+vs.map(v=>lr("vp_"+v.id, "", esc(v.nomeP||("Seu "+NOMEMODO[v.papel])), NOMEMODO[v.papel])).join("")+'</div>' : '<p class="s">Você ainda não tem Personal nem Nutri.</p>')+
+    corpo.innerHTML = '<h2 class="h2 lg">Meus profissionais</h2>'+(vs.length ? '<div class="lst">'+vs.map(v=>lr(esc("vp_"+v.id), "", esc(v.nomeP||("Seu "+NOMEMODO[v.papel])), NOMEMODO[v.papel])).join("")+'</div>' : '<p class="s">Você ainda não tem Personal nem Nutri.</p>')+
       '<button type="button" class="btn" id="vcod">Entrar com código</button><button type="button" class="lk" id="vno">Fechar</button>';
     $("vno").addEventListener("click", ()=>fecharSheet()); $("vcod").addEventListener("click", ()=>sheetConvite());
     vs.forEach(v=>$("vp_"+v.id).addEventListener("click", ()=>det(v.id)));

@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel, idsParaMarcar};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, vincEfetivo, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel, idsParaMarcar};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -259,4 +259,35 @@ test("quandoRel: agora, minutos, horas, ontem e data", () => {
 test("idsParaMarcar devolve só os não lidos exibidos", () => {
   assert.deepEqual(F.idsParaMarcar([{id: "a", lida: false}, {id: "b", lida: true}, {id: "c"}, null]), ["a", "c"]);
   assert.deepEqual(F.idsParaMarcar(null), []);
+});
+
+test("vincEfetivo: aluno usa só a cópia privada (pin) para profissional, papel, permissões e estado", () => {
+  const pin = {profId:"paulo", papel:"nutri", perm:{comida:true, corpo:false}, estado:"ativo", criado:1};
+  const doc = {alunoId:"ana", profId:"paulo", papel:"nutri", perm:{comida:true, corpo:false}, estado:"ativo", nomeP:"Paulo"};
+  const v = F.vincEfetivo("ana~nutri", doc, "ana", pin);
+  assert.equal(v.id, "ana~nutri"); assert.equal(v.profId, "paulo"); assert.equal(v.estado, "ativo"); assert.equal(v.nomeP, "Paulo");
+  // profissional reescreve papel, perm e profId: nada disso vale
+  const forj = F.vincEfetivo("ana~nutri", Object.assign({}, doc, {profId:"x", perm:{comida:true, corpo:true, treino:true}}), "ana", pin);
+  assert.equal(forj.profId, "paulo"); assert.deepEqual(forj.perm, {comida:true, corpo:false});
+  assert.equal(F.podeVer(forj, "treino"), false); assert.equal(F.podeVer(forj, "corpo"), false);
+  // papel trocado no doc: o id deixa de bater com aluno~papel
+  assert.equal(F.vincEfetivo("ana~nutri", Object.assign({}, doc, {papel:"personal"}), "ana", pin), null);
+  // aluno encerrou (pin): doc regravado como ativo não reabre
+  const fim = F.vincEfetivo("ana~nutri", doc, "ana", Object.assign({}, pin, {estado:"encerrado"}));
+  assert.equal(fim.estado, "encerrado"); assert.equal(fim.estadoDoc, "ativo"); assert.equal(F.podeVer(fim, "comida"), false);
+  // profissional encerrou no doc: encerrado também
+  assert.equal(F.vincEfetivo("ana~nutri", Object.assign({}, doc, {estado:"encerrado"}), "ana", pin).estado, "encerrado");
+  // sem pin (doc criado por terceiro) ou pin de outro papel: ignorado
+  assert.equal(F.vincEfetivo("ana~nutri", doc, "ana", null), null);
+  assert.equal(F.vincEfetivo("ana~nutri", doc, "ana", Object.assign({}, pin, {papel:"personal"})), null);
+});
+
+test("vincEfetivo: id precisa ser aluno~papel e o doc tem de ser meu", () => {
+  const doc = {alunoId:"ana", profId:"paulo", papel:"personal", perm:{treino:true}, estado:"ativo"};
+  assert.equal(F.vincEfetivo("ana~personal", doc, "paulo").id, "ana~personal");
+  assert.equal(F.vincEfetivo('"><img src=x onerror=alert(1)>', doc, "paulo"), null);
+  assert.equal(F.vincEfetivo("ana~personal", doc, "x"), null);
+  assert.equal(F.vincEfetivo("ana~coach", Object.assign({}, doc, {papel:"coach"}), "paulo"), null);
+  assert.equal(F.vincEfetivo("ana~personal", null, "paulo"), null);
+  assert.equal(F.vincEfetivo("ana~personal", Object.assign({}, doc, {alunoId:1}), "paulo"), null);
 });
