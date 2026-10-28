@@ -2347,7 +2347,7 @@ function render(keep){
   if (t==="feed") return telaFeed(o);
   if (t==="comida") return telaComida(o);
   if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="ngrupo") return telaNovoGrupo(); if (s==="grupo") return telaGrupo(R.arg); if (s==="dupla") return telaDupla(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
-  if (t==="alunos") return s==="det" ? telaProDetalhe(R.arg) : telaProAlunos(o);
+  if (t==="alunos") return s==="det" ? telaProDetalhe(R.arg, o) : telaProAlunos(o);
   if (t==="propostas") return telaPropostas(o);
   if (t==="biblioteca") return telaProBiblioteca(o);
   if (t==="planos") return telaProPlanos(o);
@@ -2420,11 +2420,11 @@ async function ativAluno(v){
   const ss = await Promise.all(lib.map(c=>snapPro(v.id, c)));
   if (ss.every(s=>!s)) return {t:"Aguardando o aluno abrir o app"};
   let ult = "";
-  ss.forEach((s, i)=>{ if (!s) return;
+  try{ ss.forEach((s, i)=>{ if (!s) return;
     if (lib[i]==="treino") Object.keys(s.feitos||{}).forEach(k=>{ const m = /^ck_(\d{4}-\d{2}-\d{2})_/.exec(k); if (m && m[1]>ult) ult = m[1]; });
-    if (lib[i]==="perf") (s.corridas||[]).forEach(r=>{ if (r && r.d>ult) ult = r.d; });
-    if (lib[i]==="comida") Object.keys(s.ref||{}).forEach(k=>{ const m = /^ref_(\d{4}-\d{2}-\d{2})$/.exec(k); if (m && m[1]>ult && (s.ref[k]||[]).some(r=>r && !r.pulou)) ult = m[1]; });
-  });
+    if (lib[i]==="perf") (Array.isArray(s.corridas) ? s.corridas : []).forEach(r=>{ if (r && typeof r.d=="string" && r.d>ult) ult = r.d; });
+    if (lib[i]==="comida") Object.keys(s.ref||{}).forEach(k=>{ const m = /^ref_(\d{4}-\d{2}-\d{2})$/.exec(k); if (m && m[1]>ult && Array.isArray(s.ref[k]) && s.ref[k].some(r=>r && !r.pulou)) ult = m[1]; });
+  }); }catch(e){ return {t:"—"}; }
   if (!ult) return {t: per ? "Ainda não treinou" : "Nenhuma refeição nos últimos 14 dias"};
   const q = quandoPro(ult);
   if (!per) return {t:"última refeição "+q.t};
@@ -2452,13 +2452,14 @@ function telaProAlunos(o){
   const papel = MODO, vs = alunosDe(papel), pend = vs.reduce((n, v)=>n+propsPend(v.id), 0);
   proSigVista = proSig();
   const app = tela(topo(NOMEMODO[papel], "Alunos")+'<button type="button" class="btn go" id="alc">Convidar aluno</button>'+
-    (vs.length ? '<p class="s">'+vs.length+(vs.length===1?" aluno":" alunos")+' · '+pend+(pend===1?" proposta pendente":" propostas pendentes")+'</p><div class="lst">'+vs.map(v=>lr("al_"+v.id, "", esc(v.nomeA||"Aluno")+(propsPend(v.id) ? ' <span class="pill">'+propsPend(v.id)+'</span>' : ''), '…')).join("")+'</div>'
+    (vs.length ? '<p class="s">'+vs.length+(vs.length===1?" aluno":" alunos")+' · '+pend+(pend===1?" proposta pendente":" propostas pendentes")+'</p><div class="lst">'+vs.map(v=>lr(esc("al_"+v.id), "", esc(v.nomeA||"Aluno")+(propsPend(v.id) ? ' <span class="pill">'+propsPend(v.id)+'</span>' : ''), '…')).join("")+'</div>'
       : '<div class="box"><b>Nenhum aluno ainda</b><p class="s">Toque em Convidar aluno e mande o código. Ele escolhe o que você pode ver.</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
   bindGo(app);
   $("alc").addEventListener("click", ()=>sheetNovoConvite(papel));
+  const tk = ++listTk;
   vs.forEach(v=>{
     $("al_"+v.id).addEventListener("click", ()=>ir("alunos", "det", v.id));
-    ativAluno(v).then(a=>{ const s = document.querySelector('[id="al_'+v.id+'"] small'); if (s) s.innerHTML = a.warn ? '<span class="cor-warn">'+esc(a.t)+'</span>' : esc(a.t); });
+    ativAluno(v).catch(()=>({t:"—"})).then(a=>{ const r = $("al_"+v.id), s = r && r.querySelector("small"); if (tk===listTk && s && app.contains(r)) s.innerHTML = a.warn ? '<span class="cor-warn">'+esc(a.t)+'</span>' : esc(a.t); });
   });
 }
 function sheetNovoConvite(papel){
@@ -2504,16 +2505,18 @@ function htmlSnap(cat, s){
   return "";
 }
 const cadeado = () => SV('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>');
-function telaProDetalhe(vid){
+let detTk = 0, listTk = 0;
+function telaProDetalhe(vid, o){
   const v = Pro.vinc.get(vid);
   if (!v || v.estado!=="ativo" || v.profId!==me || v.papel!==MODO){ R.sub = null; R.arg = null; return telaProAlunos({}); }
   proSigVista = proSig();
-  const cats = CATS_POR_PAPEL[v.papel];
+  const cats = CATS_POR_PAPEL[v.papel], tk = ++detTk;
   const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">'+esc(v.nomeA||"Aluno")+'</h1></div><button type="button" class="btn go" id="vpr">Propor mudança</button>'+
-    cats.map(c=>podeVer(v, c) ? '<div class="ds" id="ds_'+c+'"><div class="box"><b>'+CATPRO[c]+'</b><p class="s">Carregando…</p></div></div>' : '<div class="box"><div class="between"><b>'+CATPRO[c]+'</b><span class="cor-2">'+cadeado()+'</span></div><p class="s">O aluno não liberou</p></div>').join(""), {tabs:true});
+    cats.map(c=>podeVer(v, c) ? '<div class="ds" id="ds_'+c+'"><div class="box"><b>'+CATPRO[c]+'</b><p class="s">Carregando…</p></div></div>' : '<div class="box"><div class="between"><b>'+CATPRO[c]+'</b><span class="cor-2">'+cadeado()+'</span></div><p class="s">O aluno não liberou</p></div>').join(""), {tabs:true, keepScroll:o&&o.keepScroll});
   $("vb").addEventListener("click", ()=>ir("alunos")); $("vpr").addEventListener("click", ()=>proporMudanca(vid));
-  cats.filter(c=>podeVer(v, c)).forEach(c=>snapPro(vid, c, true).then(s=>{ const el = $("ds_"+c); if (!el) return;
-    el.innerHTML = s ? htmlSnap(c, s) : '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Aguardando o aluno abrir o app</p></div>'; }));
+  cats.filter(c=>podeVer(v, c)).forEach(c=>snapPro(vid, c, true).then(s=>{ const el = $("ds_"+c); if (!el || tk!==detTk || R.tab!=="alunos" || R.sub!=="det" || R.arg!==vid || !app.contains(el)) return;
+    let h = ""; if (s){ try{ h = htmlSnap(c, s); }catch(e){ h = '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Não consegui ler os dados deste aluno</p></div>'; } }
+    el.innerHTML = s ? h : '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Aguardando o aluno abrir o app</p></div>'; }));
 }
 function proporMudanca(vid){   // Task 7 liga o editor de propostas aqui
   const corpo = abrirSheet("Propor mudança");
@@ -2534,7 +2537,7 @@ function telaModelos(o, h1, vazio){
   lerModelos().then(l=>{ const el = $("mdl"); if (!el) return;
     if (!l){ el.innerHTML = '<p class="msg err">Não consegui carregar agora.</p>'; return; }
     const ms = l.filter(m=>m.papel===papel);
-    el.innerHTML = ms.length ? '<div class="lst">'+ms.map(m=>lr("md_"+m.id, "", esc(m.nome), esc(String(m.txt||"").split("\n")[0].slice(0, 60)))).join("")+'</div>' : '<div class="box"><b>'+vazio+'</b><p class="s">Salve modelos para usar como ponto de partida quando for propor mudanças.</p></div>';
+    el.innerHTML = ms.length ? '<div class="lst">'+ms.map(m=>lr(esc("md_"+m.id), "", esc(m.nome), esc(String(m.txt||"").split("\n")[0].slice(0, 60)))).join("")+'</div>' : '<div class="box"><b>'+vazio+'</b><p class="s">Salve modelos para usar como ponto de partida quando for propor mudanças.</p></div>';
     ms.forEach(m=>$("md_"+m.id).addEventListener("click", ()=>sheetModelo(papel, m)));
   });
 }
