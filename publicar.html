@@ -2324,6 +2324,7 @@ function ir(tab, sub, arg){
 }
 function render(keep){
   try{ aplicarTeto(); }catch(e){ registrarErro("teto", e); }
+  if (restaurarModo()) R.tab = barraAbas(MODO)[0];
   MODO = modoValido(MODO); renderBarra();
   const bar = barraAbas(MODO);
   if (!bar.includes(R.tab) && !["perfil","chat","painel","sino"].includes(R.tab)){ R.tab = bar[0]; R.sub = null; R.arg = null; }
@@ -2369,8 +2370,8 @@ function renderBarra(){
   remedirIndicador();
 }
 const iconeSino = () => ICONE.sino;
-function sinoHTML(){ const n = Pro.naoLidas(); return '<button type="button" class="me sino" data-go="sino" aria-label="Notificações">'+iconeSino()+'<b'+(n?'':' hidden')+'>'+(n>9?"9+":n)+'</b></button>'; }
-function atualizarSino(){ const n = Pro.naoLidas(); document.querySelectorAll(".sino b").forEach(b=>{ b.hidden = !n; b.textContent = n>9 ? "9+" : n; }); }
+function sinoHTML(){ const n = Pro.naoLidas(); return '<button type="button" class="me sino" data-go="sino" aria-label="Notificações'+(n?', '+n+' não lidas':'')+'">'+iconeSino()+'<b'+(n?'':' hidden')+'>'+(n>9?"9+":n)+'</b></button>'; }
+function atualizarSino(){ const n = Pro.naoLidas(); document.querySelectorAll(".sino b").forEach(b=>{ b.hidden = !n; b.textContent = n>9 ? "9+" : n; b.parentNode.setAttribute("aria-label", "Notificações"+(n?", "+n+" não lidas":"")); }); }
 function seletorModo(){
   const ms = modosDisp(); if (ms.length<2 || (MODO==="aluno" && R.tab!=="hoje")) return "";
   return '<div class="seg modo" style="--c:'+ms.length+'" role="group" aria-label="Modo">'+ms.map(m=>'<button type="button" data-m="'+m+'" aria-pressed="'+(m===MODO)+'">'+NOMEMODO[m]+'</button>').join("")+'</div>';
@@ -2378,11 +2379,17 @@ function seletorModo(){
 document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest(".modo button[data-m]"); if (b && b.dataset.m!==MODO) setModo(b.dataset.m); });
 function aoMudarPro(){
   atualizarSino();
-  const ant = MODO, ini = !modoIni && modosDisp().length>1;
-  if (ini){ modoIni = true; let m = "aluno"; try{ m = localStorage.getItem("tropa-modo")||"aluno"; }catch(e){} MODO = modoValido(m); } else MODO = modoValido(MODO);
+  const ant = MODO;
+  if (!restaurarModo()) MODO = modoValido(MODO);
   renderBarra();
-  ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
-  if (MODO!==ant && P && P.perfil && !$("tabs").hidden && (R.tab==="hoje" || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
+  if (!papelOcup) ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
+  if (MODO!==ant && P && P.perfil && !$("tabs").hidden && ((R.tab==="hoje" && !R.sub) || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
+}
+let papelOcup = false;
+function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca ficam em modos diferentes
+  if (modoIni || modosDisp().length<2 || R.tab!=="hoje" || R.sub) return false;
+  modoIni = true; let m = "aluno"; try{ m = localStorage.getItem("tropa-modo")||"aluno"; }catch(e){}
+  m = modoValido(m); if (m===MODO) return false; MODO = m; return true;
 }
 function telaPro(h1, msg, o){ const app = tela(topo(NOMEMODO[MODO],h1)+'<div class="box"><p class="s">'+msg+'</p></div>', {tabs:true, keepScroll:o&&o.keepScroll}); bindGo(app); return app; }
 const telaProAlunos = o => telaPro("Alunos","Nenhum aluno ainda.",o), telaPropostas = o => telaPro("Propostas","Nenhuma proposta por enquanto.",o), telaProBiblioteca = o => telaPro("Biblioteca","Biblioteca vazia.",o), telaProPlanos = o => telaPro("Planos","Nenhum plano ainda.",o);
@@ -2392,11 +2399,15 @@ function telaSino(){
 }
 const msgPro = e => { const m = e && e.message; return m==="pro_indisponivel" ? "Só funciona no app oficial." : m==="ocupado" ? "Aguarde a ação anterior." : /^chave/.test(m) ? "Não consegui abrir suas chaves de segurança." : "Não deu certo. Tente de novo."; };
 async function aplicarPapel(m, lig, ativos){
+  papelOcup = true;
   try{
-    for (const v of ativos) await Pro.encerrar(v.id);
+    let ok = 0;
+    for (const v of ativos){ try{ const r = await Pro.encerrar(v.id); if (!(r && r.erro)) ok++; }catch(e){} }
+    if (ok<ativos.length) return toast("Encerrei "+ok+" de "+ativos.length+" vínculos. Tente de novo.");
     const r = await Pro.ativarPapel(m, lig); if (r && r.erro) throw new Error("falha");
     toast("Modo "+NOMEMODO[m]+(lig ? " ligado." : " desligado."));
-  }catch(e){ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; toast(msgPro(e)); }
+  }catch(e){ toast(msgPro(e)); }
+  finally{ papelOcup = false; const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; }
 }
 function mudarPapel(m, c){
   const ativos = c.checked ? [] : [...Pro.vinc.values()].filter(v=>v.profId===me && v.papel===m && v.estado==="ativo");
