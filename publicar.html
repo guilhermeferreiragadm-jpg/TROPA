@@ -1024,6 +1024,42 @@ const validarAtividade = (r, hoje) => {
 const paceTexto = v => { const s = Math.round(v * 60); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 const fotoValida = s => typeof s === "string" && s.length <= 60000 && /^data:image\/jpeg;base64,[A-Za-z0-9+\/]+={0,2}$/.test(s);
 /* @pure:end */
+/* @movimento:start */
+const MOLAS = {suave:{amort:1, resposta:.4}, ligeiro:{amort:1, resposta:.3}, lancado:{amort:.8, resposta:.3}, giro:{amort:.8, resposta:.4}};
+// Mola de massa 1: rigidez (2π/resposta)², amortecimento 2·amort·(2π/resposta).
+// Solução analítica (exata): não depende do tamanho do quadro nem perde energia por erro numérico, como um passo de Euler perderia.
+function molaPasso(est, alvo, mola, dt){
+  const w = 2*Math.PI/mola.resposta, z = mola.amort, d0 = est.x - alvo, v0 = est.v;
+  if (dt <= 0) return {x:est.x, v:est.v};
+  if (z >= 1){   // amortecimento crítico (os presets usam no máximo 1)
+    const e = Math.exp(-w*dt), c = v0 + w*d0;
+    return {x: alvo + e*(d0 + c*dt), v: e*(v0 - w*c*dt)};
+  }
+  const a = z*w, wd = w*Math.sqrt(1 - z*z), e = Math.exp(-a*dt), co = Math.cos(wd*dt), si = Math.sin(wd*dt), B = (v0 + a*d0)/wd;
+  return {x: alvo + e*(d0*co + B*si), v: e*(v0*co - (a*B + wd*d0)*si)};
+}
+function molaParada(est, alvo, tol){ return Math.abs(est.x-alvo) < tol && Math.abs(est.v) < tol*10; }
+// Ponto de repouso de um arremesso: (v/1000)·d/(1-d), v em px/s.
+function projetar(x, v, d){ d = d==null ? 0.998 : d; return x + (v/1000)*d/(1-d); }
+// Resistência progressiva depois do limite (constante 0,55).
+function elastico(sobra, dimensao){ const a = Math.abs(sobra); return Math.sign(sobra) * (a*dimensao*0.55)/(dimensao + 0.55*a); }
+// px/s a partir dos pontos dos últimos ~100 ms.
+function velocidade(am){
+  if (!am || am.length < 2) return 0;
+  const fim = am[am.length-1]; let ini = fim;
+  for (let i = am.length-2; i >= 0; i--){ if (fim.t - am[i].t > 100) break; ini = am[i]; }
+  const dt = fim.t - ini.t; return dt > 0 ? (fim.x - ini.x)/dt*1000 : 0;
+}
+function maisProximo(valor, alvos){ return alvos.reduce((a, b) => Math.abs(b-valor) < Math.abs(a-valor) ? b : a); }
+// Como a tela nova entra, a partir da rota que saiu e da que chegou.
+function tipoTransicao(a, b){
+  if (a.tab===b.tab && a.sub===b.sub && a.arg===b.arg) return "nenhuma";
+  if (a.tab!==b.tab) return b.tab==="chat" ? "sobe" : a.tab==="chat" ? "desce" : "aba";
+  if (!a.sub && b.sub) return "push";
+  if (a.sub && !b.sub) return "pop";
+  return "push";
+}
+/* @movimento:end */
 
 /* ===================== PLANO NO DIA A DIA ===================== */
 function planoAtual(){ return (A && A.plano) || (P && P.plano); }
