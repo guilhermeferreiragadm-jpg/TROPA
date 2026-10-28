@@ -416,6 +416,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .lst{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);overflow:hidden}
 .lst>button,.lst>a{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--sep);background:none;padding:14px 16px;font-weight:600;text-align:left;width:100%;color:var(--tx);text-decoration:none;min-height:50px}
 .lst>button:last-child,.lst>a:last-child{border-bottom:0}
+.lst>button.nt{justify-content:flex-start}.nd{width:8px;height:8px;border-radius:50%;background:var(--go-fill);flex:none}.nti{width:32px;height:32px;border-radius:50%;background:var(--sep);color:var(--tx);display:grid;place-content:center;flex:none}.nti svg{width:18px;height:18px}.nt .grow{flex:1;min-width:0;overflow-wrap:anywhere}
 .lst small{display:block;font-weight:400;color:var(--tx-2);font-size:.8125rem}.chev{color:var(--tx-2);font-weight:400;flex:none}.ds{display:flex;flex-direction:column;gap:12px}
 .code{font-weight:700;font-size:1.8rem;letter-spacing:.12em;font-variant-numeric:tabular-nums}
 .tbl{width:100%;border-collapse:collapse;font-size:.875rem}
@@ -1305,6 +1306,28 @@ function avaliarProposta(tipo, p, antes){
 }
 const TIPOS_INBOX = ["convite","vinculo","encerrado","proposta","resposta","perm","comentario"];
 const itemInboxValido = it => !!it && TIPOS_INBOX.includes(it.tipo) && typeof it.ref === "string" && it.ref.length > 0 && it.ref.length <= 80 && Number.isFinite(it.quando);
+// Texto do aviso (sem HTML; quem chama aplica esc). ctx: {eu, v (vínculo), estado, motivo}
+function textoAviso(it, ctx){
+  const v = ctx && ctx.v; if (!it || !v) return "";
+  const n = (ctx.eu===v.alunoId ? v.nomeP : v.nomeA) || (ctx.eu===v.alunoId ? (v.papel==="nutri" ? "Sua nutri" : "Seu personal") : "Seu aluno"), pap = v.papel==="nutri" ? "Nutri" : "Personal";
+  switch (it.tipo){
+    case "vinculo": return n+" aceitou seu convite de "+pap;
+    case "encerrado": return n+" encerrou o vínculo";
+    case "proposta": return n+" propôs uma mudança no seu "+(tipoDe(v.papel)==="alimentar" ? "plano alimentar" : "treino");
+    case "resposta": return ctx.estado==="aceita" ? n+" aceitou sua proposta" : ctx.estado==="recusada" ? n+" recusou"+(ctx.motivo ? ": "+ctx.motivo : " sua proposta") : ctx.estado==="desatualizada" ? n+" deixou sua proposta como desatualizada" : n+" respondeu sua proposta";
+    case "perm": return n+" mudou o que você pode ver";
+    case "comentario": return n+" comentou um exercício";
+  }
+  return "";
+}
+function quandoRel(ts, agora){
+  const d = agora - ts; if (!Number.isFinite(d) || d < 60000) return "agora";
+  if (d < 3600000) return "há "+Math.floor(d/60000)+" min";
+  const a = new Date(agora), t = new Date(ts), dia = x=>Date.UTC(x.getFullYear(), x.getMonth(), x.getDate()), dd = Math.round((dia(a)-dia(t))/86400000);
+  if (dd===0) return "há "+Math.floor(d/3600000)+" h";
+  if (dd===1) return "ontem";
+  return String(t.getDate()).padStart(2, "0")+"/"+String(t.getMonth()+1).padStart(2, "0");
+}
 const cripto = () => globalThis.crypto.subtle;
 const paraB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i+8192)); return btoa(s); };
 const deB64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
@@ -2429,9 +2452,11 @@ function telaRevisao(){
 /* ===================== NAVEGAÇÃO ===================== */
 let voltandoPor = false;   // liga no clique de um botão "←" e vale só para a navegação que ele provoca
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".back, [data-back]")){ voltandoPor = true; setTimeout(() => { voltandoPor = false; }, 300); } }, true);
+let sinoDe = null;
 function ir(tab, sub, arg){
   const antes = {tab:R.tab, sub:R.sub, arg:R.arg};
   R.tab = tab; R.sub = sub||null; R.arg = arg==null?null:arg;
+  if (tab==="sino" && antes.tab!=="sino") sinoDe = antes;
   proxTransicao = tipoTransicao(antes, {tab:R.tab, sub:R.sub, arg:R.arg}, voltandoPor);
   voltandoPor = false;
   render();
@@ -2499,7 +2524,7 @@ function aoMudarPro(){
   renderBarra();
   if (!papelOcup) ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
   if (MODO!==ant && P && P.perfil && !$("tabs").hidden && ((R.tab==="hoje" && !R.sub) || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
-  else{ proAoVivo(); propAoVivo(); }
+  else{ proAoVivo(); propAoVivo(); sinoAoVivo(); }
 }
 let papelOcup = false;
 function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca ficam em modos diferentes
@@ -2849,9 +2874,44 @@ function sheetModelo(papel, m){
   });
 }
 const telaProBiblioteca = o => telaModelos(o, "Biblioteca", "Biblioteca vazia"), telaProPlanos = o => telaModelos(o, "Planos", "Nenhum plano ainda");
+const ICO_AVISO = {vinculo:"feed", encerrado:"sino", proposta:"propostas", resposta:"propostas", perm:"biblioteca", comentario:"coach"};
+let sinoTk = 0, sinoSigVista = "", sinoTent = false;
+const sinoSig = () => JSON.stringify(Pro.inbox.slice(0, 50).map(i=>{ const v = Pro.vinc.get(i.ref.split(".")[0]), p = Pro.props.get(i.ref); return [i.id, i.lida, p&&p.estado, v&&[v.nomeA, v.nomeP, v.estado]]; }));
+function sinoAoVivo(){
+  if (R.tab!=="sino" || !P || $("tabs").hidden || sinoSig()===sinoSigVista) return;
+  const ov = $("ov"), at = document.activeElement;
+  if ((ov && ov.innerHTML) || (at && (at.tagName==="INPUT" || at.tagName==="TEXTAREA" || at.isContentEditable))){
+    if (!sinoTent){ sinoTent = true; setTimeout(()=>{ sinoTent = false; sinoAoVivo(); }, 2000); }
+    return;
+  }
+  render(true);
+}
+function abrirAviso(it){
+  const vid = it.ref.split(".")[0], v = Pro.vinc.get(vid); if (!v) return;
+  if (it.tipo==="proposta" || it.tipo==="resposta") return sheetPropostaAluno(vid, it.ref.slice(vid.length+1));
+  if (v.alunoId===me) return sheetProfissionais(vid);
+  if (MODO!==v.papel && modosDisp().includes(v.papel)){ MODO = v.papel; try{ localStorage.setItem("tropa-modo", MODO); }catch(e){} renderBarra(); }
+  if (it.tipo==="encerrado" || v.estado!=="ativo") ir("alunos"); else ir("alunos", "det", vid);
+}
 function telaSino(){
-  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><h1 class="h1">Notificações</h1><div class="box"><p class="s">Sem notificações.</p></div>', {tabs:true});
-  $("vb").addEventListener("click", ()=>ir(barraAbas(MODO)[0]));
+  const tk = ++sinoTk, agora = Date.now(), its = Pro.inbox.slice(0, 50);
+  sinoSigVista = sinoSig();
+  const info = it=>{ const v = Pro.vinc.get(it.ref.split(".")[0]), p = Pro.props.get(it.ref), c = Pro._pc.get(it.ref), x = c && c.p; return {eu:me, v, estado:p&&p.estado, motivo:x&&p.estado==="recusada" ? x.motivo : ""}; };
+  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><h1 class="h1">Notificações</h1>'+(its.length ? '<div class="lst">'+its.map(it=>
+    '<button type="button" id="'+esc("sn_"+it.id)+'" class="nt"><span class="nd" style="'+(it.lida ? 'visibility:hidden' : '')+'"></span><span class="nti">'+ICONE[ICO_AVISO[it.tipo]]+'</span><span class="grow"><span id="'+esc("st_"+it.id)+'">'+esc(textoAviso(it, info(it)))+'</span><small>'+esc(quandoRel(it.quando, agora))+'</small></span></button>').join("")+'</div>'
+    : '<div class="box"><b>Nada por aqui ainda</b><p class="s">Os avisos de convites, propostas e comentários aparecem aqui.</p></div>'), {tabs:true});
+  $("vb").addEventListener("click", ()=>{
+    const d = sinoDe, bar = barraAbas(MODO), ok = d && d.tab!=="sino" && (bar.includes(d.tab) || ["perfil","chat","painel"].includes(d.tab)), subOk = ok && ((d.tab==="alunos" && d.sub==="det" && (Pro.vinc.get(d.arg)||{}).estado==="ativo") || (d.tab==="perfil" && d.sub==="props"));
+    if (ok) ir(d.tab, subOk ? d.sub : null, subOk ? d.arg : null); else ir(bar[0]);
+  });
+  its.forEach(it=>{ const b = $("sn_"+it.id); if (b) b.addEventListener("click", ()=>abrirAviso(it)); });
+  its.forEach(it=>{   // motivo da recusa: cifrado, lido depois; tk descarta resposta atrasada
+    const c = info(it); if (it.tipo!=="resposta" || c.estado!=="recusada" || c.motivo) return;
+    const vid = it.ref.split(".")[0];
+    Pro.lerProposta(vid, it.ref.slice(vid.length+1)).then(p=>{ const e = $("st_"+it.id); if (tk===sinoTk && R.tab==="sino" && e && p && p.motivo) e.textContent = textoAviso(it, Object.assign({}, c, {motivo:String(p.motivo)})); }).catch(()=>{});
+  });
+  setTimeout(()=>{ if (tk===sinoTk && R.tab==="sino" && Pro.naoLidas()) Pro.marcarLidas().catch(()=>toast("Não consegui marcar como lidas.")); }, 1000);
+  return app;
 }
 const msgPro = e => { const m = e && e.message; return m==="pro_indisponivel" ? "Só funciona no app oficial." : m==="ocupado" ? "Aguarde a ação anterior." : /^chave/.test(m) ? "Não consegui abrir suas chaves de segurança." : "Não deu certo. Tente de novo."; };
 async function aplicarPapel(m, lig, ativos){

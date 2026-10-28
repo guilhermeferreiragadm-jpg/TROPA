@@ -75,3 +75,13 @@ Com `?eu=<id>&nome=<nome>` o stub vira esse usuário (não dono, já com acesso 
 7. Nutri: N `Pro.ativarPapel("nutri", true)`, convite; A aceita com `{comida:true, corpo:false}`. N edita metas (`[data-f="m|kcal"]`) e orientações (`#ora`, `[data-f="o|0|ref"]`, `[data-f="o|0|t"]`) e envia. A aceita; `P.planoAlim` é gravado e a aba Comida mostra "Orientações da sua nutri".
 
 Fix das propostas (forjadas e limites): em P, grave direto em `prop/ana~personal.<id>` (cifrado com `Pro._chave` e `cifrar`) propostas com `tipo:"alimentar"` e base do plano de treino, com `ops:[{p:[],v:{}}]` e com texto de 1 MB: em A nenhuma vira `#pa` e `planoAtual()` e `P.planoProf` não mudam; `Pro.responderProposta(vid, id, "aceitar")` na de tipo trocado devolve `{erro:"invalida"}`. No editor, dias de segunda até hoje mostram "Esse dia já tem treino registrado ou já passou" e não têm remover, mover nem adicionar; km 501, séries 100 ou carga 1001 mostram a mensagem no campo e desligam `#pse`.
+
+## Sino (Notificações)
+
+Abas P `/?eu=pedro&nome=Pedro`, A `/?eu=ana&nome=Ana`, N `/?eu=clara&nome=Clara` (375 px, claro e escuro). Zerar `tropa-stub-db` e recarregar. Convites: P `Pro.gerarConvite("personal")`, N `Pro.gerarConvite("nutri")`, A aceita os dois.
+
+1. P: o sino da Alunos mostra `1`. `__T.ir("propostas")`, tocar no sino: título "Notificações", item "Ana aceitou seu convite de Personal" com marcador laranja; depois de 1 s o marcador some, o contador zera. "← Voltar" volta para Propostas (a origem), não para Alunos.
+2. N: `Pro.enviarProposta("ana~nutri","alimentar",{},{metas:{kcal:2000}},"Meta")` três vezes (kcal 2000, 2100, 2200). A: sino mostra `3`; abrir o sino e tocar no primeiro item abre o sheet da proposta (`#pa`).
+3. A: `responderProposta` recusar com motivo `Muito baixo <b>x</b>`, aceitar outra e `invalidar` a terceira. N com o sino aberto vê, sem recarregar, "recusou: Muito baixo <b>x</b>" (texto literal, sem negrito), "aceitou sua proposta" e "deixou sua proposta como desatualizada". Tocar no convite abre o detalhe do aluno.
+4. A: `salvarPerm("ana~personal",{treino:true,perf:false})` e `Pro.avisar("pedro","comentario","ana~personal")`: P com o sino aberto ganha "mudou o que você pode ver" e "comentou um exercício" ao vivo; tocar abre o detalhe da Ana.
+5. A: `Pro.encerrar("ana~personal")`: P vê "Ana encerrou o vínculo" e tocar leva à lista de Alunos. Estado vazio: aba nova sem avisos mostra "Nada por aqui ainda".

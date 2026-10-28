@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -225,4 +225,33 @@ test("corteAlim usa as 20 primeiras orientações na base e a proposta segue vá
   assert.equal(cort.orient.length, 20);
   const dep = {...cort, metas: {kcal: 1800}}, p = {tipo: "alimentar", base: F.hash32(JSON.stringify(cort)), ops: F.criarPatch(cort, dep)};
   assert.equal(F.avaliarProposta("alimentar", p, velho).st, "ok");
+});
+
+test("textoAviso mostra a outra parte do vínculo e o texto por tipo", () => {
+  const v = {alunoId: "a", profId: "p", papel: "nutri", nomeA: "Ana", nomeP: "Clara"};
+  const t = (tipo, eu, x = {}) => F.textoAviso({tipo}, {eu, v, ...x});
+  assert.equal(t("vinculo", "p"), "Ana aceitou seu convite de Nutri");
+  assert.equal(t("encerrado", "a"), "Clara encerrou o vínculo");
+  assert.equal(t("proposta", "a"), "Clara propôs uma mudança no seu plano alimentar");
+  assert.equal(F.textoAviso({tipo: "proposta"}, {eu: "a", v: {...v, papel: "personal"}}), "Clara propôs uma mudança no seu treino");
+  assert.equal(t("resposta", "p", {estado: "aceita"}), "Ana aceitou sua proposta");
+  assert.equal(t("resposta", "p", {estado: "recusada", motivo: "Muito pesado"}), "Ana recusou: Muito pesado");
+  assert.equal(t("resposta", "p", {estado: "recusada"}), "Ana recusou sua proposta");
+  assert.equal(t("resposta", "p", {estado: "desatualizada"}), "Ana deixou sua proposta como desatualizada");
+  assert.equal(t("resposta", "p", {estado: "pendente"}), "Ana respondeu sua proposta");
+  assert.equal(t("perm", "p"), "Ana mudou o que você pode ver");
+  assert.equal(t("comentario", "p"), "Ana comentou um exercício");
+  assert.equal(F.textoAviso({tipo: "vinculo"}, {eu: "p", v: {...v, nomeA: ""}}), "Seu aluno aceitou seu convite de Nutri");
+  assert.equal(F.textoAviso({tipo: "x"}, {eu: "p", v}), "");
+  assert.equal(F.textoAviso({tipo: "perm"}, {eu: "p"}), "");
+});
+
+test("quandoRel: agora, minutos, horas, ontem e data", () => {
+  const agora = new Date(2026, 9, 28, 15, 0, 0).getTime(), antes = ms => agora - ms;
+  assert.equal(F.quandoRel(antes(30e3), agora), "agora");
+  assert.equal(F.quandoRel(antes(5 * 60e3), agora), "há 5 min");
+  assert.equal(F.quandoRel(antes(2 * 3600e3), agora), "há 2 h");
+  assert.equal(F.quandoRel(new Date(2026, 9, 27, 23, 0).getTime(), agora), "ontem");
+  assert.equal(F.quandoRel(new Date(2026, 9, 25, 10, 0).getTime(), agora), "25/10");
+  assert.equal(F.quandoRel(agora + 5000, agora), "agora");
 });
