@@ -37,3 +37,23 @@ for (const [nome, tema] of [["claro", claro], ["escuro", escuro]]){
     }
   });
 }
+
+// cores das fases (CORF e fasesDe): texto branco por cima, mínimo 4,5:1 nos dois temas
+test("cores das fases passam 4,5:1 com texto branco nos dois temas", () => {
+  const ini = html.indexOf("const CORF"), fim = html.indexOf("function faseDaSemana");
+  assert.ok(ini >= 0 && fim > ini, "bloco das fases não achado");
+  const trecho = html.slice(ini, fim);
+  assert.ok(!/var\(--(ink|go|done)\)/.test(trecho), "fase usando --ink, --go ou --done como fundo de texto");
+  const cores = new Set();
+  for (const m of trecho.matchAll(/#[0-9a-fA-F]{6}\b/g)) cores.add(m[0]);
+  const vars = [...trecho.matchAll(/var\(--([a-z-]+)\)/g)].map(m => m[1]);
+  assert.ok(cores.size >= 4, "poucas cores de fase achadas");
+  for (const [nome, tema] of [["claro", claro], ["escuro", escuro]]){
+    const todas = [...cores, ...vars.map(v => tema[v])];
+    for (const c of todas){
+      assert.ok(c, "token de fase faltando");
+      const r = razao("#FFFFFF", c);
+      assert.ok(r >= 4.5, "branco sobre " + c + " no tema " + nome + " = " + r.toFixed(2));
+    }
+  }
+});

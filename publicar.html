@@ -46,7 +46,7 @@ img{max-width:100%}
 #app.full{padding-inline:0;padding-block:0;gap:0}
 .wrap:has(#app.full){padding-bottom:0}   /* telas cheias não têm barra de abas: sem folga embaixo (o chat rolava 112px e escondia a primeira mensagem sob o cabeçalho) */
 /* tipografia: tracking negativo nos títulos, entrelinha curta; corpo solto */
-.h1{font-weight:700;font-size:2.125rem;line-height:1.1;letter-spacing:-.03em;margin:0;text-wrap:balance}
+.h1{font-weight:700;font-size:2.125rem;line-height:1.1;letter-spacing:-.03em;margin:0;text-wrap:balance}.h1.xl{font-size:3.5rem}
 .h2{font-weight:700;font-size:1.375rem;line-height:1.15;letter-spacing:-.02em;margin:0}
 .k{font-size:.75rem;line-height:1.3;font-weight:600;letter-spacing:.01em;color:var(--tx-2)}
 .s{font-size:.875rem;line-height:1.4;color:var(--tx-2);margin:0}
@@ -145,7 +145,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .wk div.r{background:var(--surface-2)}
 .bars{display:flex;align-items:flex-end;gap:3px;height:80px;border-bottom:1px solid var(--sep)}
 .bars i{flex:1;background:var(--tx-2);display:block;min-height:3px;border-radius:4px 4px 0 0}
-.bars i.dl{opacity:.4}.bars i.now{background:var(--go)}
+.bars i.dl{opacity:.4}.bars i.now{background:var(--go);opacity:1}
 .pledge{font-family:var(--f);font-weight:900;font-size:1.55rem;line-height:1;text-transform:uppercase}
 .pledge em{font-style:normal;color:var(--go-ink)}
 .sig{border-bottom:2px solid var(--ink);height:110px;background:var(--surface-2);touch-action:none;display:block;width:100%}
@@ -157,7 +157,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .pl small{font-size:.76rem;color:var(--tx-2)}
 .pl .tag{position:absolute;top:-9px;right:8px;background:var(--go-fill);color:#fff;font-size:.6rem;font-weight:800;letter-spacing:.08em;padding:2px 6px;text-transform:uppercase}
 .cupom{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.9375rem;background:var(--done-soft);border-radius:var(--r2);padding:12px 14px;color:var(--done-ink);font-weight:600}
-.cupom.go{background:var(--go-soft);color:var(--go-ink)}.h1.xl{font-size:3.5rem}.rest .row{flex-wrap:nowrap;gap:6px}
+.cupom.go{background:var(--go-soft);color:var(--go-ink)}
 .ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:.88rem}
 .ul li::before{content:"✓  ";color:var(--done-ink);font-weight:900}
 /* app: topo */
@@ -301,10 +301,11 @@ textarea.inp{resize:vertical;min-height:88px}
 #restbox{position:sticky;bottom:calc(112px + var(--safe-b));z-index:5}
 .rest{background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);color:var(--tx);border-radius:var(--r3);box-shadow:var(--sh3);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .rest b{font-size:1.75rem;line-height:1;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.rest .row{flex-wrap:nowrap;gap:6px}
 .rest small{font-size:.75rem;color:var(--tx-2);display:block}
 .rest button{font-size:.8125rem;font-weight:600;border:0;border-radius:999px;padding:0 14px;min-height:44px;background:var(--surface-2);color:var(--tx)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.rest{background:var(--surface)}}
-@media (prefers-reduced-transparency:reduce){.rest{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more){.rest{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 .big3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1)}
 .big3>div{padding:14px 4px;text-align:center;border-right:1px solid var(--sep)}
 .big3>div:last-child{border-right:0}
@@ -658,12 +659,13 @@ function validar(plano, p){
   return v;
 }
 const NOMEF = {F0:"recuperação",F1:"base",F2:"festas",F3:"meia",F4:"transição",F5:"base tri",F6:"construção",F7:"específico",F8:"polimento"};
-const CORF = {F0:"#9AA3AD",F1:"var(--ink)",F2:"#9AA3AD",F3:"var(--go)",F4:"#9AA3AD",F5:"#3a4350",F6:"#3a4350",F7:"var(--go)",F8:"var(--done)"};
+/* cores das fases: texto branco por cima, mínimo 4,5:1 nos dois temas (tests/contraste.test.js) */
+const CORF = {F0:"#667080",F1:"#46525D",F2:"#667080",F3:"var(--go-fill)",F4:"#667080",F5:"#2E5E8E",F6:"#2E5E8E",F7:"var(--go-fill)",F8:"#0F7A3E"};
 function fasesDe(pl){
-  if (pl.fases){ const out = []; pl.semanas.forEach(s=>{ const l = out[out.length-1]; if (l && l[3]===s.fase) l[1]++; else out.push([NOMEF[s.fase]||s.fase, 1, CORF[s.fase]||"var(--ink)", s.fase]); }); return out; }
-  const n = pl.semanas.length; if (pl.semProva) return [["base",Math.ceil(n/3),"var(--ink)"],["construção",Math.ceil(n/3),"#3a4350"],["específico",n-2*Math.ceil(n/3),"var(--go)"]].filter(x=>x[1]>0);
+  if (pl.fases){ const out = []; pl.semanas.forEach(s=>{ const l = out[out.length-1]; if (l && l[3]===s.fase) l[1]++; else out.push([NOMEF[s.fase]||s.fase, 1, CORF[s.fase]||"#46525D", s.fase]); }); return out; }
+  const n = pl.semanas.length; if (pl.semProva) return [["base",Math.ceil(n/3),"#46525D"],["construção",Math.ceil(n/3),"#2E5E8E"],["específico",n-2*Math.ceil(n/3),"var(--go-fill)"]].filter(x=>x[1]>0);
   const pol = 2, esp = Math.max(1, Math.round((n-pol)*0.3)), con = Math.max(1, Math.round((n-pol)*0.35)), bas = Math.max(1, n-pol-esp-con);
-  return [["base",bas,"var(--ink)"],["construção",con,"#3a4350"],["específico",esp,"var(--go)"],["polimento",pol,"var(--done)"]];
+  return [["base",bas,"#46525D"],["construção",con,"#2E5E8E"],["específico",esp,"var(--go-fill)"],["polimento",pol,"#0F7A3E"]];
 }
 function faseDaSemana(pl, w){ if (pl.fases && pl.semanas[w-1]) return NOMEF[pl.semanas[w-1].fase] || ""; let acc = 0; for (const f of fasesDe(pl)){ acc += f[1]; if (w<=acc) return f[0]; } return "polimento"; }
 
