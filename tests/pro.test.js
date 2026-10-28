@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -141,4 +141,17 @@ test("cifragem: payload grande (200 KB) volta igual", async () => {
   const k = await F.derivarChave(al.priv, pf.pub, "v");
   const grande = {s: "x".repeat(200000)};
   assert.deepEqual(await F.decifrar(k, await F.cifrar(k, grande)), grande);
+});
+
+test("diffTxt descreve carga, distância, dia removido e metas em português", () => {
+  const sem = d => ({semanas: [{dias: d.map((t, i) => ({dia: "x" + i, treinos: t}))}]});
+  const a = sem([[{k: "gym", t: "Força", passos: ["Supino 4×8 · 40 kg", "Prancha 3×40 s"]}], [], [], [{k: "run", t: "Regenerativo", min: 30}], [], [], [{k: "run", t: "Longão", km: 8}]]);
+  const b = JSON.parse(JSON.stringify(a));
+  b.semanas[0].dias[0].treinos[0].passos[0] = "Supino 4×8 · 45 kg";
+  b.semanas[0].dias[6].treinos[0].km = 10;
+  b.semanas[0].dias[3].treinos = [];
+  assert.deepEqual(F.diffTxt(a, b), ["Supino: 40 kg → 45 kg", "Quinta: Regenerativo removido", "Domingo (Longão): distância (km) 8 → 10"]);
+  assert.deepEqual(F.diffTxt({}, {metas: {kcal: 2000}, orient: [{ref: "Café", t: "mais proteína"}]}), ["Meta de calorias: nenhuma → 2000 kcal", "Café: orientação adicionada, mais proteína"]);
+  assert.deepEqual(F.diffTxt({metas: {kcal: 2000}}, {metas: {kcal: 2200}}), ["Meta de calorias: 2000 kcal → 2200 kcal"]);
+  assert.equal(F.exTxt("Supino 4×8 · 42,5 kg").kg, "42,5");
 });

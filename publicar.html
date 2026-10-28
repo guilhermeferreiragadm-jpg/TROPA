@@ -67,6 +67,7 @@ p{margin:0}
 .btn.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--sep)}
 .btn.sm{min-height:38px;font-size:.9375rem;width:auto;border-radius:999px;padding:0 14px}
 .btn:disabled{opacity:.4;cursor:default;transform:none}
+.ped,.exr{display:flex;flex-direction:column;gap:10px}.ped{padding-top:12px;border-top:1px solid var(--surface-2)}.ped>.lk,.exr>.lk{align-self:flex-start}select.inp{appearance:auto}
 .lk{border:0;background:none;font-weight:600;font-size:.9375rem;padding:10px;align-self:center;color:var(--go-ink)}
 .back{border:0;background:none;font-weight:600;font-size:1.0625rem;padding:10px 10px 10px 0;margin-left:-4px;align-self:flex-start;display:inline-flex;gap:4px;align-items:center;color:var(--go-ink);min-height:44px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -1198,6 +1199,46 @@ function aplicarPatch(obj, ops){
 }
 const hash32 = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h*33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
 const propostaAtual = (prop, planoJson) => !!prop && prop.base === hash32(planoJson);
+const PROPDIA = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"], PROPROT = {km:"distância (km)", min:"duração (min)", z:"zona", ef:"esforço", t:"nome"}, METAROT = {kcal:"calorias", prot:"proteína", carb:"carboidrato", gord:"gordura"};
+const metaU = k => k==="kcal" ? " kcal" : " g";
+const exTxt = s => { const m = /^(.+?)\s+(\d+)\s*[×x]\s*(\d+)(\s*s\b)?(?:\s*·\s*([\d.,]+)\s*kg)?/i.exec(String(s||"")); return m ? {n:m[1].trim(), sr:m[2]+"×"+m[3]+(m[4]?" s":""), kg:m[5]||""} : null; };
+// Descreve em português, por campo, o que muda de a para b (usa o mesmo patch que viaja na proposta)
+function diffTxt(a, b){
+  const o = [], f = x=>x==null||x==="" ? "nenhum" : String(x).replace(".", ","), kgT = k=>k ? String(k).replace(".", ",")+" kg" : "sem carga", cut = x=>String(x==null?"":x).slice(0, 80);
+  for (const op of criarPatch(a, b)){
+    const p = op.p, v = op.del ? undefined : op.v;
+    try{
+      if (p[0]==="semanas" && p[2]==="dias" && p.length>=5){
+        const dia = PROPDIA[p[3]], ant = a.semanas[p[1]].dias[p[3]].treinos;
+        if (p.length===5){
+          const x = ant.map(t=>t.t), y = (v||[]).map(t=>t.t), rem = x.filter(t=>!y.includes(t)), add = y.filter(t=>!x.includes(t));
+          rem.forEach(t=>o.push(dia+": "+cut(t)+" removido")); add.forEach(t=>o.push(dia+": "+cut(t)+" adicionado"));
+          if (!rem.length && !add.length) o.push(dia+": ordem dos treinos mudou");
+          continue;
+        }
+        const tr = ant[p[5]], g = p[6], rot = dia+" ("+cut(tr.t)+")";
+        if (g==="passos" && p.length===8){
+          const e1 = exTxt(tr.passos[p[7]]), e2 = exTxt(v);
+          if (e1 && e2 && e1.n===e2.n){ const ps = []; if (e1.sr!==e2.sr) ps.push(e1.sr+" → "+e2.sr); if (e1.kg!==e2.kg) ps.push(kgT(e1.kg)+" → "+kgT(e2.kg)); o.push(cut(e1.n)+": "+ps.join(", ")); }
+          else o.push(rot+": "+cut(tr.passos[p[7]])+" → "+cut(v));
+        }else if (g==="passos"){
+          const x = tr.passos, y = v||[];
+          x.filter(s=>!y.includes(s)).forEach(s=>o.push(rot+": "+cut(s)+" removido")); y.filter(s=>!x.includes(s)).forEach(s=>o.push(rot+": "+cut(s)+" adicionado"));
+        }else o.push(rot+": "+(PROPROT[g]||cut(g))+" "+f(cut(tr[g]))+" → "+f(cut(v)));
+      }else if (p[0]==="metas"){
+        const ant = a.metas || {}, ks = p.length===1 ? Object.keys(Object.assign({}, ant, v||{})) : [p[1]];
+        ks.forEach(k=>{ const n = p.length===1 ? (v||{})[k] : v; if (ant[k]!==n) o.push("Meta de "+(METAROT[k]||cut(k))+": "+(ant[k]==null ? "nenhuma" : ant[k]+metaU(k))+" → "+(n==null ? "nenhuma" : n+metaU(k)));});
+      }else if (p[0]==="orient"){
+        const x = a.orient || [];
+        if (p.length===1){
+          const m = l=>new Map((l||[]).map(r=>[r.ref, r.t])), mx = m(x), my = m(v);
+          [...new Set([...mx.keys(), ...my.keys()])].forEach(k=>{ if (!mx.has(k)) o.push(cut(k)+": orientação adicionada, "+cut(my.get(k))); else if (!my.has(k)) o.push(cut(k)+": orientação removida"); else if (mx.get(k)!==my.get(k)) o.push(cut(k)+": "+cut(mx.get(k))+" → "+cut(my.get(k))); });
+        }else{ const r = x[p[1]] || {}; o.push(cut(r.ref||"Orientação")+": "+f(cut(r[p[2]]))+" → "+f(cut(v))); }
+      }else o.push("Outra mudança no plano");
+    }catch(e){ o.push("Outra mudança no plano"); }
+  }
+  return [...new Set(o)];
+}
 const TIPOS_INBOX = ["convite","vinculo","encerrado","proposta","resposta","perm","comentario"];
 const itemInboxValido = it => !!it && TIPOS_INBOX.includes(it.tipo) && typeof it.ref === "string" && it.ref.length > 0 && it.ref.length <= 80 && Number.isFinite(it.quando);
 const cripto = () => globalThis.crypto.subtle;
@@ -2347,13 +2388,13 @@ function render(keep){
   if (t==="feed") return telaFeed(o);
   if (t==="comida") return telaComida(o);
   if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="ngrupo") return telaNovoGrupo(); if (s==="grupo") return telaGrupo(R.arg); if (s==="dupla") return telaDupla(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
-  if (t==="alunos") return s==="det" ? telaProDetalhe(R.arg, o) : telaProAlunos(o);
+  if (t==="alunos") return s==="det" ? telaProDetalhe(R.arg, o) : s==="propor" ? telaProPropor(R.arg) : telaProAlunos(o);
   if (t==="propostas") return telaPropostas(o);
   if (t==="biblioteca") return telaProBiblioteca(o);
   if (t==="planos") return telaProPlanos(o);
   if (t==="sino") return telaSino();
   if (t==="chat") return telaChat();
-  if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="corpo") return telaCorpo(o); return telaPerfil(); }
+  if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="props") return telaPropostas(o, true); if (s==="corpo") return telaCorpo(o); return telaPerfil(); }
   if (t==="painel") return telaPainel();
   telaHoje(o);
 }
@@ -2394,7 +2435,7 @@ function aoMudarPro(){
   renderBarra();
   if (!papelOcup) ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
   if (MODO!==ant && P && P.perfil && !$("tabs").hidden && ((R.tab==="hoje" && !R.sub) || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
-  else proAoVivo();
+  else{ proAoVivo(); propAoVivo(); }
 }
 let papelOcup = false;
 function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca ficam em modos diferentes
@@ -2403,10 +2444,8 @@ function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca 
   m = modoValido(m); if (m===MODO) return false; MODO = m; return true;
 }
 function telaPro(h1, msg, o){ const app = tela(topo(NOMEMODO[MODO],h1)+'<div class="box"><p class="s">'+msg+'</p></div>', {tabs:true, keepScroll:o&&o.keepScroll}); bindGo(app); return app; }
-const telaPropostas = o => telaPro("Propostas","Nenhuma proposta por enquanto.",o);
 /* ===== modos Personal e Nutri: alunos, detalhe, modelos ===== */
 const alunosDe = papel => [...Pro.vinc.values()].filter(v=>v.profId===me && v.papel===papel && v.estado==="ativo").sort((a,b)=>String(a.nomeA||"").localeCompare(String(b.nomeA||""), "pt-BR"));
-const propsPend = vid => 0;   // Task 7: conta as propostas pendentes do vínculo
 const quandoPro = d => { const x = parseD(d), n = x ? Math.max(0, Math.round((today-x)/DAY)) : 0; return {n, t:n===0 ? "hoje" : n===1 ? "ontem" : "há "+n+" dias"}; };
 const SNAPS = new Map();
 async function snapPro(vid, cat, fresco){
@@ -2431,13 +2470,13 @@ async function ativAluno(v){
   return q.n>=5 ? {t:"sem treinar há "+q.n+" dias", warn:true} : {t:"treinou "+q.t};
 }
 function proSig(){
-  if (R.tab!=="alunos") return "";
+  if (R.tab!=="alunos" || R.sub==="propor") return "";
   if (R.sub==="det"){ const v = Pro.vinc.get(R.arg); return JSON.stringify(v ? [v.estado, v.perm, v.nomeA] : null); }
-  return JSON.stringify(alunosDe(MODO).map(v=>[v.id, v.nomeA, v.perm]));
+  return JSON.stringify(alunosDe(MODO).map(v=>[v.id, v.nomeA, v.perm, propsPend(v.id)]));
 }
 let proSigVista = "", proTent = false;
 function proAoVivo(){
-  if (R.tab!=="alunos" || !P || $("tabs").hidden) return;
+  if (R.tab!=="alunos" || R.sub==="propor" || !P || $("tabs").hidden) return;
   const sig = proSig(); if (sig===proSigVista) return;
   const ov = $("ov"), at = document.activeElement;
   if ((ov && ov.innerHTML) || (at && (at.tagName==="INPUT" || at.tagName==="TEXTAREA" || at.isContentEditable)) || document.querySelector('[data-armed="1"]')){
@@ -2483,7 +2522,7 @@ function htmlSnap(cat, s){
     const sem = r && r.sem, prev = sem ? sem.dias.reduce((n, d)=>n+((d && d.treinos)||[]).length, 0) : 0;
     const dias = sem ? sem.dias.map((d, i)=>{ const ts = (d && d.treinos)||[]; if (!ts.length) return ""; const dk = key(addDays(today, i-dow(today)));
       return linhaPro('<b>'+esc(d.dia)+'</b> '+ts.map(t=>esc(t.t)).join(" + "), ts.every((t, j)=>feitos["ck_"+dk+"_"+j]) ? '<span class="pill ok">feito</span>' : ''); }).join("") : "";
-    const com = Object.entries(s.coment||{}).slice(-8).map(([k, v])=>{ const t = typeof v==="string" ? v : v && v.txt; return t ? '<p><b>'+esc(k.replace(/_/g, " "))+'</b> '+esc(String(t).slice(0, 240))+'</p>' : ""; }).join("");
+    const com = Object.entries(s.coment && typeof s.coment==="object" ? s.coment : {}).slice(-8).map(([k, v])=>{ const t = typeof v==="string" ? v : v && (v.t || v.txt), q = k.split("|"), rot = /^\d{4}-\d\d-\d\d$/.test(q[0]) && q.length>1 ? fmt(parseD(q[0]))+" · "+q.slice(1).join("|") : k.replace(/_/g, " "); return t ? '<p><b>'+esc(rot)+'</b> '+esc(String(t).slice(0, 280))+'</p>' : ""; }).join("");
     return '<div class="box"><b>Resumo da semana</b><p><span class="n">'+nSem+'</span> '+(prev ? 'de '+prev+' treinos feitos' : (nSem===1 ? 'treino feito' : 'treinos feitos'))+'</p></div>'+
       '<div class="box"><div class="between"><b>Treino atual</b><span class="s">'+(r && sem ? 'Semana '+r.w+' de '+s.plano.semanas.length : '')+'</span></div>'+(dias || '<p class="s">Sem plano ativo nesta semana.</p>')+'</div>'+
       '<div class="box"><b>Comentários dos exercícios</b>'+(com || '<p class="s">Nenhum comentário ainda.</p>')+'</div>';
@@ -2518,10 +2557,177 @@ function telaProDetalhe(vid, o){
     let h = ""; if (s){ try{ h = htmlSnap(c, s); }catch(e){ h = '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Não consegui ler os dados deste aluno</p></div>'; } }
     el.innerHTML = s ? h : '<div class="box"><b>'+CATPRO[c]+'</b><p class="s">Aguardando o aluno abrir o app</p></div>'; }));
 }
-function proporMudanca(vid){   // Task 7 liga o editor de propostas aqui
-  const corpo = abrirSheet("Propor mudança");
-  corpo.innerHTML = '<h2 class="h2 lg">Em breve</h2><p class="s">Aqui você vai propor mudanças no plano do aluno, e ele aceita ou recusa.</p><button type="button" class="btn" id="pmok">Entendi</button>';
-  $("pmok").addEventListener("click", ()=>fecharSheet());
+/* ===== propostas: lista, sheet, editor ===== */
+const ESTPROP = {pendente:["Pendente","wait"], aceita:["Aceita","ok"], recusada:["Recusada","no"], desatualizada:["Desatualizada","wait"]};
+const propsDoPapel = alu => [...Pro.props.values()].filter(p=>{ const v = Pro.vinc.get(p.vincId); return v && (alu ? v.alunoId===me : v.profId===me && v.papel===MODO); });
+const propsPendAluno = () => propsDoPapel(true).filter(p=>p.estado==="pendente").length;
+const propSig = alu => JSON.stringify(propsDoPapel(alu).map(p=>[p.id, p.estado]).sort());
+let propSigVista = "", shTk = 0, ED = null;
+function propAoVivo(){
+  const alu = R.tab==="perfil" && R.sub==="props";
+  if (!(alu || R.tab==="propostas") || !P || $("tabs").hidden || propSig(alu)===propSigVista || $("ov").innerHTML) return;
+  render(true);
+}
+function telaPropostas(o, alu){
+  const ps = propsDoPapel(alu).sort((a, b)=>(a.estado==="pendente" ? 0 : 1)-(b.estado==="pendente" ? 0 : 1) || (+b.em||0)-(+a.em||0)).slice(0, 60), tk = ++listTk;
+  propSigVista = propSig(alu);
+  const lin = p=>{ const v = Pro.vinc.get(p.vincId), e = ESTPROP[p.estado] || [esc(p.estado), "wait"];
+    return lr(esc("pp_"+p.id), "", esc(alu ? (v.papel==="nutri" ? "Nutri " : "Personal ")+(v.nomeP||"") : v.nomeA||"Aluno")+' <span class="pill '+e[1]+'">'+e[0]+'</span>', (p.tipo==="alimentar" ? "Alimentação" : "Treino")+(+p.em ? " · "+esc(fmt(new Date(+p.em))) : "")); };
+  const pe = ps.filter(p=>p.estado==="pendente"), hi = ps.filter(p=>p.estado!=="pendente");
+  const app = tela((alu ? '<button type="button" class="back" data-go="perfil">← Perfil</button><div><h1 class="h1">Propostas</h1></div>' : topo(NOMEMODO[MODO], "Propostas"))+
+    (ps.length ? (pe.length ? '<span class="k">pendentes</span><div class="lst">'+pe.map(lin).join("")+'</div>' : '')+(hi.length ? '<span class="k">histórico</span><div class="lst">'+hi.map(lin).join("")+'</div>' : '')
+      : '<div class="box"><b>Nenhuma proposta por enquanto</b><p class="s">'+(alu ? 'Quando seu Personal ou sua Nutri propuser uma mudança, ela aparece aqui para você aceitar ou recusar.' : 'Abra um aluno e toque em Propor mudança.')+'</p></div>'), {tabs:true, keepScroll:o&&o.keepScroll});
+  bindGo(app);
+  ps.forEach(p=>{
+    const b = $("pp_"+p.id); if (!b) return;
+    const sid = p.id.slice(p.vincId.length+1);   // Pro.props usa o id do documento (vínculo.id)
+    b.addEventListener("click", ()=>sheetPropostaAluno(p.vincId, sid));
+    Pro.lerProposta(p.vincId, sid).then(x=>{ const s = b.isConnected && tk===listTk && x && b.querySelector("small"); if (s){ const t = p.estado==="recusada" && x.motivo ? "Motivo: "+x.motivo : x.texto||""; if (t) s.append(" · "+String(t).slice(0, 60)); } }).catch(()=>{});
+  });
+}
+async function sheetPropostaAluno(vid, id){
+  const corpo = abrirSheet("Proposta"), tk = ++shTk, v = Pro.vinc.get(vid), fim = h=>{ if (tk===shTk && corpo.isConnected){ corpo.innerHTML = h; return true; } };
+  if (!v) return;
+  const prof = v.profId===me, nome = v.papel==="nutri" ? "Nutri" : "Personal";
+  fim('<h2 class="h2 lg">Proposta</h2><p class="s">Carregando…</p>');
+  try{
+    const p = await Pro.lerProposta(vid, id); if (!p) throw 0;
+    let antes, ler = true;
+    if (prof){ const sn = await snapPro(vid, p.tipo==="alimentar" ? "comida" : "treino", true); if (sn) antes = p.tipo==="alimentar" ? sn.planoAlim || {} : sn.plano; else ler = false; }   // sem leitura do plano, o profissional não afirma nada
+    else antes = p.tipo==="alimentar" ? P.planoAlim || {} : planoAtual();
+    const atual = !ler || (antes!=null && propostaAtual(p, JSON.stringify(antes)));
+    let dep = null; if (ler && atual){ try{ dep = aplicarPatch(antes, p.ops); }catch(e){ dep = false; } }
+    const velha = p.estado==="pendente" && ler && (!atual || dep===false), est = velha ? "desatualizada" : p.estado, e = ESTPROP[est] || [esc(est), "wait"];
+    const lin = dep ? diffTxt(antes, dep) : [];
+    if (!fim('<h2 class="h2 lg">'+(prof ? 'Proposta enviada' : 'Proposta de '+esc(v.nomeP||nome))+'</h2><p><span class="pill '+e[1]+'">'+e[0]+'</span></p>'+
+      (p.texto ? '<p>'+esc(p.texto)+'</p>' : '')+
+      (lin.length ? '<div class="box"><b>O que muda</b>'+lin.map(l=>'<p>'+esc(l)+'</p>').join("")+'</div>' : '')+
+      (est==="recusada" && p.motivo ? '<p class="s">Motivo: '+esc(p.motivo)+'</p>' : '')+
+      (est==="desatualizada" ? '<div class="flag">'+(dep===false ? 'Essa proposta não pôde ser aplicada.' : prof ? 'O plano do aluno mudou depois desta proposta.' : 'O seu plano mudou depois desta proposta. Peça uma nova ao seu profissional.')+'</div>' : '')+
+      (!prof && est==="pendente" ? '<button type="button" class="btn go" id="pa">Aceitar</button><button type="button" class="btn ghost" id="pr">Recusar</button><div id="prm" hidden><textarea class="inp" id="pmt" rows="3" maxlength="300" placeholder="Motivo (opcional)" aria-label="Motivo da recusa"></textarea><button type="button" class="btn" id="pr2">Confirmar recusa</button></div>' : '')+
+      (prof && est==="desatualizada" && v.estado==="ativo" ? '<button type="button" class="btn go" id="pre">Reenviar</button>' : '')+
+      (prof && est==="pendente" ? '<p class="s">Aguardando a resposta do aluno.</p>' : '')+'<button type="button" class="lk" id="pfe">Fechar</button>')) return;
+    $("pfe").addEventListener("click", ()=>fecharSheet());
+    if (!prof && velha) Pro.responderProposta(vid, id, "aceitar").catch(()=>{});   // grava "desatualizada" no estado cifrado, sem alterar o plano
+    const pre = $("pre"); if (pre) pre.addEventListener("click", ()=>{ fecharSheet(); proporMudanca(vid, p.texto); });
+    const bs = () => ["pa", "pr", "pr2"].map($).filter(Boolean);
+    const resp = async (acao, motivo)=>{
+      bs().forEach(b=>{ b.disabled = true; });
+      try{
+        const r = await Pro.responderProposta(vid, id, acao, motivo);
+        toast(r.erro==="ocupado" ? "Aguarde a ação anterior." : r.erro ? "Essa proposta já foi respondida." : r.ok===false ? "Essa proposta não pôde ser aplicada." : acao==="aceitar" ? "Proposta aceita e aplicada." : "Proposta recusada.");
+      }catch(x){ toast(msgPro(x)); bs().forEach(b=>{ b.disabled = false; }); return; }
+      fecharSheet(); render(true);
+    };
+    if ($("pa")){
+      $("pa").addEventListener("click", ()=>resp("aceitar"));
+      $("pr").addEventListener("click", ()=>{ $("prm").hidden = false; $("pr").hidden = true; $("pmt").focus(); });
+      $("pr2").addEventListener("click", ()=>resp("recusar", $("pmt").value.trim()));
+    }
+  }catch(x){ fim('<h2 class="h2 lg">Proposta</h2><p class="msg err" role="alert">Não consegui abrir esta proposta agora.</p><button type="button" class="lk" id="pfe">Fechar</button>'); const b = $("pfe"); if (b) b.addEventListener("click", ()=>fecharSheet()); }
+}
+const propsPend = vid => [...Pro.props.values()].filter(p=>p.vincId===vid && p.estado==="pendente").length;   // só o estado cifrado: sem dica pelo cabeçalho em claro
+function proporMudanca(vid, texto){ ED = {vid, texto:String(texto||"").slice(0, 500)}; ir("alunos", "propor", vid); }
+const edFinal = () => {
+  const d = copia(ED.dep);
+  if (ED.tipo==="alimentar"){
+    const m = {}; ["kcal", "prot", "carb", "gord"].forEach(k=>{ const n = Math.round(+(d.metas||{})[k]); if (n>0 && n<20000) m[k] = n; });
+    if (Object.keys(m).length) d.metas = m; else delete d.metas;
+    d.orient = (Array.isArray(d.orient) ? d.orient : []).filter(r=>r && String(r.t||"").trim()).map(r=>({ref:String(r.ref||"").trim().slice(0, 40)||"Geral", t:String(r.t).trim().slice(0, 300)}));
+    if (!d.orient.length && ED.ant.orient===undefined) delete d.orient;
+  }
+  return d;
+};
+const NOVOTR = {run:{k:"run", t:"Corrida leve", min:30, z:"fácil", ef:"3/10", passos:["30 min em ritmo de conversa"]}, gym:{k:"gym", t:"Força", min:40, ef:"RIR 2", passos:["Agachamento 3×10"]}};
+function edHTML(){
+  const inp = (rot, df, val, tp, st)=>'<label class="fld"><span class="k">'+rot+'</span><input class="inp" data-f="'+df+'"'+(tp ? ' type="number" inputmode="decimal" step="'+st+'" min="0"' : ' maxlength="40"')+' value="'+esc(val)+'"></label>';
+  if (ED.tipo==="alimentar"){
+    const m = ED.dep.metas || {}, or = ED.dep.orient || [];
+    return '<div class="box"><b>Metas do dia</b><p class="s">Opcional. O aluno vê estes números, mas eles não mudam os cálculos do app.</p><div class="grid2">'+Object.keys(METAROT).map(k=>inp(METAROT[k]+metaU(k), "m|"+k, m[k]==null ? "" : m[k], 1, 1)).join("")+'</div></div>'+
+      '<div class="box"><b>Orientações por refeição</b>'+or.map((r, i)=>'<div class="ped"><label class="fld"><span class="k">Refeição</span><input class="inp" data-f="o|'+i+'|ref" maxlength="40" value="'+esc(r.ref)+'"></label><label class="fld"><span class="k">Orientação</span><textarea class="inp" data-f="o|'+i+'|t" rows="3" maxlength="300">'+esc(r.t)+'</textarea></label><button type="button" class="lk" data-orm="'+i+'">Remover</button></div>').join("")+'<button type="button" class="btn" id="ora">Adicionar orientação</button></div>';
+  }
+  return ED.dep.semanas[ED.wi].dias.map((d, i)=>'<div class="box"><b>'+PROPDIA[i]+'</b>'+(d.treinos.length ? "" : '<p class="s">Descanso</p>')+d.treinos.map((t, j)=>{
+    const id = i+"|"+j;
+    return '<div class="ped">'+inp("Treino", "t|"+id+"|t", t.t)+'<div class="grid2">'+
+      (t.km!=null ? inp("Distância (km)", "t|"+id+"|km", t.km, 1, "0.5") : t.min!=null ? inp("Duração (min)", "t|"+id+"|min", t.min, 1, "5") : "")+
+      (t.z!=null ? '<label class="fld"><span class="k">Zona</span><select class="inp" data-f="t|'+id+'|z">'+[...new Set(["muito fácil", "fácil", "forte", t.z])].map(z=>'<option'+(z===t.z ? ' selected' : '')+'>'+esc(z)+'</option>').join("")+'</select></label>' : "")+'</div>'+
+      (t.k==="gym" ? (t.passos||[]).map((s, x)=>{ const e = exTxt(s);
+        return e ? '<div class="exr"><input class="inp" data-f="e|'+id+'|'+x+'" maxlength="40" aria-label="Exercício" value="'+esc(e.n)+'"><div class="grid2"><input class="inp" type="number" inputmode="numeric" min="1" aria-label="Séries" placeholder="Séries" value="'+esc(e.sr.split("×")[0])+'"><input class="inp" type="number" inputmode="numeric" min="1" aria-label="'+(/s$/.test(e.sr) ? 'Segundos' : 'Repetições')+'" placeholder="Reps" value="'+esc(e.sr.split("×")[1].replace(/\D/g, ""))+'"></div><input class="inp" type="number" inputmode="decimal" step="0.5" min="0" aria-label="Carga em kg" placeholder="Carga (kg)" value="'+esc(e.kg.replace(",", "."))+'"><button type="button" class="lk" data-xe="'+id+'|'+x+'">Remover exercício</button></div>'
+          : '<p class="s">'+esc(s)+' <button type="button" class="lk in" data-xe="'+id+'|'+x+'">remover</button></p>'; }).join("")+'<button type="button" class="lk" data-ae="'+id+'">Adicionar exercício</button>' : "")+
+      '<div class="grid2"><label class="fld"><span class="k">Mover para</span><select class="inp" data-mv="'+id+'"><option value="">Escolher dia</option>'+PROPDIA.map((n, y)=>y===i ? "" : '<option value="'+y+'">'+n+'</option>').join("")+'</select></label><button type="button" class="btn ghost cor-ruim" data-rm="'+id+'">Remover treino</button></div></div>'; }).join("")+
+    '<div class="between"><button type="button" class="lk" data-add="'+i+'|run">Adicionar corrida</button><button type="button" class="lk" data-add="'+i+'|gym">Adicionar força</button></div></div>').join("");
+}
+function telaProPropor(vid){
+  const v = Pro.vinc.get(vid);
+  if (!v || v.estado!=="ativo" || v.profId!==me || v.papel!==MODO){ ED = null; R.sub = null; R.arg = null; return telaProAlunos({}); }
+  const tipo = v.papel==="personal" ? "treino" : "alimentar", tk = ++detTk;
+  if (!ED || ED.vid!==vid) ED = {vid, texto:""};
+  const app = tela('<button type="button" class="back" id="vb">← Voltar</button><div><span class="k">'+NOMEMODO[v.papel]+'</span><h1 class="h1">Propor mudança</h1><p class="s">Para '+esc(v.nomeA||"Aluno")+'. O aluno vê o que muda e decide se aceita.</p></div><div id="edc"><p class="s">Carregando…</p></div>', {tabs:true});
+  $("vb").addEventListener("click", ()=>{ ED = null; ir("alunos", "det", vid); });
+  const vivo = () => { const el = $("edc"); return tk===detTk && el && app.contains(el) && R.tab==="alunos" && R.sub==="propor" && R.arg===vid && ED && ED.vid===vid ? el : null; };
+  const difAtual = () => { const el = $("pdf"); if (!el) return; const l = diffTxt(ED.ant, edFinal()); el.innerHTML = l.length ? l.map(x=>'<p>'+esc(x)+'</p>').join("") : '<p class="s">Nenhuma mudança ainda.</p>'; $("pse").disabled = !l.length; };
+  const monta = () => {
+    const el = vivo(); if (!el) return;
+    el.innerHTML = '<div class="box"><b>O que muda</b><div id="pdf"></div></div>'+edHTML()+'<label class="fld"><span class="k">Mensagem para o aluno (opcional)</span><textarea class="inp" id="pmsg" rows="3" maxlength="500" placeholder="Ex.: vamos subir um pouco a carga, você está indo bem">'+esc(ED.texto)+'</textarea></label><button type="button" class="btn go" id="pse">Enviar para o aluno</button>';
+    difAtual();
+  };
+  const trs = (i, j) => ED.dep.semanas[ED.wi].dias[i].treinos[j];
+  const num0 = x => { const n = parseFloat(String(x).replace(",", ".")); return Number.isFinite(n) && n>=0 ? n : null; };
+  const idx = s => s.split("|").map(Number);
+  const edita = el => {   // texto e número: atualiza a cópia e o diff sem redesenhar (o foco fica)
+    if (el.id==="pmsg"){ ED.texto = el.value.slice(0, 500); return; }
+    if (!el.dataset.f){ const k = el.closest(".exr"); if (k) edita(k.querySelector("[data-f]")); return; }
+    const a = el.dataset.f.split("|");
+    if (a[0]==="m"){ ED.dep.metas = ED.dep.metas || {}; const n = num0(el.value); if (n==null) delete ED.dep.metas[a[1]]; else ED.dep.metas[a[1]] = n; }
+    else if (a[0]==="o"){ const r = ED.dep.orient[+a[1]]; if (r) r[a[2]] = el.value; }
+    else if (a[0]==="t"){ const t = trs(+a[1], +a[2]); if (!t) return; if (a[3]==="t" || a[3]==="z") t[a[3]] = el.value.slice(0, 40) || t[a[3]]; else { const n = num0(el.value); if (n>0) t[a[3]] = n; } }
+    else if (a[0]==="e"){
+      const t = trs(+a[1], +a[2]), row = el.closest(".exr"); if (!t || !row) return;
+      const [n, s, r, k] = [...row.querySelectorAll("input")].map(x=>x.value), seg = /\ss$/.test((exTxt(t.passos[+a[3]])||{sr:""}).sr);
+      if (!n.trim() || !(parseInt(s)>0) || !(parseInt(r)>0)) return;
+      const kg = num0(k); t.passos[+a[3]] = n.trim().slice(0, 40)+" "+parseInt(s)+"×"+parseInt(r)+(seg ? " s" : "")+(kg ? " · "+kg+" kg" : "");
+    }
+    difAtual();
+  };
+  async function enviar(b){
+    const depois = edFinal(); if (!diffTxt(ED.ant, depois).length){ toast("Faça alguma mudança primeiro."); return; }
+    b.disabled = true;
+    try{
+      const r = await Pro.enviarProposta(vid, tipo, ED.ant, depois, ED.texto);
+      if (r && r.erro) throw new Error(r.erro==="vinculo" ? "vinculo" : "falha");
+      ED = null; toast("Proposta enviada ao aluno."); ir("propostas");
+    }catch(e){ toast(e.message==="vinculo" ? "Esse vínculo não está mais ativo." : msgPro(e)); if (b.isConnected) b.disabled = false; }
+  }
+  const carrega = () => ED.ant ? Promise.resolve() : snapPro(vid, tipo==="treino" ? "treino" : "comida", true).then(s=>{
+    if (!vivo()) return;
+    if (!s) throw "Aguardando o aluno abrir o app para você ver o plano dele.";
+    if (tipo==="treino"){
+      const r = s.plano && Array.isArray(s.plano.semanas) && semanaEm(s.plano, [], key(today));
+      if (!r || !r.sem) throw "O plano do aluno não está em andamento nesta semana.";
+      ED.ant = s.plano; ED.wi = r.w-1;
+    }else ED.ant = s.planoAlim && typeof s.planoAlim==="object" ? s.planoAlim : {};
+    ED.tipo = tipo; ED.dep = copia(ED.ant);
+  });
+  carrega().then(()=>{
+    const el = vivo(); if (!el || !ED.ant) return; ED.tipo = tipo; monta();
+    el.addEventListener("input", e=>{ const t = e.target; if (t.tagName==="INPUT" || t.tagName==="TEXTAREA") edita(t); });
+    el.addEventListener("change", e=>{ const t = e.target; if (t.tagName!=="SELECT") return;
+      if (t.dataset.f) edita(t);
+      else if (t.dataset.mv && t.value!==""){ const [i, j] = idx(t.dataset.mv), ds = ED.dep.semanas[ED.wi].dias, [x] = ds[i].treinos.splice(j, 1); ds[+t.value].treinos.push(x); monta(); } });
+    el.addEventListener("click", e=>{
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.id==="pse") return enviar(b);
+      const d = b.dataset;
+      if (d.rm){ const [i, j] = idx(d.rm); ED.dep.semanas[ED.wi].dias[i].treinos.splice(j, 1); }
+      else if (d.add){ const [i, k] = d.add.split("|"); ED.dep.semanas[ED.wi].dias[+i].treinos.push(copia(NOVOTR[k])); }
+      else if (d.ae){ const [i, j] = idx(d.ae); trs(i, j).passos.push("Novo exercício 3×10"); }
+      else if (d.xe){ const [i, j, x] = idx(d.xe); trs(i, j).passos.splice(x, 1); }
+      else if (d.orm!=null) ED.dep.orient.splice(+d.orm, 1);
+      else if (b.id==="ora") ED.dep.orient = (ED.dep.orient||[]).concat([{ref:"", t:""}]);
+      else return;
+      monta();
+    });
+  }).catch(m=>{ const el = vivo(); if (el) el.innerHTML = '<div class="box"><p class="s">'+esc(typeof m==="string" ? m : "Não consegui carregar o plano do aluno agora.")+'</p></div>'; });
 }
 /* modelos do profissional: privados, em data/users/<eu>/modelos */
 let MODELOS = null;
@@ -3753,7 +3959,7 @@ const Pro = {
     if (cat==="comida"){
       const ref = {}; ks.filter(k=>k.startsWith("ref_") && dia(k, 4) >= lim14).forEach(k=>{ ref[k] = (LOG[k]||[]).map(r=>{ const c = Object.assign({}, r); delete c.thumb; delete c.foto; return c; }); });
       let metas = null; try{ metas = metasDia(today); }catch(e){}
-      return {ref, metas, objetivo:(P && P.perfil && P.perfil.objetivo) || ""};
+      return {ref, metas, objetivo:(P && P.perfil && P.perfil.objetivo) || "", planoAlim:(P && P.planoAlim) || {}};
     }
     if (cat==="corpo") return {lista:(LOG.corpo || []).slice(-120), cfg:LOG.corpo_cfg || {}};
     if (cat==="feed") return {posts:((typeof SOC!=="undefined" && SOC.posts) || []).filter(p=>p.autor===ME()).slice(0, 30).map(p=>({id:p.id, date:p.date, at:p.at, esporte:p.esporte, titulo:p.titulo, stats:p.stats, legenda:p.legenda}))};
@@ -3822,22 +4028,23 @@ const Pro = {
     try{
       const r = await Pro._lerProp(vid, id); if (!r || r.p.estado!=="pendente") return {erro:"estado"};   // já respondida: não sobrescreve
       let ev = acao, res = {ok:true}, novo = null;
-      if (acao==="aceitar" && v.papel==="personal"){
+      const campo = v.papel==="personal" ? "planoProf" : "planoAlim";
+      if (acao==="aceitar"){
         try{
-          const antes = planoAtual();
+          const antes = campo==="planoProf" ? planoAtual() : (P.planoAlim || {});
           if (!propostaAtual(r.p, JSON.stringify(antes))) throw new Error("base");
           novo = aplicarPatch(antes, r.p.ops);
         }catch(e){ ev = "invalidar"; res = {ok:false, erro:"desatualizada"}; }
       }
-      const anterior = P.planoProf;
+      const anterior = P[campo];
       if (novo){   // primeiro aplica e salva o plano; só então marca aceita (se salvar falhar, nada fica aceito e o erro sobe)
-        P.planoProf = novo;
-        try{ await db.collection(base()).doc("perfil").set(P); }catch(e){ if (anterior===undefined) delete P.planoProf; else P.planoProf = anterior; throw e; }
+        P[campo] = novo;
+        try{ await db.collection(base()).doc("perfil").set(P); }catch(e){ if (anterior===undefined) delete P[campo]; else P[campo] = anterior; throw e; }
       }
       const estado = proximoEstadoProposta("pendente", ev), p = Object.assign({}, r.p, {estado, resp:Date.now()});
       if (acao==="recusar") p.motivo = String(motivo||"").slice(0, 300);
       try{ await realDb.collection("prop").doc(vid+"."+id).set(Object.assign({vinc:vid, estado, em:r.p.em}, await cifrar(r.k, p))); }
-      catch(e){ if (novo){ if (anterior===undefined) delete P.planoProf; else P.planoProf = anterior; try{ await db.collection(base()).doc("perfil").set(P); }catch(e2){} } throw e; }
+      catch(e){ if (novo){ if (anterior===undefined) delete P[campo]; else P[campo] = anterior; try{ await db.collection(base()).doc("perfil").set(P); }catch(e2){} } throw e; }
       if (novo){ clearTimeout(Pro._t); await Pro.publicarSnaps(); }
       Pro.avisar(v.profId, "resposta", vid+"."+id); return Object.assign(res, {estado});
     }finally{ Pro._resp.delete(trava); }
@@ -5008,7 +5215,7 @@ function telaPerfil(){
       lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
       (Pro.ok() ? ["personal","nutri"].map(m=>'<label class="lst-i"><span>Sou '+NOMEMODO[m]+'<small>'+(m==="personal"?'treinos dos seus alunos':'planos dos seus alunos')+'</small></span><input type="checkbox" id="pp_'+m+'"'+(Pro.papeis[m]?' checked':'')+'></label>').join("") : '')+
-      (Pro.ok() ? lr("mpro", "", 'Meus profissionais', meusVinc().length ? meusVinc().length+' vínculo'+(meusVinc().length>1?'s':'')+' ativo'+(meusVinc().length>1?'s':'') : 'Personal ou Nutri que acompanham você')+lr("cvp", "", 'Entrar com código de um profissional', 'cole o código que ele te mandou') : '')+
+      (Pro.ok() ? lr("mpro", "", 'Meus profissionais', meusVinc().length ? meusVinc().length+' vínculo'+(meusVinc().length>1?'s':'')+' ativo'+(meusVinc().length>1?'s':'') : 'Personal ou Nutri que acompanham você')+lr("cvp", "", 'Entrar com código de um profissional', 'cole o código que ele te mandou')+lr("pps", "", 'Propostas'+(propsPendAluno() ? ' <span class="pill">'+propsPendAluno()+'</span>' : ''), 'mudanças que seu Personal ou sua Nutri propuseram') : '')+
       lr("fb", "", 'Mandar feedback para a equipe', 'o que travou, o que curtiu, se pagaria')+
       lr("exp", "", 'Baixar meus dados', 'arquivo com tudo que o app guarda de você')+
       lr("sair", "", 'Sair', 'voltar para a tela inicial do app')+
@@ -5031,7 +5238,7 @@ function telaPerfil(){
   $("foto").addEventListener("click", sheetFoto); $("fotob").addEventListener("click", sheetFoto); $("sair").addEventListener("click", sheetSair);
   $("sh").addEventListener("change", async ()=>{ P.perfil.compartilha = $("sh").checked; await salvarPerfil(); toast(P.perfil.compartilha?"Amigos veem seu progresso.":"Progresso escondido."); });
   $("fb").addEventListener("click", telaFeedback);
-  if ($("mpro")){ $("mpro").addEventListener("click", ()=>sheetProfissionais()); $("cvp").addEventListener("click", ()=>sheetConvite()); }
+  if ($("mpro")){ $("mpro").addEventListener("click", ()=>sheetProfissionais()); $("cvp").addEventListener("click", ()=>sheetConvite()); $("pps").addEventListener("click", ()=>ir("perfil", "props")); }
   ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.addEventListener("change", ()=>mudarPapel(m, c)); });
   $("exp").addEventListener("click", ()=>baixar("meus-dados-"+BRAND.toLowerCase()+".json", JSON.stringify({perfil:P.perfil, plano:planoAtual(), log:LOG, social:SOC}, null, 2), "application/json"));
   const del = $("del"); del.addEventListener("click", async ()=>{
