@@ -2470,6 +2470,7 @@ function render(keep){
   MODO = modoValido(MODO); renderBarra();
   const bar = barraAbas(MODO);
   if (!bar.includes(R.tab) && !["perfil","chat","painel","sino"].includes(R.tab)){ R.tab = bar[0]; R.sub = null; R.arg = null; }
+  if (R.tab!=="sino" && (sinoTimer || sinoMarcou)){ clearTimeout(sinoTimer); sinoTimer = null; sinoMarcou = false; }
   const t = R.tab, s = R.sub;
   document.querySelectorAll("#tabs .tabs-pill button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===t ? "page" : "false"));
   const fb = document.querySelector('#tabs [data-tab="feed"]'); if (fb){ const nl = SOC.notifs.filter(n=>!n.lido).length; fb.innerHTML = '<span class="tico">'+ICONE.feed+'</span>Feed'+(nl?'<em>'+nl+'</em>':''); }
