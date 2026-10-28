@@ -2611,7 +2611,7 @@ function sheetNovoConvite(papel){
     if (!corpo.isConnected) return;
     if (!r || !r.cod) throw new Error("falha");
     const cod = r.cod.slice(0,4)+"-"+r.cod.slice(4), txt = "Entra no "+BRAND+": https://claude.ai/artifact/"+ARTIFACT_ID+". Código: "+cod+". Vale por 7 dias.";
-    corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="s">Mande este código. O aluno digita em Perfil, Entrar com código de um profissional.</p><div class="box tc"><span class="code" id="cvcod">'+esc(cod)+'</span></div><p class="s" id="cvtx">'+esc(txt)+'</p><button type="button" class="btn go" id="cvcp">Copiar</button><button type="button" class="lk" id="cvfe">Fechar</button>';
+    corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="s">Mande este código. O aluno digita em Perfil, Entrar com código de um profissional.</p><div class="box tc"><span class="code" id="cvcod">'+esc(cod)+'</span></div><p class="s" id="cvtx">'+esc(txt)+'</p><a class="btn go" id="cvwa" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt)+'">Enviar pelo WhatsApp</a><button type="button" class="btn" id="cvcp">Copiar</button><button type="button" class="lk" id="cvfe">Fechar</button>';
     $("cvcp").addEventListener("click", ()=>copiar(txt)); $("cvfe").addEventListener("click", ()=>fecharSheet());
   }).catch(e=>{ if (!corpo.isConnected) return; corpo.innerHTML = '<h2 class="h2 lg">Convidar aluno</h2><p class="msg err" role="alert">'+esc(msgPro(e))+'</p><button type="button" class="lk" id="cvfe">Fechar</button>'; $("cvfe").addEventListener("click", ()=>fecharSheet()); });
 }
