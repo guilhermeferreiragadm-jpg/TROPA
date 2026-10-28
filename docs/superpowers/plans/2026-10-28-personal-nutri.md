@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Arquivo único `publicar.html`; limite de 641.224 bytes (hoje 592.758). Se estourar, enxugar código existente antes de seguir.
+- Arquivo único `publicar.html`; limite de 700.000 bytes (ruling: o 641.224 era autoimposto pelo redesign). Se estourar, enxugar código existente antes de seguir.
 - Marca intocada: laranja `#FF5A00`, nome Tropa, tema claro padrão, escuro por `data-tema="escuro"`. Usar só os tokens existentes (`--bg --surface --surface-2 --tx --tx-2 --sep --go --go-fill --r1..r4 --sh1..3 --mat-*`), alvos de toque de 44px (padrão `.lk.in` / `::after`), movimento via `Mov`.
 - A barra inferior continua **fixa** fora do `.wrap` que rola (`rolagem()` é o scroller).
 - Texto de interface em português do Brasil, sem travessão no lugar de vírgula.
