@@ -86,3 +86,15 @@ Qualquer usuário pode ser **Personal** e/ou **Nutri**. O profissional convida a
 - Cifragem: ida e volta com WebCrypto no Node.
 - Harness: dois perfis simulados (aluno e profissional) trocando convite, resumos, proposta e recusa; sino com contador.
 - Limite de tamanho do artefato continua valendo (hoje 592 KB de 641 KB). Pode exigir enxugar código existente.
+
+## Desvios aceitos
+
+Diferenças entre o que a spec descreve e o que foi construído, aceitas:
+
+- Sem rotação de chave (já dito em Privacidade): o profissional derivaria as chaves futuras de qualquer jeito.
+- O convite é link do app mais código digitado, sem link com âncora.
+- As regras do banco não ficam no repositório. Estão documentadas no README e precisam ser declaradas no publish do artifact.
+- `vinculos` e `prop` são lidos inteiros e filtrados no cliente (vaza metadados e escala mal).
+- Propostas ganharam o evento `invalidar`, que leva ao estado `desatualizada` (gravado cifrado pelo app do aluno ao abrir uma proposta de base antiga), além de pendente, aceita e recusada.
+- Só foi testado no harness com chromium. Nenhum aparelho real, nem o artifact publicado.
+- O convite de profissional abre o beta fechado: quem recebe o código entra no app por ele. Decisão do dono pendente.

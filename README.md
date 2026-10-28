@@ -32,6 +32,50 @@ O código chama `window.claude.use("db" | "user" | "sample" | "downloads")`. For
 Coleções `acessos`, `pedidos`, `revisao`, `resumo` e `aprovados`: quem tem papel de admin lê e grava tudo. Cada pessoa grava só o próprio documento (`<coleção>/{self}`), e em `aprovados` só o admin grava. Dados pessoais ficam em `data/users/{self}`.
 Coleção `grupos` (fase 4): todos com acesso leem (`read: view`), só o dono grava a coleção, e cada pessoa grava só o próprio documento (`grupos/{self}`, `write: interact`). Lá vão apenas apelido, nome do grupo e números da semana (nunca peso, foto, comida, saúde ou trajeto). A declaração `capabilities` do publish precisa restaurar todas as regras acima junto com essas duas.
 
+### Regras do banco (Personal e Nutri)
+Acrescente estas regras às declaradas acima (mantenha todas as existentes) na declaração `capabilities` do artifact. Não publique daqui: o publish é decisão do dono.
+
+| Caminho | Leitura | Escrita |
+|---|---|---|
+| `papeis` | `view` | `owner` |
+| `papeis/{self}` | `view` | `interact` |
+| `convites` | `view` | `interact` |
+| `vinculos` | `view` | `interact` |
+| `snap` | `view` | `interact` |
+| `prop` | `view` | `interact` |
+| `inbox` | `view` | `interact` |
+
+Em formato de regra: `{path:"papeis", read:"view", write:"owner"}`, `{path:"papeis/{self}", write:"interact"}`, e `{path:"<coleção>", read:"view", write:"interact"}` para `convites`, `vinculos`, `snap`, `prop` e `inbox`.
+
+O que isso significa, sem rodeio:
+- O profissional e o aluno gravam em nome um do outro (o banco só distingue níveis de papel, não o vínculo entre duas pessoas). Por isso tudo sensível é cifrado no navegador (ECDH P-256 + HKDF + AES-GCM) e o app descarta qualquer item inválido ou que não corresponda a um vínculo ou proposta real.
+- `vinculos` e `prop` são lidos inteiros e filtrados no cliente. Isso vaza metadados (quem é aluno de quem, quando) e não escala bem com muitos vínculos.
+- O que um profissional já leu pode ter sido copiado. A cifragem impede a leitura futura, não a passada.
+- Não há rotação de chave: o profissional deriva qualquer chave futura a partir da chave pública do aluno. Quem controla o acesso é o que o aluno publica.
+- A proteção só vale se essas regras forem reais no artifact publicado. Sem elas, o app não funciona ou fica aberto demais.
+
+## Personal e Nutri
+Qualquer usuário pode ser Personal e/ou Nutri, convida alunos por código (link do app + código de 8 caracteres), e o aluno escolhe o que libera. Mudanças de plano vão por proposta que o aluno aceita ou recusa. O sino mostra os avisos. Spec: `docs/superpowers/specs/2026-10-28-personal-nutri-design.md`.
+
+### Como o harness simula dois usuários
+- `PORT=5174 node tests/harness/servir.js` sobe o servidor em outra porta.
+- `?eu=<id>&nome=<nome>` faz o stub virar esse usuário (não dono, com acesso). Abra duas abas, por exemplo `/?eu=ana&nome=Ana` e `/?eu=pedro&nome=Pedro`.
+- O banco simulado é compartilhado entre as abas do mesmo endereço pelo `localStorage["tropa-stub-db"]`; o evento `storage` dispara os `onSnapshot`. Para zerar: `localStorage.removeItem("tropa-stub-db")` e recarregar.
+- `?falhachaves=1` simula falha na leitura de `data/users/<eu>/chaves`.
+- Passo a passo em `tests/harness/roteiro.md`.
+
+### Coleções
+- `papeis/{uid}`: público, papéis ativos e chave pública.
+- `convites/{codigo}`: profissional, papel, validade (7 dias), uso único.
+- `vinculos/{aluno~papel}`: aluno, profissional, papel, permissões, estado. Em claro, sem dados de saúde.
+- `snap/{vinculo}_{categoria}`: resumos cifrados das categorias liberadas.
+- `prop/{vinculo}`: propostas, respostas e comentários, cifrados.
+- `inbox/{uid}/n`: avisos do sino (só tipo e ponteiro).
+- Privado do usuário: `data/users/{me}/chaves` (par de chaves) e `data/users/{me}/modelos` (modelos do profissional).
+
+### Limites da cifragem
+Protege contra terceiros e contra leitura futura depois de revogar. Não protege o que o profissional já leu, não rotaciona chaves, e metadados dos vínculos ficam em claro. Detalhes na seção "Regras do banco (Personal e Nutri)" acima e em "Desvios aceitos" na spec.
+
 ## Como trabalhar em dupla
 - Cada um trabalha numa branch e abre um pull request para `main`.
 - Rode os testes antes de abrir o pull request.
