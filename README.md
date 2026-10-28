@@ -4,7 +4,7 @@ App de treino e nutrição com coach de IA, feed entre amigos e acompanhamento d
 
 ## Como o projeto é organizado
 - `publicar.html`: o app inteiro (HTML, CSS e JS). **É a fonte principal.** Edite este arquivo.
-- `tests/harness/`: servidor local (`node tests/harness/servir.js`, porta 5173) que serve o `publicar.html` com `window.claude` simulado e banco em memória, para ver as telas sem publicar. `?perfil=0` abre sem perfil (onboarding) e `?tema=escuro` liga o tema escuro; o tema também fica em `localStorage` na chave `tropa-tema` (`claro`, `escuro` ou `auto`). O roteiro de telas está em `tests/harness/roteiro.md`.
+- `tests/harness/`: servidor local (`node tests/harness/servir.js`, porta 5173) que serve o `publicar.html` com `window.claude` simulado e banco em memória, para ver as telas sem publicar. `?perfil=0` abre sem perfil (onboarding). O tema escuro se liga pela chave `tropa-tema` do `localStorage` (`claro`, `escuro` ou `auto`): grave `escuro` e recarregue a página. O roteiro de telas está em `tests/harness/roteiro.md`.
 - `tests/`: testes em Node das funções puras (pausa, volta gradual, teto de carga, validação da foto, grupos, importação de GPX e TCX, leitor de FIT) e uma checagem de que o script compila.
 - `docs/superpowers/specs/`: especificação da pausa, do teto de carga e do documento de fisioterapia.
 - `docs/superpowers/plans/`: plano de implementação dessas funcionalidades.
