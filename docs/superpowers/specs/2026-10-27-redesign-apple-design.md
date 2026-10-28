@@ -29,7 +29,7 @@ Claro (padrão). O laranja de marca `#FF5A00` fica para elementos sem texto (an�
 |---|---|---|
 | `--bg` (fundo agrupado) | `#F2F2F7` | `#0F1317` |
 | `--surface` (cartão) | `#FFFFFF` | `#181D22` |
-| `--surface-2` (campo, chip) | `#F2F2F7` | `#20262C` |
+| `--surface-2` (campo, chip) | `#EBEBF0` | `#20262C` |
 | `--tx` | `#0B0D10` | `#F2F4F6` |
 | `--tx-2` (secundário) | `#5A626C` | `#A7B0B9` |
 | `--sep` (separador) | `rgba(60,60,67,.14)` | `rgba(255,255,255,.12)` |
