@@ -224,7 +224,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces (funções puras, usadas pelas Tasks 5 a 7):
   - `MOLAS`: `{suave:{amort:1,resposta:.4}, ligeiro:{amort:1,resposta:.3}, lancado:{amort:.8,resposta:.3}, giro:{amort:.8,resposta:.4}}`
-  - `molaPasso(est:{x,v}, alvo:number, mola:{amort,resposta}, dt:number /*s*/): {x,v}`
+  - `molaPasso(est:{x,v}, alvo:number, mola:{amort,resposta}, dt:number /*s*/): {x,v}` (solução analítica exata, não integração numérica)
   - `molaParada(est:{x,v}, alvo:number, tol:number): boolean`
   - `projetar(x:number, v:number /*px/s*/, d?:number = 0.998): number`
   - `elastico(sobra:number, dimensao:number): number`
@@ -267,10 +267,18 @@ test("a velocidade inicial é herdada: partir de v alta passa mais longe no come
   assert.ok(b > a + 10, a + " vs " + b);
 });
 
-test("o resultado não depende do tamanho do quadro", () => {
-  const um = F.molaPasso({x:0, v:0}, 100, F.MOLAS.suave, 0.1).x;
-  let e = {x:0, v:0}; for (let i = 0; i < 10; i++) e = F.molaPasso(e, 100, F.MOLAS.suave, 0.01);
-  assert.ok(Math.abs(um - e.x) < 0.5, um + " vs " + e.x);   // passo fixo de 1/120 s: a diferença é só o arredondamento do último passo
+test("o resultado não depende do tamanho do quadro (solução exata)", () => {
+  for (const mola of [F.MOLAS.suave, F.MOLAS.lancado]){
+    const um = F.molaPasso({x:0, v:300}, 100, mola, 0.1);
+    let e = {x:0, v:300}; for (let i = 0; i < 10; i++) e = F.molaPasso(e, 100, mola, 0.01);
+    assert.ok(Math.abs(um.x - e.x) < 1e-6 && Math.abs(um.v - e.v) < 1e-4, JSON.stringify([um, e]));
+  }
+});
+
+test("a solução analítica bate com a conhecida: sobressalto de exp(-π·ζ/√(1-ζ²)) para ζ = 0,8", () => {
+  const r = simular(F.MOLAS.lancado, 0, 100, 0, 1);
+  const esperado = 100 * (1 + Math.exp(-Math.PI*0.8/Math.sqrt(1 - 0.64)));   // ≈ 101,5
+  assert.ok(Math.abs(r.max - esperado) < 0.05, r.max + " vs " + esperado);
 });
 
 test("molaParada exige posição e velocidade pequenas", () => {
@@ -340,12 +348,17 @@ Em `publicar.html`, localizar `/* @pure:end */` e inserir logo depois:
 ```js
 /* @movimento:start */
 const MOLAS = {suave:{amort:1, resposta:.4}, ligeiro:{amort:1, resposta:.3}, lancado:{amort:.8, resposta:.3}, giro:{amort:.8, resposta:.4}};
-// Mola de massa 1: rigidez (2π/resposta)², amortecimento 2·amort·(2π/resposta). Passo fixo de 1/120 s para não depender da taxa de quadros.
+// Mola de massa 1: rigidez (2π/resposta)², amortecimento 2·amort·(2π/resposta).
+// Solução analítica (exata): não depende do tamanho do quadro nem perde energia por erro numérico, como um passo de Euler perderia.
 function molaPasso(est, alvo, mola, dt){
-  const w = 2*Math.PI/mola.resposta, k = w*w, c = 2*mola.amort*w, passo = 1/120;
-  let x = est.x, v = est.v, resto = dt;
-  while (resto > 1e-9){ const h = Math.min(passo, resto); v += (-k*(x-alvo) - c*v)*h; x += v*h; resto -= h; }
-  return {x, v};
+  const w = 2*Math.PI/mola.resposta, z = mola.amort, d0 = est.x - alvo, v0 = est.v;
+  if (dt <= 0) return {x:est.x, v:est.v};
+  if (z >= 1){   // amortecimento crítico (os presets usam no máximo 1)
+    const e = Math.exp(-w*dt), c = v0 + w*d0;
+    return {x: alvo + e*(d0 + c*dt), v: e*(v0 - w*c*dt)};
+  }
+  const a = z*w, wd = w*Math.sqrt(1 - z*z), e = Math.exp(-a*dt), co = Math.cos(wd*dt), si = Math.sin(wd*dt), B = (v0 + a*d0)/wd;
+  return {x: alvo + e*(d0*co + B*si), v: e*(v0*co - (a*B + wd*d0)*si)};
 }
 function molaParada(est, alvo, tol){ return Math.abs(est.x-alvo) < tol && Math.abs(est.v) < tol*10; }
 // Ponto de repouso de um arremesso: (v/1000)·d/(1-d), v em px/s.
@@ -1746,7 +1759,8 @@ Para cada linha do `tests/harness/roteiro.md`, em 390 px claro e escuro, mais as
 Em `docs/superpowers/specs/2026-10-27-redesign-apple-design.md`:
 1. Na seção "Sheets", trocar os itens sobre "Dois tamanhos" e "Arrastar pela alça ou pelo corpo" por: "Um tamanho só (altura do conteúdo, até 92% da tela). Arrastar pela alça, que tem área de toque de 44 px; o corpo rola normalmente."
 2. Na mudança de estrutura 2, trocar "O chat abre como sheet de dois tamanhos" por "O chat continua sendo uma rota; sobe de baixo e fecha arrastando a alça do cabeçalho para baixo."
-3. Na seção "Organização do código", acrescentar: "Os nomes de classe existentes foram mantidos e redesenhados; classes novas só onde a estrutura mudou (`.proxc`, `.avisos`, `.dia-sec`, `.cab`, `.tabs-pill`, `.tabs-ind`, `.mat`)."
+3. Na seção "Núcleo" da spec, trocar a descrição de `molaPasso` ("integra uma mola ... Passo fixo de 1/120 s") por "avança uma mola de massa 1 pela solução analítica exata (crítica ou subamortecida); não depende do tamanho do quadro e não perde energia por erro numérico".
+4. Na seção "Organização do código", acrescentar: "Os nomes de classe existentes foram mantidos e redesenhados; classes novas só onde a estrutura mudou (`.proxc`, `.avisos`, `.dia-sec`, `.cab`, `.tabs-pill`, `.tabs-ind`, `.mat`)."
 
 - [ ] **Step 5: Atualizar o README**
 
