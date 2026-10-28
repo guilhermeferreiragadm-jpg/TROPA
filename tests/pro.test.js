@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel, idsParaMarcar};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -254,4 +254,9 @@ test("quandoRel: agora, minutos, horas, ontem e data", () => {
   assert.equal(F.quandoRel(new Date(2026, 9, 27, 23, 0).getTime(), agora), "ontem");
   assert.equal(F.quandoRel(new Date(2026, 9, 25, 10, 0).getTime(), agora), "25/10");
   assert.equal(F.quandoRel(agora + 5000, agora), "agora");
+});
+
+test("idsParaMarcar devolve só os não lidos exibidos", () => {
+  assert.deepEqual(F.idsParaMarcar([{id: "a", lida: false}, {id: "b", lida: true}, {id: "c"}, null]), ["a", "c"]);
+  assert.deepEqual(F.idsParaMarcar(null), []);
 });
