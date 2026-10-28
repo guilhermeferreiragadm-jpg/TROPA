@@ -1156,6 +1156,44 @@ function tipoTransicao(a, b, voltando){
   return voltando ? "pop" : "push";
 }
 /* @movimento:end */
+/* @pro:start */
+const CATEGORIAS = ["treino","perf","comida","corpo","feed"];
+const PAPEIS_PRO = ["personal","nutri"];
+const CATS_POR_PAPEL = {personal:["treino","perf","corpo","feed"], nutri:["comida","corpo"]};
+const permissoesValidas = (papel, perm) => { const o = {}; (CATS_POR_PAPEL[papel]||[]).forEach(c=>{ o[c] = !!(perm && perm[c]); }); return o; };
+const vincId = (alunoId, papel) => alunoId+"~"+papel;
+const podeVer = (v, cat) => !!(v && v.estado==="ativo" && v.perm && v.perm[cat] && (CATS_POR_PAPEL[v.papel]||[]).includes(cat));
+const conviteValido = (c, agora) => !!(c && !c.usado && c.expira > agora && PAPEIS_PRO.includes(c.papel));
+const novoConvite = (profId, papel, agora, cod) => ({cod, profId, papel, criado:agora, expira:agora+7*864e5, usado:false});
+const conflitoVinculo = (existente, profId) => existente && existente.estado==="ativo" && existente.profId!==profId ? "ja_vinculado" : null;
+const proximoEstadoProposta = (estado, evento) => estado!=="pendente" ? estado : ({aceitar:"aceita", recusar:"recusada", invalidar:"desatualizada"})[evento] || estado;
+const mesmoJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const ehObj = x => !!x && typeof x === "object";
+function criarPatch(a, b, p = []){
+  if (mesmoJson(a, b)) return [];
+  if (ehObj(a) && ehObj(b) && Array.isArray(a) === Array.isArray(b) && !(Array.isArray(a) && a.length !== b.length)){
+    const ks = Array.isArray(a) ? a.map((_, i)=>i) : [...new Set([...Object.keys(a), ...Object.keys(b)])];
+    return ks.flatMap(k=>criarPatch(a[k], b[k], p.concat(k)));
+  }
+  return [{p, v: b === undefined ? null : b}];
+}
+const caminhoSeguro = p => Array.isArray(p) && p.every(k=>(Number.isInteger(k) && k >= 0) || (typeof k === "string" && !["__proto__","constructor","prototype"].includes(k)));
+function aplicarPatch(obj, ops){
+  let r = JSON.parse(JSON.stringify(obj));
+  for (const op of ops){
+    if (!caminhoSeguro(op.p)) throw new Error("caminho inválido");
+    if (!op.p.length){ r = JSON.parse(JSON.stringify(op.v)); continue; }
+    let c = r;
+    for (let i = 0; i < op.p.length-1; i++){ if (!ehObj(c[op.p[i]])) throw new Error("caminho inexistente"); c = c[op.p[i]]; }
+    c[op.p[op.p.length-1]] = JSON.parse(JSON.stringify(op.v));
+  }
+  return r;
+}
+const hash32 = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h*33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+const propostaAtual = (prop, planoJson) => !!prop && prop.base === hash32(planoJson);
+const TIPOS_INBOX = ["convite","vinculo","encerrado","proposta","resposta","perm","comentario"];
+const itemInboxValido = it => !!it && TIPOS_INBOX.includes(it.tipo) && typeof it.ref === "string" && it.ref.length > 0 && it.ref.length <= 80 && Number.isFinite(it.quando);
+/* @pro:end */
 
 /* ===================== MOVIMENTO (DOM) ===================== */
 const Mov = (() => {
