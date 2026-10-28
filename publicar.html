@@ -3237,7 +3237,7 @@ function telaForca(a){
     notas.map(x=>'<p class="s">'+esc(x)+'</p>').join("")+detalheHTML(t);
   S.ex.forEach((e,ei)=>{
     const sg = sugestaoAjustada(e, d), h0 = historicoEx(e.nome), last = h0.length ? h0[h0.length-1].sets : [];
-    h += '<div class="box"><div class="exh"><button type="button" class="demo" data-go="treino|ex|'+esc(e.nome)+'" aria-label="Ver como fazer '+esc(e.nome)+'">'+demoSVG(e.nome)+'</button><div class="mw0"><b>'+esc(e.nome)+'</b><small>'+e.series+' × '+e.reps+(e.seg?' s':' reps')+' · '+esc(POSES[poseDe(e.nome)].mus)+'</small><small><button type="button" class="lk in" data-go="treino|ex|'+esc(e.nome)+'">como fazer e histórico</button></small></div></div>'+
+    h += '<div class="box"><div class="exh"><button type="button" class="demo" data-go="treino|ex|'+esc(e.nome)+'" aria-label="Ver como fazer '+esc(e.nome)+'">'+demoSVG(e.nome)+'</button><div class="mw0"><b>'+esc(e.nome)+'</b><small>'+e.series+' × '+e.reps+(e.seg?' s':' reps')+' · '+esc(POSES[poseDe(e.nome)].mus)+'</small><small><button type="button" class="lk in" data-go="treino|ex|'+esc(e.nome)+'">como fazer e histórico</button> · <button type="button" class="lk in" data-cm="'+ei+'">'+(comDe(chaveCom(k, e.nome)) ? 'Editar comentário' : 'Comentar')+'</button></small></div></div>'+
       '<div class="sugg"><span>'+esc(sg.txt)+'</span>'+(sg.kg!=null?'<button type="button" data-apl="'+ei+'">Aplicar</button>':'')+'</div>'+
       '<table class="sets"><thead><tr><th>Série</th><th>Anterior</th><th>'+(e.seg?'—':'kg')+'</th><th>'+(e.seg?'seg':'reps')+'</th><th>✓</th></tr></thead><tbody>'+
       e.sets.map((s2,j)=>'<tr class="'+(s2.ok?'done':'')+'"><td>'+(j+1)+'</td><td class="prev">'+(last[j]?esc(num(+last[j].kg,1)+" × "+last[j].reps):"—")+'</td><td>'+(e.seg?'':'<input type="number" inputmode="decimal" step="0.5" aria-label="Carga série '+(j+1)+'" data-kg="'+ei+'~'+j+'" value="'+esc(s2.kg)+'">')+'</td><td><input type="number" inputmode="numeric" aria-label="Repetições série '+(j+1)+'" data-rp="'+ei+'~'+j+'" value="'+esc(s2.reps)+'"></td><td><button type="button" class="ck" data-ok="'+ei+'~'+j+'" aria-label="Concluir série '+(j+1)+'">'+(s2.ok?'✓':'')+'</button></td></tr>').join("")+'</tbody></table></div>';
@@ -3248,9 +3248,28 @@ function telaForca(a){
   app.querySelectorAll("[data-kg]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.kg.split("~").map(Number); S.ex[x].sets[y].kg = parseFloat(String(inp.value).replace(",","."))||""; salvarSessao(); }));
   app.querySelectorAll("[data-rp]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.rp.split("~").map(Number); S.ex[x].sets[y].reps = parseInt(inp.value)||""; salvarSessao(); }));
   app.querySelectorAll("[data-ok]").forEach(b=>b.addEventListener("click", ()=>{ const [x,y] = b.dataset.ok.split("~").map(Number); const s2 = S.ex[x].sets[y]; s2.ok = !s2.ok; salvarSessao(); const sc = rolagem().scrollTop; telaForca(a); rolagem().scrollTop = sc; if (s2.ok) iniciarDescanso(90); }));
+  app.querySelectorAll("[data-cm]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.cm]; if (e) sheetComentario(chaveCom(k, e.nome), e.nome, ()=>{ const sc = rolagem().scrollTop; telaForca(a); rolagem().scrollTop = sc; }); }));
   app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e, d); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = rolagem().scrollTop; telaForca(a); rolagem().scrollTop = sc; }));
   const f = $("fim"); if (f) f.addEventListener("click", ()=>terminarForca(a));
   desenharDescanso(); crono();
+}
+/* comentário por exercício: LOG.coment["AAAA-MM-DD|exercício"] = {t, at}; o snap de treino leva isso ao Personal */
+const chaveCom = (k, nome) => k+"|"+String(nome).replace(/[.\/\[\]*`~]/g, "").slice(0, 60);
+const comTodos = () => LOG.coment && typeof LOG.coment==="object" && !Array.isArray(LOG.coment) ? LOG.coment : {};
+const comDe = ch => { const c = comTodos()[ch]; return c && typeof c.t==="string" ? c.t : ""; };
+function sheetComentario(chave, rotulo, depois){
+  const at = comDe(chave), corpo = abrirSheet("Comentário");
+  corpo.innerHTML = '<h2 class="h2 lg">Comentário</h2><p class="s">'+esc(rotulo)+'. Seu Personal vê, se você liberou o treino para ele.</p><textarea class="inp" id="cmt" rows="4" maxlength="280" placeholder="Ex.: o joelho incomodou na última série" aria-label="Comentário">'+esc(at)+'</textarea><button type="button" class="btn go" id="cmok">Salvar</button>'+(at ? '<button type="button" class="btn ghost cor-ruim" id="cmex">Remover comentário</button>' : '')+'<button type="button" class="lk" id="cmno">Cancelar</button>';
+  const salvar = async t => {
+    const c = Object.assign({}, comTodos()); if (t) c[chave] = {t, at:new Date().toISOString()}; else delete c[chave];
+    const ks = Object.keys(c); if (ks.length>60) ks.sort((x, y)=>String(c[x].at)<String(c[y].at) ? -1 : 1).slice(0, ks.length-60).forEach(x=>{ delete c[x]; });
+    await salvarLog("coment", Object.keys(c).length ? c : null);
+    if (t && t!==at) [...Pro.vinc.values()].filter(v=>v.alunoId===me && v.papel==="personal" && podeVer(v, "treino")).forEach(v=>Pro.avisar(v.profId, "comentario", v.id));
+    fecharSheet(); if (depois) depois();
+  };
+  $("cmno").addEventListener("click", ()=>fecharSheet());
+  $("cmok").addEventListener("click", ()=>{ $("cmok").disabled = true; salvar($("cmt").value.trim().slice(0, 280)); });
+  if (at) $("cmex").addEventListener("click", ()=>salvar(""));
 }
 function crono(){ const el = $("crono"); if (!el || !SESS) return; const m = Math.floor((Date.now()-new Date(SESS.ini))/60000); el.textContent = m+" min"; }
 function iniciarDescanso(s){ restFim = Date.now()+s*1000; clearInterval(restT); restT = setInterval(desenharDescanso, 1000); desenharDescanso(); }
