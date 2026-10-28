@@ -25,6 +25,7 @@
       assinatura:{plano:"mensal", valor:29.9, cupom:"", status:"teste", at:new Date().toISOString()}
     }, plano:{versao:1, semanas:[]}, viol:[], pausas:[]};   // versão 1 faz o app gerar o plano de novo ao entrar
   }
+  if (q.get("falhachaves")==="1") window.__FALHA_CHAVES = true;   // simula falha de leitura de data/users/<eu>/chaves (zere com window.__FALHA_CHAVES=false)
   persistir();
   const snap = (k) => ({id:k.split("/").pop(), exists:k in S, data:()=>S[k], metadata:{}});
   const avisar = (path) => (ouvintes[path]||[]).forEach(f=>f());
@@ -32,7 +33,7 @@
     const lista = () => Object.keys(S).filter(k=>k.startsWith(path+"/") && !k.slice(path.length+1).includes("/")).map(snap);
     const api = {
       doc:id=>{ const k = path+"/"+id; return {id, path:k,
-        get:async()=>snap(k), set:async v=>{ S[k] = JSON.parse(JSON.stringify(v)); persistir(); avisar(k); avisar(path); },
+        get:async()=>{ if (window.__FALHA_CHAVES && /\/chaves$/.test(k)) throw new Error("falha simulada"); return snap(k); }, set:async v=>{ S[k] = JSON.parse(JSON.stringify(v)); persistir(); avisar(k); avisar(path); },
         update:async v=>{ S[k] = Object.assign(S[k]||{}, v); persistir(); avisar(k); avisar(path); }, delete:async()=>{ delete S[k]; persistir(); avisar(k); avisar(path); },
         onSnapshot:(f)=>{ (ouvintes[k] = ouvintes[k]||[]).push(()=>f(snap(k))); setTimeout(()=>f(snap(k)),0); return ()=>{}; },
         collection:p=>col(k+"/"+p) }; },
