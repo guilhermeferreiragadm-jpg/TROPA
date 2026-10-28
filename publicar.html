@@ -2059,15 +2059,23 @@ function telaAbertura(){
   const c = $("cp"); if (c) c.addEventListener("click", async ()=>{ const u = "https://claude.ai/artifact/"+ARTIFACT_ID; try{ await navigator.clipboard.writeText(u); $("cpm").textContent = "Link copiado: "+u+" · cole no navegador onde você entrou no Claude."; }catch(e){ $("cpm").textContent = "Copie este link: "+u; } });
 }
 function telaCodigo(){
-  const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo.</p>'+
-    '<input class="inp cd n upper" id="cd" maxlength="11" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2">'+
+  const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo, ou o de um Personal ou Nutri.</p>'+
+    '<input class="inp cd n upper" id="cd" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2">'+
     '<button class="btn go" type="button" id="cdok">Entrar</button><p class="msg" id="cdm"></p><p class="s">Não tem? Peça para quem te mandou o link.</p>');
   const go = async ()=>{
     const v = $("cd").value.trim().toUpperCase();
     if (!CODIGO){ try{ const s = await realDb.collection("config").doc("convite").get(); CODIGO = s.exists ? String((s.data()||{}).codigo||"") : ""; }catch(e){} }
     const b = CODIGO.toUpperCase();
     if (!v){ $("cdm").textContent = "Digite o código."; return; }
-    if (!b || !(v===b || (v.startsWith(b+"-") && v.length===b.length+5))){ $("cdm").textContent = "Esse código não bate. Confira com quem te convidou."; $("cdm").className = "msg err"; return; }
+    if (!b || !(v===b || (v.startsWith(b+"-") && v.length===b.length+5))){
+      const r = normalizarCodigo(v) ? await lerConvite(v) : {erro:"codigo"};   // só valida: quem consome o convite é Pro.aceitarConvite
+      if (!r.n || r.erro){ $("cdm").textContent = r.erro==="usado"||r.erro==="expirado" ? ERRCONV[r.erro] : "Esse código não bate. Confira com quem te convidou."; $("cdm").className = "msg err"; return; }
+      ACESSO = {status:"aceito", via:"profissional", codigo:r.n, indicadoPor:r.c.profId, at:new Date().toISOString()};
+      try{ localStorage.setItem("tropa-conv-pend", r.n); }catch(e){}
+      try{ await db.collection("acessos").doc(me).set(ACESSO); }catch(e){}
+      try{ localStorage.setItem("ar2-acesso-"+me, JSON.stringify(ACESSO)); }catch(e){}
+      rotear(true); return;
+    }
     ACESSO = {status:"aceito", via:"codigo", codigo:v, indicadoPor: v===b ? "dono" : v.slice(b.length+1), at:new Date().toISOString()};
     try{ await db.collection("acessos").doc(me).set(ACESSO); }catch(e){}
     try{ localStorage.setItem("ar2-acesso-"+me, JSON.stringify(ACESSO)); }catch(e){}
@@ -2324,6 +2332,7 @@ function ir(tab, sub, arg){
 }
 function render(keep){
   try{ aplicarTeto(); }catch(e){ registrarErro("teto", e); }
+  abrirConvitePend();
   if (restaurarModo()) R.tab = barraAbas(MODO)[0];
   MODO = modoValido(MODO); renderBarra();
   const bar = barraAbas(MODO);
@@ -4634,6 +4643,98 @@ function sheetSair(){
   $("dim").addEventListener("click", ()=>{ fecharSheet(); }); $("sno").addEventListener("click", ()=>{ fecharSheet(); });
   $("sok").addEventListener("click", sair);
 }
+/* ===================== ALUNO: convite, permissões, desvincular ===================== */
+const ROTCAT = {treino:"Treino", perf:"Performance e corridas", comida:"Comida", corpo:"Peso e medidas", feed:"Feed e fotos"};
+const ERRCONV = {codigo:"Esse código não existe.", expirado:"Esse convite venceu. Peça um novo.", usado:"Esse convite já foi usado.", profissional:"Esse profissional ainda não está pronto. Peça para ele abrir o app.", proprio:"Você não pode aceitar o seu próprio convite.", ocupado:"Aguarde um instante e tente de novo.", falha:"Não deu certo. Tente de novo."};
+const msgConv = (e, papel) => e==="ja_vinculado" ? "Você já tem um "+NOMEMODO[papel]+". Desvincule antes." : ERRCONV[e] || ERRCONV.falha;
+const chavesPerm = (papel, perm) => '<div class="lst">'+(CATS_POR_PAPEL[papel]||[]).map(c=>'<label><span>'+ROTCAT[c]+'</span><input type="checkbox" data-c="'+c+'"'+(perm && perm[c] ? ' checked' : '')+'></label>').join("")+'</div>';
+const lerPerm = root => { const o = {}; root.querySelectorAll("[data-c]").forEach(i=>{ o[i.dataset.c] = i.checked; }); return o; };
+const atualizaPerfil = () => { if (R.tab==="perfil" && !R.sub) render(true); };
+const meusVinc = () => [...Pro.vinc.values()].filter(v=>v.alunoId===me && v.estado==="ativo");
+async function lerConvite(cod){   // só lê e valida; não consome
+  const n = normalizarCodigo(cod); if (!n) return {erro:"codigo"};
+  try{
+    const s = await realDb.collection("convites").doc(n).get(); if (!s.exists) return {erro:"codigo"};
+    const c = s.data()||{};
+    if (!PAPEIS_PRO.includes(c.papel)) return {erro:"codigo"};
+    if (c.usado) return {erro:"usado"};
+    if (!conviteValido(c, Date.now())) return {erro: Number.isFinite(c.expira) ? "expirado" : "codigo"};
+    if (c.profId===me) return {erro:"proprio"};
+    let nome = ""; try{ const p = await realDb.collection("papeis").doc(c.profId).get(); nome = String(((p.exists && p.data())||{}).nome||"").slice(0, 40); }catch(e){}
+    return {n, c, nome: nome || "Seu "+NOMEMODO[c.papel]};
+  }catch(e){ return {erro:"falha"}; }
+}
+function abrirSheet(rotulo){
+  $("ov").innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="'+esc(rotulo)+'"><span class="grab"></span><div id="shb"></div></div>';
+  $("dim").addEventListener("click", ()=>fecharSheet());
+  return $("shb");
+}
+function abrirConvitePend(){
+  let c = ""; try{ c = localStorage.getItem("tropa-conv-pend")||""; }catch(e){}
+  if (!c || !me || !P || !P.perfil || $("ov").firstChild) return;
+  try{ localStorage.removeItem("tropa-conv-pend"); }catch(e){}
+  setTimeout(()=>sheetConvite(c), 400);
+}
+function sheetConvite(cod){
+  const corpo = abrirSheet("Convite de profissional");
+  const msg = t => { const m = $("cvm"); if (m) m.textContent = t||""; };
+  const fim = () => { const n = $("cvno"); if (n) n.addEventListener("click", ()=>fecharSheet()); };
+  const mostrar = r => {
+    const papel = r.c.papel;
+    corpo.innerHTML = '<h2 class="h2 lg">'+esc(r.nome)+'</h2><p class="s">'+NOMEMODO[papel]+'. Essa pessoa passa a ver só o que você liberar abaixo, e você pode mudar ou desvincular quando quiser, em Perfil, Meus profissionais.</p>'+chavesPerm(papel, {})+
+      '<p class="msg err" id="cvm" role="alert"></p><button type="button" class="btn go" id="cvok">Aceitar e vincular</button><button type="button" class="lk" id="cvno">Agora não</button>';
+    fim();
+    $("cvok").addEventListener("click", async ()=>{
+      const b = $("cvok"); b.disabled = true; msg("");
+      try{
+        const x = await Pro.aceitarConvite(r.n, lerPerm(corpo));
+        if (x && x.ok){ fecharSheet(); toast("Vinculado com "+r.nome+"."); atualizaPerfil(); return; }
+        msg(msgConv(x && x.erro, papel));
+      }catch(e){ msg(msgPro(e)); }
+      b.disabled = false;
+    });
+  };
+  const pedir = t => {
+    corpo.innerHTML = '<h2 class="h2 lg">Código de um profissional</h2><p class="s">Digite o código que o seu Personal ou Nutri te mandou.</p><input class="inp cd n upper" id="cvc" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2-QXA1"><p class="msg err" id="cvm" role="alert">'+esc(t||"")+'</p><button type="button" class="btn go" id="cvok">Continuar</button><button type="button" class="lk" id="cvno">Cancelar</button>';
+    fim();
+    const go = async ()=>{ const b = $("cvok"); b.disabled = true; const r = await lerConvite($("cvc").value); if (r.erro){ msg(msgConv(r.erro)); b.disabled = false; return; } mostrar(r); };
+    $("cvok").addEventListener("click", go); $("cvc").addEventListener("keydown", e=>{ if (e.key==="Enter") go(); });
+  };
+  if (!cod){ pedir(); return; }
+  corpo.innerHTML = '<p class="s">Abrindo o convite…</p>';
+  lerConvite(cod).then(r=>{ if (!$("shb")) return; if (r.erro) pedir(msgConv(r.erro)); else mostrar(r); });
+}
+function sheetProfissionais(vid){
+  const corpo = abrirSheet("Meus profissionais");
+  const lista = ()=>{
+    const vs = meusVinc().slice(0, 2);
+    corpo.innerHTML = '<h2 class="h2 lg">Meus profissionais</h2>'+(vs.length ? '<div class="lst">'+vs.map(v=>lr("vp_"+v.id, "", esc(v.nomeP||("Seu "+NOMEMODO[v.papel])), NOMEMODO[v.papel])).join("")+'</div>' : '<p class="s">Você ainda não tem Personal nem Nutri.</p>')+
+      '<button type="button" class="btn" id="vcod">Entrar com código</button><button type="button" class="lk" id="vno">Fechar</button>';
+    $("vno").addEventListener("click", ()=>fecharSheet()); $("vcod").addEventListener("click", ()=>sheetConvite());
+    vs.forEach(v=>$("vp_"+v.id).addEventListener("click", ()=>det(v.id)));
+  };
+  const det = id=>{
+    const v = Pro.vinc.get(id); if (!v || v.estado!=="ativo"){ lista(); return; }
+    corpo.innerHTML = '<h2 class="h2 lg">'+esc(v.nomeP||("Seu "+NOMEMODO[v.papel]))+'</h2><p class="s">'+NOMEMODO[v.papel]+'. Ele vê só o que estiver ligado.</p>'+chavesPerm(v.papel, v.perm)+'<p class="msg err" id="cvm" role="alert"></p><button type="button" class="btn ghost cor-ruim" id="vdes">Desvincular</button><button type="button" class="lk" id="vvol">Voltar</button>';
+    $("vvol").addEventListener("click", lista);
+    corpo.querySelectorAll("[data-c]").forEach(i=>i.addEventListener("change", async ()=>{
+      const todos = corpo.querySelectorAll("[data-c]"); todos.forEach(x=>x.disabled = true);
+      try{ const r = await Pro.salvarPerm(id, lerPerm(corpo)); if (r && r.erro) throw new Error("falha"); }
+      catch(e){ i.checked = !i.checked; const m = $("cvm"); if (m) m.textContent = msgPro(e); }
+      todos.forEach(x=>x.disabled = false);
+    }));
+    $("vdes").addEventListener("click", ()=>{
+      corpo.innerHTML = '<h2 class="h2 lg">Desvincular?</h2><p>'+esc(v.nomeP||NOMEMODO[v.papel])+' deixa de ver os seus dados, e as cópias que ele via são apagadas.</p><p class="msg err" id="cvm" role="alert"></p><button type="button" class="btn ghost cor-ruim" id="vok">Desvincular</button><button type="button" class="lk" id="vno2">Cancelar</button>';
+      $("vno2").addEventListener("click", ()=>det(id));
+      $("vok").addEventListener("click", async ()=>{
+        const b = $("vok"); b.disabled = true;
+        try{ const r = await Pro.encerrar(id); if (r && r.erro) throw new Error("falha"); fecharSheet(); toast(r && r.ok===false ? "Desvinculado. Vou terminar de apagar as cópias em instantes." : "Desvinculado."); atualizaPerfil(); }
+        catch(e){ const m = $("cvm"); if (m) m.textContent = msgPro(e); b.disabled = false; }
+      });
+    });
+  };
+  if (vid) det(vid); else lista();
+}
 // Hoje volta para a abertura sem apagar nada. Com login próprio, o corpo desta função passa a encerrar a sessão.
 function sair(){ fecharSheet(); R.tab = "hoje"; R.sub = null; R.arg = null; semOff = 0; telaAbertura(); }
 /* ===================== CORPO: peso, medidas, tendência ===================== */
@@ -4748,6 +4849,7 @@ function telaPerfil(){
       lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
       (Pro.ok() ? ["personal","nutri"].map(m=>'<label class="lst-i"><span>Sou '+NOMEMODO[m]+'<small>'+(m==="personal"?'treinos dos seus alunos':'planos dos seus alunos')+'</small></span><input type="checkbox" id="pp_'+m+'"'+(Pro.papeis[m]?' checked':'')+'></label>').join("") : '')+
+      (Pro.ok() ? lr("mpro", "", 'Meus profissionais', meusVinc().length ? meusVinc().length+' vínculo'+(meusVinc().length>1?'s':'')+' ativo'+(meusVinc().length>1?'s':'') : 'Personal ou Nutri que acompanham você')+lr("cvp", "", 'Entrar com código de um profissional', 'cole o código que ele te mandou') : '')+
       lr("fb", "", 'Mandar feedback para a equipe', 'o que travou, o que curtiu, se pagaria')+
       lr("exp", "", 'Baixar meus dados', 'arquivo com tudo que o app guarda de você')+
       lr("sair", "", 'Sair', 'voltar para a tela inicial do app')+
@@ -4770,6 +4872,7 @@ function telaPerfil(){
   $("foto").addEventListener("click", sheetFoto); $("fotob").addEventListener("click", sheetFoto); $("sair").addEventListener("click", sheetSair);
   $("sh").addEventListener("change", async ()=>{ P.perfil.compartilha = $("sh").checked; await salvarPerfil(); toast(P.perfil.compartilha?"Amigos veem seu progresso.":"Progresso escondido."); });
   $("fb").addEventListener("click", telaFeedback);
+  if ($("mpro")){ $("mpro").addEventListener("click", ()=>sheetProfissionais()); $("cvp").addEventListener("click", ()=>sheetConvite()); }
   ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.addEventListener("change", ()=>mudarPapel(m, c)); });
   $("exp").addEventListener("click", ()=>baixar("meus-dados-"+BRAND.toLowerCase()+".json", JSON.stringify({perfil:P.perfil, plano:planoAtual(), log:LOG, social:SOC}, null, 2), "application/json"));
   const del = $("del"); del.addEventListener("click", async ()=>{
