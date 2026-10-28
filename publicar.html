@@ -11,7 +11,7 @@
   --done:#13A150; --done-ink:#0F7A3E; --done-soft:#EAF7EF; --done-line:#BFE6CE;
   --caution:#E5A100; --caution-soft:#FFF7E0; --warn-ink:#8A5F00;
   --stop:#E0362B; --stop-ink:#C62A20; --stop-soft:#FDECEA;
-  --run:#FF5A00; --swim:#1E88E5; --bike:#E39A06; --gym:#6E56CF; --noite:#0B0D10;
+  --neutro:#5A626C; --track:#E1E1E7; --swim-ink:#1565C0; --run:#FF5A00; --swim:#1E88E5; --bike:#E39A06; --gym:#6E56CF; --noite:#0B0D10;
   --r1:10px; --r2:14px; --r3:20px; --r4:28px;
   --sh1:0 1px 2px rgba(0,0,0,.06); --sh2:0 4px 16px rgba(0,0,0,.08); --sh3:0 12px 40px rgba(0,0,0,.18);
   --mat-fino:rgba(255,255,255,.6); --mat-reg:rgba(255,255,255,.72); --mat-grosso:rgba(255,255,255,.86); --mat-borda:rgba(255,255,255,.4);
@@ -25,7 +25,7 @@
   --go-ink:#FF8A4C;--go-soft:#2A1A12;--go-line:#6B2F12;--done-ink:#4ADE80;--done-soft:#12261B;--done-line:#1F5A38;--warn-ink:#F0B429;--caution-soft:#2B2410;--stop-ink:#FF7A70;--stop-soft:#2D1512;
   --sh1:0 1px 2px rgba(0,0,0,.4);--sh2:0 4px 16px rgba(0,0,0,.4);--sh3:0 12px 40px rgba(0,0,0,.6);
   --mat-fino:rgba(24,29,34,.6);--mat-reg:rgba(24,29,34,.72);--mat-grosso:rgba(24,29,34,.86);--mat-borda:rgba(255,255,255,.08);
-  --ink:#46525D}
+  --ink:#46525D;--swim-ink:#6AB7FF;--track:#313941}
 /* materiais: vidro com blur; sólido quando o usuário pede menos transparência ou o navegador não suporta */
 .mat,.mat-reg,.mat-grosso{border:1px solid var(--mat-borda)}
 .mat{background:var(--mat-fino);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
@@ -103,9 +103,9 @@ textarea.inp{resize:vertical;min-height:88px}
 .box{border-radius:var(--r2);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface);box-shadow:var(--sh1)}
 .box.strong{box-shadow:var(--sh2),inset 0 0 0 1.5px var(--go)}
 /* área de toque mínima de 44px: tamanho visual igual, alvo invisível maior */
-.btn.sm,.chip,.lk{position:relative}
-.btn.sm::after,.chip::after,.lk::after{content:"";position:absolute}
-.btn.sm::after{inset:-3px 0}.chip::after{inset:-7px -2px}.lk::after{inset:-3px 0}
+.btn.sm,.chip,.lk,.pf-chip{position:relative}
+.btn.sm::after,.chip::after,.lk::after,.pf-chip::after{content:"";position:absolute}
+.btn.sm::after{inset:-3px 0}.chip::after,.pf-chip::after{inset:-7px -2px}.lk::after{inset:-3px 0}
 .lk.in{padding:0}.lk.in::after{inset:-12px -8px}   /* link dentro de texto: sem padding, alvo de 44px invisível */
 @media (prefers-contrast:more){.box,.opt,.ci{box-shadow:inset 0 0 0 1px var(--sep)}}
 .lst>label{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--sep);padding:14px 16px;font-weight:600;min-height:50px}
@@ -321,65 +321,65 @@ textarea.inp{resize:vertical;min-height:88px}
 .ba{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--sep);font-size:.9375rem}
 .ba b{font-size:1.125rem;font-variant-numeric:tabular-nums}
 /* comida */
-.macro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.macro>div{border:1px solid var(--sep);padding:9px;min-width:0}
-.macro b{display:block;font-family:var(--f);font-weight:700;font-size:1.25rem;line-height:1}
-.macro span{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--tx-2);font-weight:800}
-.bar{height:5px;background:var(--sep);margin-top:6px;position:relative}.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);max-width:100%}
-.meal{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--surface-2)}
-.meal .ph{width:50px;height:50px;flex:none;object-fit:cover;background:var(--surface-2)}
-.meal label.cam,.meal .cam{width:50px;height:50px;flex:none;border:1px dashed var(--tx-2);display:grid;place-content:center;font-size:.6rem;font-weight:800;color:var(--tx-2);text-align:center;cursor:pointer;background:var(--surface)}
+.macro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.macro>div,.macro>button{border:0;border-radius:var(--r2);background:var(--surface);box-shadow:var(--sh1);padding:12px;min-width:0;display:flex;flex-direction:column;text-align:left}
+.macro b{display:block;font-weight:700;font-size:1.25rem;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.macro span{font-size:.75rem;color:var(--tx-2);font-weight:500;margin-bottom:8px}.macro .bar{margin-top:auto}
+.bar{height:6px;border-radius:3px;background:var(--track);margin-top:8px;position:relative;overflow:hidden}.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--go);border-radius:3px;max-width:100%;transition:width .4s cubic-bezier(.32,.72,0,1)}
+.meal{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--sep);background:var(--surface)}
+.meal .ph{width:52px;height:52px;flex:none;object-fit:cover;background:var(--surface-2);border-radius:12px}
+.meal label.cam,.meal .cam{width:52px;height:52px;flex:none;border-radius:12px;border:1.5px dashed var(--tx-2);display:grid;place-content:center;font-size:.6875rem;font-weight:600;color:var(--tx-2);text-align:center;cursor:pointer}
 .meal>span{min-width:0;flex:1}
-.meal b{display:block;font-size:.92rem}.meal small{font-size:.76rem;color:var(--tx-2);display:block}
-.meal .ok{font-weight:900;color:var(--done-ink)}
+.meal b{display:block;font-size:1rem;font-weight:600}.meal small{font-size:.8125rem;color:var(--tx-2);display:block}
+.meal .ok{font-weight:700;color:var(--done-ink)}
+.meal:last-child{border-bottom:0}
 .file{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 /* feed */
-.post{border-bottom:1px solid var(--sep);padding-bottom:12px;display:flex;flex-direction:column;gap:8px}
-.ph-big{aspect-ratio:4/5;position:relative;margin:0 -18px;background:var(--surface-2);overflow:hidden;max-width:calc(100% + 36px)}
+.post{background:var(--surface);border-radius:var(--r3);box-shadow:var(--sh1);padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.ph-big{aspect-ratio:4/5;position:relative;margin:0 -14px;background:var(--surface-2);overflow:hidden;max-width:calc(100% + 28px)}
 .ph-big img{width:100%;height:100%;object-fit:cover;display:block}
-.ph-big .ov{position:absolute;left:0;right:0;bottom:0;padding:40px 14px 12px;display:flex;gap:18px;color:#fff;background:linear-gradient(180deg,rgba(11,13,16,0),rgba(11,13,16,.75))}
-.ph-big .ov b{display:block;font-family:var(--f);font-size:1.7rem;line-height:1}
-.ph-big .ov span{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;font-weight:800;opacity:.85}
-.ph-card{aspect-ratio:1/1;margin:0 -18px;background:var(--ink);color:#fff;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;max-width:calc(100% + 36px)}
-.ph-card .t{font-family:var(--f);font-weight:900;font-size:2rem;text-transform:uppercase;line-height:.9}
+.ph-big .ov{position:absolute;left:0;right:0;bottom:0;padding:48px 16px 14px;display:flex;gap:18px;color:#fff;background:linear-gradient(180deg,rgba(11,13,16,0),rgba(11,13,16,.7))}
+.ph-big .ov b{display:block;font-weight:700;font-size:1.625rem;line-height:1.1;letter-spacing:-.03em}
+.ph-big .ov span{font-size:.75rem;font-weight:500;opacity:.9}
+.ph-card{aspect-ratio:1/1;margin:0 -14px;background:linear-gradient(160deg,#CF4500,#9A3300);color:#fff;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;max-width:calc(100% + 28px)}
+.ph-card .t{font-weight:700;font-size:2rem;line-height:1.05;letter-spacing:-.03em}
 .ph-card .nums{display:flex;gap:18px;flex-wrap:wrap}
-.ph-card .nums b{font-family:var(--f);font-size:2rem;line-height:1;display:block}
-.ph-card .nums span{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:800}
-.ph-card .bad{font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--go-ink)}
-.ph-row{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;text-align:left;width:100%}
-.ph-row b{font-size:.92rem;display:block}.ph-row small{font-size:.76rem;color:var(--tx-2);display:block}
-.ph-row .tag{margin-left:auto;font-size:.58rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--tx-2)}
-.act{display:flex;align-items:center;gap:14px;font-size:.84rem}
-.kudo{border:0;background:none;padding:4px 0;display:inline-flex;align-items:center;gap:6px;font-weight:800}
-.kudo i{width:15px;height:19px;background:var(--sep);clip-path:polygon(50% 0,100% 60%,80% 100%,20% 100%,0 60%);display:inline-block}
-.kudo[aria-pressed="true"] i{background:var(--go)}
-.badge{font-size:.68rem;font-weight:800;padding:3px 7px;border:1px solid var(--sep);align-self:flex-start;background:var(--surface)}
-.person{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--surface-2)}
+.ph-card .nums b{font-weight:700;font-size:2rem;line-height:1.1;letter-spacing:-.03em;display:block}
+.ph-card .nums span{font-size:.75rem;color:rgba(255,255,255,.88);font-weight:500}
+.ph-card .bad{font-size:.75rem;font-weight:600;color:#fff;opacity:.9}
+.ph-row{min-height:44px;display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;text-align:left;width:100%}
+.ph-row b{font-size:1rem;font-weight:600;display:block}.ph-row small{font-size:.8125rem;color:var(--tx-2);display:block}
+.ph-row .tag{margin-left:auto;font-size:.75rem;font-weight:600;color:var(--tx-2)}
+.act{display:flex;align-items:center;gap:14px;font-size:.875rem}
+.kudo{border:0;background:none;padding:6px 0;min-height:44px;min-width:44px;display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.kudo i{width:16px;height:20px;background:var(--tx-2);opacity:.6;clip-path:polygon(50% 0,100% 60%,80% 100%,20% 100%,0 60%);display:inline-block;transition:background-color .15s,opacity .15s,transform .35s cubic-bezier(.34,1.56,.64,1)}
+.kudo[aria-pressed="true"] i{background:var(--go);opacity:1;transform:scale(1.15)}
+.badge{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:999px;align-self:flex-start;background:var(--surface-2)}
+.person{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sep)}
 .person>button:first-child{flex:1;min-width:0}
+.big-n{font-size:1.375rem}.tr{text-align:right}.cor-swim{color:var(--swim-ink)}.steps .ben{margin-right:8px}
+button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;border-bottom:1px solid var(--sep);background:none;text-align:left;min-height:44px}.actv img{width:44px;height:44px;object-fit:cover;border-radius:8px}
+.row.nw{flex-wrap:nowrap}.row.st{align-items:stretch}.rcard.row{flex-direction:row;justify-content:space-between;align-items:center}.rcard.hl{background:var(--go-soft)}.rcard.hl>div:first-child{width:64px;flex:none}.rcard.hl{justify-content:flex-start;gap:12px}.rcard.c{align-items:center;text-align:center}
+.badge.hot{background:var(--go-soft);color:var(--go-ink)}.badge.on{background:var(--go-fill);color:#fff}.steps .badge{flex:none}.mhead button:disabled{opacity:.3}
+.pill.ex{background:var(--tx-2);color:var(--surface)}
+.box.cam{align-items:center;text-align:center;cursor:pointer}
+.box.cam img,.sheet img{max-height:240px;object-fit:cover;border-radius:var(--r1)}
 /* performance */
 .score{display:flex;align-items:flex-end;gap:6px}
-.score b{font-family:var(--f);font-weight:700;font-size:4.6rem;line-height:.8}
-.score small{font-family:var(--f);font-size:1.3rem;color:var(--tx-2);padding-bottom:6px}
-.xpbar{height:8px;background:var(--sep);position:relative}.xpbar i{position:absolute;left:0;top:0;bottom:0;background:var(--go)}
-.rk{display:grid;grid-template-columns:22px 32px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--surface-2)}
-.rk.me{background:var(--go-soft);margin:0 -8px;padding:8px}
+.score b{font-weight:700;font-size:4.5rem;line-height:.85;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.score small{font-size:1.25rem;color:var(--tx-2);padding-bottom:6px}
+.rkl{background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);padding:2px 14px;overflow:hidden}.rkl .rk:last-child,.rkl .person:last-child{border-bottom:0}.rkl .rk.eu{margin:0 -14px;padding:10px 14px;border-radius:0}.rk.old{opacity:.55}
+.rk .xpbar{display:block;height:6px;margin-top:4px}.xpbar i.ok{background:var(--done)}
+.xpbar{height:8px;border-radius:4px;background:var(--track);position:relative;overflow:hidden}.xpbar i{position:absolute;left:0;top:0;bottom:0;background:var(--go);border-radius:4px;transition:width .5s cubic-bezier(.32,.72,0,1)}
+.rk{display:grid;grid-template-columns:24px 34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--sep)}
+.rk.eu{background:var(--go-soft);margin:0 -10px;padding:10px;border-radius:var(--r1)}
 .rk b.n{font-size:1rem}
-.rings{display:flex;gap:14px;align-items:center}
-.rings svg{flex:none}
-.rings ul{list-style:none;margin:0;padding:0;font-size:.82rem;display:flex;flex-direction:column;gap:4px}
-.rings li b{font-family:var(--f)}
-.meds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;text-align:center;font-size:.64rem;font-weight:700}
-.meds i{display:block;width:40px;height:40px;margin:4px auto 8px;border:2px solid var(--ink);transform:rotate(45deg)}
-.meds div.off{color:var(--tx-2)}.meds div.off i{border-color:var(--sep)}
-.meds div.sec i{border-style:dashed}
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-.cal i{aspect-ratio:1;background:var(--surface-2);display:block}
-.cal i.f{background:var(--ink)}.cal i.p{background:#9aa3ad}.cal i.t{outline:2px solid var(--go);outline-offset:-2px}
-.sbars{display:flex;flex-direction:column;gap:7px;font-size:.82rem}
-.sbars>div{display:grid;grid-template-columns:76px minmax(0,1fr) 44px;gap:8px;align-items:center}
-.sbars i{height:6px;background:var(--sep);display:block;position:relative}
-.sbars i em{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
-.sbars b{font-family:var(--f);text-align:right}
+.sbars{display:flex;flex-direction:column;gap:12px;font-size:.875rem;background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);padding:14px}
+.sbars>div{display:grid;grid-template-columns:80px minmax(0,1fr) 44px;gap:8px;align-items:center}
+.sbars i{height:6px;border-radius:3px;background:var(--track);display:block;position:relative;overflow:hidden}
+.sbars i em{position:absolute;left:0;top:0;bottom:0;background:var(--go);border-radius:3px}
+.sbars b{text-align:right;font-variant-numeric:tabular-nums}
+.sbars>div>span+span{display:flex;flex-direction:column;gap:4px}
 /* chat */
 .chat{display:flex;flex-direction:column;min-height:100vh}
 .chat-h{position:sticky;top:env(safe-area-inset-top,0px);padding:4px 16px 12px;display:flex;flex-direction:column;gap:10px;z-index:5;border-width:0 0 1px}
@@ -442,49 +442,43 @@ textarea.inp{resize:vertical;min-height:88px}
 .wkstrip i{width:26px;height:26px;border-radius:50%;background:var(--surface-2);display:grid;place-content:center;font-style:normal;font-size:.6875rem;color:#fff}
 .wkstrip i.on{background:linear-gradient(160deg,#FFC24B,var(--go))}
 .wkstrip i.td{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--go)}
-.rcard{border-radius:var(--r2);padding:14px;background:var(--surface);box-shadow:var(--sh1);display:flex;flex-direction:column;gap:8px}
-.lvlc{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;text-align:left;width:100%}
-.pbar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}.pbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FF8A3D,var(--go))}
-.rtiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.rtiles>div{border:1px solid var(--sep);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.rtiles b{font-family:var(--f);font-size:1.7rem;line-height:1}
-.rtiles em{font-style:normal;font-size:.7rem;font-weight:800;color:var(--done-ink)}
-.nav4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.nav4 button{border-radius:14px;padding:11px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--sep);background:var(--surface);text-align:left}
-.nav4 button:first-child{background:#FFF6EF;border-color:#FFD6C2}
-.nav4 b{font-size:.92rem}.nav4 small{font-size:.74rem;color:var(--tx-2)}
+.rcard{border-radius:var(--r2);padding:14px;background:var(--surface);box-shadow:var(--sh1);display:flex;flex-direction:column;gap:10px}
+.rtiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rtiles>div{border-radius:var(--r2);background:var(--surface);box-shadow:var(--sh1);padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.rtiles b{font-weight:700;font-size:1.75rem;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.rtiles em{font-style:normal;font-size:.75rem;font-weight:600;color:var(--done-ink)}
 .chartc svg{width:100%;display:block}
-.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.72rem;color:var(--tx-2);font-weight:700}
-.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:var(--c);vertical-align:-1px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.75rem;color:var(--tx-2);font-weight:500}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:var(--c);vertical-align:-1px}
 .mhead{display:flex;justify-content:space-between;align-items:center}
-.mhead button{border:1px solid var(--sep);background:var(--surface);border-radius:10px;width:38px;height:38px;font-weight:900;font-size:1.1rem}
+.mhead button{border:0;background:var(--surface-2);border-radius:50%;width:44px;height:44px;font-weight:700;font-size:1.1rem}
 .mcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-.mcal .dw{font-size:.58rem;font-weight:800;color:var(--tx-2);text-align:center}
-.mcal button{aspect-ratio:1/1.08;border-radius:10px;background:var(--surface-2);border:1px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:4px 0 5px;font-family:var(--f);font-weight:700;font-size:.82rem;min-width:0}
+.mcal .dw{font-size:.6875rem;font-weight:600;color:var(--tx-2);text-align:center}
+.mcal button{aspect-ratio:1/1.08;border-radius:var(--r1);background:var(--surface-2);border:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:4px 0 5px;font-weight:600;font-size:.875rem;font-variant-numeric:tabular-nums}
 .mcal .x{visibility:hidden}
-.mcal .act{background:var(--surface);border-color:var(--sep)}
-.mcal .race{border:2px solid var(--go)}
-.mcal .sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+.mcal .act{background:var(--surface)}
+.mcal .race{box-shadow:inset 0 0 0 2px var(--go)}
+.mcal .sel{background:var(--go-fill);color:#fff}
 .mcal .tod{box-shadow:inset 0 0 0 2px var(--go)}
 .mcal .fut{opacity:.45}
 .dots{display:flex;gap:2px;min-height:5px}.dots i{width:5px;height:5px;border-radius:50%;background:var(--c)}
-.peek{border-radius:16px;background:var(--surface-2);padding:11px;display:flex;flex-direction:column;gap:8px}
-.actv{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:9px;align-items:center;font-size:.86rem}
-.actv i{width:32px;height:32px;border-radius:9px;background:var(--c);display:grid;place-content:center;color:#fff;font-style:normal;font-family:var(--f);font-weight:700;font-size:.7rem}
-.actv b{display:block}.actv small{color:var(--tx-2);font-size:.74rem;display:block}
-.race-card{border-radius:18px;padding:14px;background:linear-gradient(150deg,#FFF1EA,#FFFFFF 60%);border:1px solid #FFD6C2;display:flex;flex-direction:column;gap:6px}
-.photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
-.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
-.hexes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.hx{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-size:.68rem;font-weight:700}
-.hx svg{width:72px;height:80px}.hx small{color:var(--tx-2);font-weight:600}.hx.lock{color:var(--tx-2)}
-.track{position:relative;border-radius:16px;background:linear-gradient(180deg,#FFF6EF,#FFFFFF);border:1px solid var(--sep);overflow:hidden}
-.lane{position:absolute;left:14px;right:22px;height:2px;background:repeating-linear-gradient(90deg,#D6DAE0 0 8px,transparent 8px 14px)}
-.runner{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;transition:left .6s}
-.runner .av{border:2px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.15)}
-.runner small{font-family:var(--f);font-weight:700;font-size:.72rem;white-space:nowrap}
-.finish{position:absolute;right:12px;top:8px;bottom:8px;width:6px;background:repeating-linear-gradient(180deg,var(--ink) 0 6px,#fff 6px 12px);border-radius:2px}
-.pot{border-radius:14px;background:var(--ink);color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.peek{border-radius:var(--r2);background:var(--surface-2);padding:12px;display:flex;flex-direction:column;gap:8px}
+.actv{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:.9375rem}
+.actv i{width:34px;height:34px;border-radius:10px;background:var(--c);display:grid;place-content:center;color:#fff;font-style:normal;font-weight:600;font-size:.75rem}
+.actv b{display:block;font-weight:600}.actv small{color:var(--tx-2);font-size:.8125rem;display:block}
+.race-card{border-radius:var(--r3);padding:16px;background:linear-gradient(150deg,var(--go-soft),var(--surface) 65%);box-shadow:var(--sh1);display:flex;flex-direction:column;gap:6px}
+.photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--r1)}
+.hexes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hx{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-size:.75rem;font-weight:600}
+.hx svg{width:72px;height:80px}.hx small{color:var(--tx-2);font-weight:500}.hx.lock{color:var(--tx-2)}
+.track{position:relative;border-radius:var(--r2);background:linear-gradient(180deg,var(--go-soft),var(--surface));box-shadow:var(--sh1);overflow:hidden}
+.lane{position:absolute;left:14px;right:22px;height:2px;background:repeating-linear-gradient(90deg,var(--sep) 0 8px,transparent 8px 14px)}
+.runner{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;transition:left .6s cubic-bezier(.32,.72,0,1)}
+.runner .av{border:2px solid var(--surface);box-shadow:var(--sh2)}
+.runner small{font-weight:700;font-size:.75rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.finish{position:absolute;right:12px;top:8px;bottom:8px;width:6px;background:repeating-linear-gradient(180deg,var(--tx) 0 6px,var(--surface) 6px 12px);border-radius:3px}
+.pot{border-radius:var(--r2);background:var(--go-soft);color:var(--go-ink);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 #cele{position:fixed;inset:0;z-index:90;pointer-events:none;display:grid;place-content:center}
@@ -497,15 +491,20 @@ textarea.inp{resize:vertical;min-height:88px}
 
 
 .pf{display:flex;flex-direction:column;gap:12px}
-.pf-card{border:1px solid var(--sep);border-radius:14px;padding:12px;background:var(--surface);display:flex;flex-direction:column;gap:8px;min-width:0}
+.pf-card{border-radius:var(--r2);padding:14px;background:var(--surface);box-shadow:var(--sh1);display:flex;flex-direction:column;gap:10px;min-width:0}
 .pf-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
-.pf-n{display:inline-grid;place-content:center;width:20px;height:20px;border-radius:50%;background:var(--go-fill);color:#fff;font-size:.68rem;font-weight:800;margin-right:6px;letter-spacing:0}
-.pf-bar{height:8px;background:var(--sep);border-radius:99px;overflow:hidden}.pf-bar i{display:block;height:100%;border-radius:99px;background:var(--go)}
-.pf-chip{border:1px solid var(--sep);border-radius:99px;padding:5px 10px;font-size:.78rem;background:none;color:var(--tx);font-weight:600}
+.pf-n{display:inline-grid;place-content:center;width:22px;height:22px;border-radius:50%;background:var(--go-fill);color:#fff;font-size:.75rem;font-weight:600;margin-right:6px}
+.pf-bar{height:8px;background:var(--track);border-radius:99px;overflow:hidden}.pf-bar i{display:block;height:100%;border-radius:99px;background:var(--go)}
+.pf-chip{border:0;border-radius:99px;padding:6px 12px;font-size:.8125rem;background:var(--surface-2);color:var(--tx);font-weight:600}
 .pf-chips{display:flex;gap:8px;flex-wrap:wrap}
-.pf-link{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border:0;border-top:1px solid var(--surface-2);background:none;color:var(--tx);text-align:left;min-height:44px}
+.pf-link{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border:0;border-top:1px solid var(--sep);background:none;color:var(--tx);text-align:left;min-height:48px}
 .pf-ok{color:var(--done-ink)}.pf-dn{color:var(--stop-ink)}
-.pf-card .fire-hero{margin:0}
+.pf-card .fire-hero{margin:0;grid-template-columns:96px 1fr}.pf-card .flame{width:96px;height:108px}.pf-card>.pf-chip{align-self:flex-start}
+.pf-card.c{align-items:center;text-align:center}.pf-card.c>.k:first-child{align-self:flex-start}
+.pf-row>b{font-size:1.125rem;letter-spacing:-.01em}.pf-row.end{align-items:flex-end}.pf-row.end .s{text-align:right}
+.pf-big{font-weight:700;font-size:3.5rem;line-height:.9;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.pf-card svg circle[stroke-dasharray]{animation:ring .7s cubic-bezier(.32,.72,0,1) both}
+@keyframes ring{from{stroke-dasharray:.01 364.4}}
 </style>
 <div class="wrap">
   <header class="cab mat" id="cab" aria-hidden="true"><span></span></header>
@@ -2393,7 +2392,7 @@ function sheetItem(tp, ar){
   $("dim").onclick = fecha;
 }
 function sheetPostar(){
-  const ov = $("ov"); ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2">Postar no feed?</h2>'+(fotoTmp?'<img src="'+esc(fotoTmp)+'" alt="" style="max-height:220px;object-fit:cover">':'')+'<button type="button" class="btn go" id="sp1">Postar</button><button type="button" class="lk" id="sp2">Agora não</button></div>';
+  const ov = $("ov"); ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2">Postar no feed?</h2>'+(fotoTmp?'<img src="'+esc(fotoTmp)+'" alt="">':'')+'<button type="button" class="btn go" id="sp1">Postar</button><button type="button" class="lk" id="sp2">Agora não</button></div>';
   $("sp1").onclick = ()=>{ fecharSheet(); feedView = "postar"; ir("feed"); }; $("sp2").onclick = $("dim").onclick = ()=>{ fecharSheet(); fotoTmp = ""; };
 }
 let reanalisando = false;
@@ -2891,7 +2890,7 @@ function carregarPostsDono(src){
 }
 let socT = null;
 function salvarSocial(){ if (DEMO || !db || !me) return; clearTimeout(socT); socT = setTimeout(()=>{ const c = JSON.parse(JSON.stringify(SOC)); c.posts = c.posts.filter(p=>p.autor!=="andre" || isOwner); let n = 0; c.posts.sort((a,b)=>String(b.at).localeCompare(String(a.at))).forEach(p=>{ if (p.foto && p.foto.startsWith("data:")){ n++; if (n>3) p.foto = ""; } }); db.collection(base()).doc("social").set(c).catch(()=>{}); }, 600); }
-function pessoa(id){ if (id===ME()) return {nome:(P&&P.perfil&&P.perfil.apelido)||meName||"Você", meta:(P&&P.perfil&&TPL[P.perfil.objetivo]?TPL[P.perfil.objetivo].nome:""), cor:"#0B0D10", eu:true, nivel:nivelXP().n}; return SOC.people[id] || {nome:"Atleta", cor:"#5A626C"}; }
+function pessoa(id){ if (id===ME()) return {nome:(P&&P.perfil&&P.perfil.apelido)||meName||"Você", meta:(P&&P.perfil&&TPL[P.perfil.objetivo]?TPL[P.perfil.objetivo].nome:""), cor:"var(--go-fill)", eu:true, nivel:nivelXP().n}; return SOC.people[id] || {nome:"Atleta", cor:"var(--neutro)"}; }
 function avatar(id, sz){ const p = pessoa(id); return '<span class="av" style="width:'+(sz||34)+'px;height:'+(sz||34)+'px;background:'+p.cor+'">'+esc(ini(p.nome))+'</span>'; }
 function segue(a,b){ return (SOC.follows[a]||[]).includes(b); }
 function relTempo(iso){ const m = Math.round((Date.now()-new Date(iso))/60000); if (m<60) return m<=1?"agora":"há "+m+" min"; const h = Math.round(m/60); if (h<24) return "há "+h+" h"; const dd = Math.round(h/24); return dd===1?"ontem":"há "+dd+" dias"; }
@@ -2902,10 +2901,10 @@ function postCard(p){
   const media = p.foto ? '<div class="ph-big"><img src="'+esc(p.foto)+'" alt="Foto do treino de '+esc(pe.nome)+'"><div class="ov">'+st+'</div></div>'
     : '<div class="ph-card">'+(p.selo?'<span class="bad">'+esc(p.selo)+'</span>':'')+'<div class="t">'+esc(p.titulo)+'</div><div class="nums">'+st+'</div></div>';
   const kn = ks.length ? ks.slice(0,2).map(id=>id===ME()?"você":pessoa(id).nome.split(" ")[0]).join(", ")+(ks.length>2?" e mais "+(ks.length-2):"") : "seja o primeiro a dar fogo";
-  return '<article class="post"><button type="button" class="ph-row" data-fv="perfil:'+esc(p.autor)+'">'+avatar(p.autor)+'<span><b>'+esc(pe.nome)+(pe.exemplo?' <span class="pill" style="background:var(--tx-2)">exemplo</span>':'')+'</b><small>'+esc(relTempo(p.at))+(p.junto&&p.junto.length?' · com '+esc(p.junto.map(j=>pessoa(j).nome.split(" ")[0]).join(", ")):'')+'</small></span><span class="tag">'+esc(ESPN[p.esporte]||"treino")+'</span></button>'+media+
+  return '<article class="post"><button type="button" class="ph-row" data-fv="perfil:'+esc(p.autor)+'">'+avatar(p.autor)+'<span><b>'+esc(pe.nome)+(pe.exemplo?' <span class="pill ex">exemplo</span>':'')+'</b><small>'+esc(relTempo(p.at))+(p.junto&&p.junto.length?' · com '+esc(p.junto.map(j=>pessoa(j).nome.split(" ")[0]).join(", ")):'')+'</small></span><span class="tag">'+esc(ESPN[p.esporte]||"treino")+'</span></button>'+media+
     (p.plano?'<span class="badge">'+esc(p.plano)+'</span>':'')+
     '<div class="act"><button type="button" class="kudo" data-kudo="'+esc(p.id)+'" aria-pressed="'+mine+'" aria-label="Dar fogo"><i></i>'+ks.length+'</button><span class="s">'+esc(kn)+'</span></div>'+
-    (p.legenda?'<p style="font-size:.88rem"><b>'+esc(pe.nome.split(" ")[0].toLowerCase())+'</b> '+esc(p.legenda)+'</p>':'')+
+    (p.legenda?'<p><b>'+esc(pe.nome.split(" ")[0].toLowerCase())+'</b> '+esc(p.legenda)+'</p>':'')+
     ((p.reacoes||[]).length?'<div class="chips">'+p.reacoes.slice(-4).map(r=>'<span>'+esc(pessoa(r.de).nome.split(" ")[0])+': '+esc(r.t)+'</span>').join("")+'</div>':'')+
     '<div class="chips" data-reac="'+esc(p.id)+'">'+["Monstro!","Bora!","Que pace","Inspirou"].map(t=>'<button type="button" class="chip" data-t="'+esc(t)+'">'+esc(t)+'</button>').join("")+'</div></article>';
 }
@@ -2919,7 +2918,7 @@ function telaFeed(o){
     const sg = new Set((SOC.follows[ME()]||[]).concat([ME()]));
     const posts = SOC.posts.filter(p=>feedFiltro==="todos" || sg.has(p.autor)).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
     const nl = SOC.notifs.filter(n=>!n.lido).length, f = foguinho();
-    h = '<div class="between"><h1 class="h1">Feed</h1><div class="row"><button type="button" class="badge" data-fv="pessoas">pessoas</button><button type="button" class="badge" data-fv="avisos">avisos'+(nl?' · '+nl:'')+'</button></div></div>'+
+    h = '<div class="between"><h1 class="h1">Feed</h1><div class="row"><button type="button" class="btn sm" data-fv="pessoas">pessoas</button><button type="button" class="btn sm" data-fv="avisos">avisos'+(nl?' · '+nl:'')+'</button></div></div>'+
       '<button type="button" class="btn go" data-fv="postar">Postar meu treino</button>'+
       (!f.hojeOk?'<div class="flag">Seu foguinho de '+f.n+' dias espera um sinal hoje: poste, faça o check-in ou marque um treino.</div>':'')+
       '<div class="seg" style="--c:2" id="ff"><button type="button" data-v="seguindo" aria-pressed="'+(feedFiltro==="seguindo")+'">Seguindo</button><button type="button" data-v="todos" aria-pressed="'+(feedFiltro==="todos")+'">Todos</button></div>'+
@@ -2931,7 +2930,7 @@ function telaFeed(o){
 function pessoasHTML(){
   const q = norm(draft._busca||""), ids = Object.keys(SOC.people).filter(id=>!q || norm(pessoa(id).nome).includes(q));
   return '<button type="button" class="back" data-fv="feed">← Feed</button><h1 class="h1">Pessoas</h1><input class="inp" id="busca" placeholder="Procurar pelo nome" value="'+esc(draft._busca||"")+'">'+
-    ids.map(id=>{ const p = pessoa(id), eu = segue(ME(),id), ele = segue(id,ME()); return '<div class="person"><button type="button" class="ph-row" data-fv="perfil:'+esc(id)+'">'+avatar(id,40)+'<span><b>'+esc(p.nome)+'</b><small>'+esc(p.meta||"")+(ele&&!eu?' · segue você':'')+'</small></span></button><button type="button" class="btn sm'+(eu?'':' ink')+'" data-fol="'+esc(id)+'">'+(eu?(ele?"Amigos":"Seguindo"):(ele?"Seguir de volta":"Seguir"))+'</button></div>'; }).join("")+
+    '<div class="rkl">'+ids.map(id=>{ const p = pessoa(id), eu = segue(ME(),id), ele = segue(id,ME()); return '<div class="person"><button type="button" class="ph-row" data-fv="perfil:'+esc(id)+'">'+avatar(id,40)+'<span><b>'+esc(p.nome)+'</b><small>'+esc(p.meta||"")+(ele&&!eu?' · segue você':'')+'</small></span></button><button type="button" class="btn sm'+(eu?'':' ink')+'" data-fol="'+esc(id)+'">'+(eu?(ele?"Amigos":"Seguindo"):(ele?"Seguir de volta":"Seguir"))+'</button></div>'; }).join("")+'</div>'+
     '<div class="box"><b>Chamar mais gente</b><p class="s">Mande seu convite: quem entrar com seu código fica como seu indicado.</p><button class="btn" type="button" id="inv">Copiar convite</button></div>';
 }
 function perfilAmigoHTML(id){
@@ -2939,11 +2938,11 @@ function perfilAmigoHTML(id){
   const amigos = segue(ME(),id) && segue(id,ME()), mostra = id===ME() || (p.compartilha && amigos);
   const eu = {km:kmPeriodo(7), tr:(()=>{ let n=0; for (let i=0;i<7;i++){ const d = addDays(today,-i); treinosDe(d).forEach((t,j)=>{ if (feito(d,j)) n++; }); } return n; })(), xp:xpSemana()};
   const ele = {km:p.kmSem||0, tr:Math.round((p.feitos||0)/20), xp:p.xpSem||0};
-  const barra = (lbl, a, b) => { const mx = Math.max(1,a,b); return '<div style="grid-template-columns:62px minmax(0,1fr) 46px"><span>'+lbl+'</span><span style="display:flex;flex-direction:column;gap:3px"><i><em style="width:'+Math.round(100*b/mx)+'%;background:var(--swim)"></em></i><i><em style="width:'+Math.round(100*a/mx)+'%;background:var(--go)"></em></i></span><b>'+num(b,1)+'<br><span style="color:var(--go-ink)">'+num(a,1)+'</span></b></div>'; };
+  const barra = (lbl, a, b) => { const mx = Math.max(1,a,b); return '<div><span>'+lbl+'</span><span><i><em style="width:'+Math.round(100*b/mx)+'%;background:var(--swim)"></em></i><i><em style="width:'+Math.round(100*a/mx)+'%;background:var(--go)"></em></i></span><b>'+num(b,1)+'<br><span class="cor-go">'+num(a,1)+'</span></b></div>'; };
   return '<button type="button" class="back" data-fv="feed">← Feed</button><div class="prof">'+avatar(id,56)+'<div><h1 class="h2">'+esc(p.nome)+'</h1><span class="s">'+(p.nivel?'nível '+p.nivel+' · ':'')+esc(p.meta||"")+'</span></div></div>'+
     (id!==ME()?'<div class="row"><button type="button" class="btn sm'+(segue(ME(),id)?'':' ink')+'" data-fol="'+esc(id)+'">'+(segue(ME(),id)?(segue(id,ME())?"Amigos":"Seguindo"):(segue(id,ME())?"Seguir de volta":"Seguir"))+'</button>'+(mostra?'<button type="button" class="btn sm go" id="desaf" data-amigo="'+esc(id)+'">Desafiar</button>':'')+'</div>':'')+
     (mostra ? '<div class="stats3"><div><b><span class="fire"><i></i>'+(id===ME()?foguinho().n:p.streak||0)+'</span></b><span>dias seguidos</span></div><div><b>'+(id===ME()?aderencia7():p.feitos||0)+'%</b><span>treinos feitos</span></div><div><b>'+(id===ME()?kmPeriodo(30):p.km30||0)+'</b><span>km no mês</span></div></div>'+
-      (id!==ME()?'<span class="k">vocês dois nesta semana</span><div class="sbars">'+barra("Km",eu.km,ele.km)+barra("Treinos",eu.tr,ele.tr)+barra("XP",eu.xp,ele.xp)+'</div><span class="s"><b style="color:var(--swim)">■</b> '+esc(p.nome.split(" ")[0])+' &nbsp; <b style="color:var(--go-ink)">■</b> você</span>':'')
+      (id!==ME()?'<span class="k">vocês dois nesta semana</span><div class="sbars">'+barra("Km",eu.km,ele.km)+barra("Treinos",eu.tr,ele.tr)+barra("XP",eu.xp,ele.xp)+'</div><span class="s"><b style="color:var(--swim)">■</b> '+esc(p.nome.split(" ")[0])+' &nbsp; <b class="cor-go">■</b> você</span>':'')
       : '<div class="hint">'+esc(p.nome.split(" ")[0])+' mostra o progresso só para amigos (quando os dois se seguem).</div>')+
     posts.map(postCard).join("");
 }
@@ -2952,7 +2951,7 @@ let fotoTmp = "";
 function postarHTML(){
   const amigos = (SOC.follows[ME()]||[]).filter(x=>SOC.people[x]);
   return '<button type="button" class="back" data-fv="feed">← Feed</button><h1 class="h1">Postar treino</h1>'+
-    '<label class="box" for="pf-foto" style="align-items:center;cursor:pointer;text-align:center">'+(fotoTmp?'<img src="'+esc(fotoTmp)+'" alt="Prévia da foto" style="max-height:260px;object-fit:cover">':'<b>Adicionar foto</b><small class="s">do treino, da prova, do pós</small>')+'</label><input id="pf-foto" class="file" type="file" accept="image/*">'+
+    '<label class="box cam" for="pf-foto">'+(fotoTmp?'<img src="'+esc(fotoTmp)+'" alt="Prévia da foto">':'<b>Adicionar foto</b><small class="s">do treino, da prova, do pós</small>')+'</label><input id="pf-foto" class="file" type="file" accept="image/*">'+
     '<div class="fld"><span class="lbl">Esporte</span>'+seg("pf_esp",[["run","Corrida"],["gym","Força"],["swim","Natação"],["bike","Bike"],["hyrox","Hyrox"],["race","Prova"]],3)+'</div>'+
     '<div class="fld"><label for="pt">Título</label><input class="inp" id="pt" data-f="pf_tit" maxlength="50" placeholder="ex.: Longão de domingo"></div>'+
     '<div class="grid2"><div class="fld"><label for="pk">Distância (km)</label><input class="inp" id="pk" data-f="pf_km" type="number" inputmode="decimal" step="0.1"></div><div class="fld"><label for="pmn">Tempo (min)</label><input class="inp" id="pmn" data-f="pf_min" type="number" inputmode="numeric"></div></div>'+
@@ -2996,12 +2995,12 @@ function telaComida(o){
   const agua = LOG["agua_"+k]||0;
   const regsOntem = LOG["ref_"+key(addDays(today,-1))] || [], favs = LOG["fav_refs"] || [];
   const h = topo(esc(NOMETP[m.tp]+" · "+fmt(today)), "Comida")+
-    '<div class="macro"><div><b>'+c.p+'<small class="s">/'+m.prot[0]+'g</small></b><span>proteína</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.p/m.prot[0]))+'%"></i></div></div><div><b>'+c.c+'<small class="s">/'+m.carb[0]+'g</small></b><span>carbo</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.c/m.carb[0]))+'%"></i></div></div><button type="button" style="border:1px solid var(--sep);background:var(--surface);padding:9px;text-align:left" id="agua"><b class="n" style="font-size:1.25rem;display:block;line-height:1">'+String(agua).replace(".",",")+'<small class="s">/'+num(m.agua,1)+'L</small></b><span class="k" style="font-size:.56rem">água · toque +250 ml</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*agua/m.agua))+'%"></i></div></button></div>'+
+    '<div class="macro"><div><b>'+c.p+'<small class="s">/'+m.prot[0]+'g</small></b><span>proteína</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.p/m.prot[0]))+'%"></i></div></div><div><b>'+c.c+'<small class="s">/'+m.carb[0]+'g</small></b><span>carbo</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*c.c/m.carb[0]))+'%"></i></div></div><button type="button" id="agua"><b>'+String(agua).replace(".",",")+'<small class="s">/'+num(m.agua,1)+'L</small></b><span>água · toque +250 ml</span><div class="bar"><i style="width:'+Math.min(100,Math.round(100*agua/m.agua))+'%"></i></div></button></div>'+
     faixaCaloriasHTML()+
     '<p class="s">Metas de hoje: proteína '+m.prot[0]+'–'+m.prot[1]+' g · carbo '+m.carb[0]+'–'+m.carb[1]+' g (pelo seu peso e o treino do dia). Os números somam o que você registra.</p>'+
-    '<span class="k">refeições</span>'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>'+(candidatasRepetir(regsOntem, favs, r.refeicao).length?'<button type="button" class="btn sm ghost" data-rep="'+esc(r.refeicao)+'">repetir</button>':''))+'</div>').join("")+
+    '<span class="k">refeições</span><div class="lst">'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>'+(candidatasRepetir(regsOntem, favs, r.refeicao).length?'<button type="button" class="btn sm ghost" data-rep="'+esc(r.refeicao)+'">repetir</button>':''))+'</div>').join("")+'</div>'+
     '<p class="msg" id="cmm"></p>'+
-    '<div class="box"><div class="between"><b>Cardápio do dia</b>'+(cd?'<button type="button" class="lk" id="cg2">refazer</button>':'')+'</div>'+(cd ? cd.refeicoes.map(r=>'<div><b style="font-size:.88rem">'+esc(r.hora||"")+' · '+esc(r.nome)+'</b><p class="s">'+esc((r.itens||[]).join(", "))+' · P ~'+esc(r.prot||"?")+' g</p></div>').join("") : '<p class="s">Opcional. A Nutri conta o que você come e dá dicas. Se você quiser, ela também monta um cardápio com comida brasileira, dentro das suas metas'+((P.perfil.restricoes||[]).length?' e restrições ('+esc(P.perfil.restricoes.join(", "))+')':'')+'.</p><button type="button" class="btn ghost" id="cg">Quero um cardápio para hoje</button>')+'</div>'+
+    '<div class="box"><div class="between"><b>Cardápio do dia</b>'+(cd?'<button type="button" class="lk" id="cg2">refazer</button>':'')+'</div>'+(cd ? cd.refeicoes.map(r=>'<div><b>'+esc(r.hora||"")+' · '+esc(r.nome)+'</b><p class="s">'+esc((r.itens||[]).join(", "))+' · P ~'+esc(r.prot||"?")+' g</p></div>').join("") : '<p class="s">Opcional. A Nutri conta o que você come e dá dicas. Se você quiser, ela também monta um cardápio com comida brasileira, dentro das suas metas'+((P.perfil.restricoes||[]).length?' e restrições ('+esc(P.perfil.restricoes.join(", "))+')':'')+'.</p><button type="button" class="btn ghost" id="cg">Quero um cardápio para hoje</button>')+'</div>'+
     '<button type="button" class="btn ghost" id="cpl">Lista de compras da semana</button>'+
     '<p class="s tc">Guia de alimentação com base em consensos (ACSM, ISSN). Não substitui nutricionista.</p>';
   const app = tela(h, o); bindGo(app);
@@ -3016,9 +3015,9 @@ function telaComida(o){
 function sheetRepetir(ref){
   const cands = candidatasRepetir(LOG["ref_"+key(addDays(today,-1))]||[], LOG["fav_refs"]||[], ref), ov = $("ov");
   if (!cands.length){ toast("Nada para repetir ainda."); return; }
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Repetir refeição"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Repetir: '+esc(ref)+'</h2>'+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Repetir refeição"><span class="grab"></span><h2 class="h2">Repetir: '+esc(ref)+'</h2>'+
     '<p class="s">A estimativa de calorias é copiada do registro anterior. Se a porção mudou, use "escrever" e conte o que comeu.</p>'+
-    cands.map((c,i)=>'<button type="button" class="btn ghost" data-i="'+i+'" style="text-align:left">'+esc(c.comeu)+'<small class="s" style="display:block">'+(c.origem==="ontem"?"ontem":"favorita")+(c.estimativa?' · '+esc(c.estimativa):'')+'</small></button>').join("")+
+    '<div class="lst">'+cands.map((c,i)=>'<button type="button" data-i="'+i+'"><span>'+esc(c.comeu)+'<small>'+(c.origem==="ontem"?"ontem":"favorita")+(c.estimativa?' · '+esc(c.estimativa):'')+'</small></span></button>').join("")+'</div>'+
     '<button type="button" class="lk" id="rno">Cancelar</button></div>';
   const fecha = ()=>{ fecharSheet(); };
   $("dim").addEventListener("click", fecha); $("rno").addEventListener("click", fecha);
@@ -3045,7 +3044,7 @@ async function gerarCompras(ini){
 let comprasGerando = false, comprasAoTerminar = null;   // comprasAoTerminar: repinta a sheet aberta quando a geração acaba
 function sheetCompras(){
   const ov = $("ov"), ini = semanaCompras(), fecha = ()=>{ fecharSheet(); };
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Lista de compras"><span class="grab"></span><h2 class="h2">Lista de compras</h2><p class="s">Semana de '+esc(fmt(parseD(ini)))+'. É uma estimativa da Nutri: ajuste ao que você já tem em casa. Não substitui nutricionista.</p><div id="cpb"></div><p class="msg" id="cpm"></p></div>';
   $("dim").addEventListener("click", fecha);
   const raiz = $("cpb");
   const montar = async ()=>{
@@ -3067,8 +3066,8 @@ function sheetCompras(){
     const v = LOG["compras_"+ini], b = $("cpb"); if (!b) return;
     if (!v || !(v.itens||[]).length){ b.innerHTML = '<button type="button" class="btn go" id="cpmk">Montar a lista da semana</button><button type="button" class="lk" id="cpfe">Fechar</button>'; $("cpmk").onclick = montar; $("cpfe").onclick = fecha; return; }
     const grupos = []; v.itens.forEach(i=>{ if (!grupos.includes(i.g)) grupos.push(i.g); });
-    b.innerHTML = grupos.map(g=>'<span class="k">'+esc(g)+'</span>'+v.itens.map((i,ix)=>i.g===g ? '<label class="chk"><input type="checkbox" data-i="'+ix+'"'+(i.ok?' checked':'')+'><span>'+esc(i.n)+(i.q?' <small class="s">'+esc(i.q)+'</small>':'')+'</span></label>' : '').join("")).join("")+
-      '<div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn sm" id="cpco">Copiar</button><button type="button" class="btn sm" id="cpba">Baixar</button><button type="button" class="btn sm ghost" id="cpre">Refazer a lista</button></div><button type="button" class="lk" id="cpfe">Fechar</button>';
+    b.innerHTML = grupos.map(g=>'<span class="k">'+esc(g)+'</span><div class="lst">'+v.itens.map((i,ix)=>i.g===g ? '<label><span>'+esc(i.n)+(i.q?'<small>'+esc(i.q)+'</small>':'')+'</span><input type="checkbox" data-i="'+ix+'"'+(i.ok?' checked':'')+'></label>' : '').join("")+'</div>').join("")+
+      '<div class="row mt8"><button type="button" class="btn sm" id="cpco">Copiar</button><button type="button" class="btn sm" id="cpba">Baixar</button><button type="button" class="btn sm ghost" id="cpre">Refazer a lista</button></div><button type="button" class="lk" id="cpfe">Fechar</button>';
     b.querySelectorAll("input[data-i]").forEach(c=>c.addEventListener("change", ()=>{ v.itens[+c.dataset.i].ok = c.checked; salvarLog("compras_"+ini, v); }));
     $("cpco").onclick = ()=>copiar(comprasTexto(v.itens));
     $("cpba").onclick = ()=>baixar("lista-de-compras-"+ini+".txt", comprasTexto(v.itens), "text/plain");
@@ -3142,47 +3141,7 @@ async function gerarCardapio(){
 }
 
 /* ===================== PERFORMANCE ===================== */
-function aneis(){
-  const k = key(today), ts = treinosDe(today), ci = LOG["ci_"+k];
-  const tr = ts.length ? ts.filter((t,i)=>feito(today,i)).length/ts.length : (ci?1:0);
-  const co = Math.min(1, (LOG["ref_"+k]||[]).length/3);
-  const so = ci ? Math.min(1,(+ci.sono||0)/8) : 0;
-  return [["Treino",tr,"#FF5A00"],["Comida",co,"#13A150"],["Sono",so,"#1E88E5"]];
-}
-function aneisSVG(a){ const r0 = 46; return '<svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true">'+a.map((x,i)=>{ const r = r0-i*13, c = 2*Math.PI*r; return '<circle cx="56" cy="56" r="'+r+'" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="10"/><circle cx="56" cy="56" r="'+r+'" fill="none" stroke="'+x[2]+'" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+(c*Math.max(0.001,x[1]))+' '+c+'" transform="rotate(-90 56 56)"/>'; }).join("")+'</svg>'; }
 function ligaLista(){ const l = Object.keys(SOC.people).filter(id=>segue(ME(),id)||id==="andre").map(id=>({id, xp:SOC.people[id].xpSem||0})); l.push({id:ME(), xp:xpSemana()}); return l.sort((a,b)=>b.xp-a.xp); }
-function medalhas(){
-  const ks = Object.keys(LOG), f = foguinho(), posts = SOC.posts.filter(p=>p.autor===ME()).length;
-  const cedo = ks.some(k=>k.startsWith("ck_") && LOG[k] && LOG[k].at && new Date(LOG[k].at).getHours()<6);
-  const fotos3 = ks.some(k=>k.startsWith("ref_") && (LOG[k]||[]).filter(r=>r.foto).length>=3);
-  const dom = ks.some(k=>/^ck_/.test(k) && parseD(k.slice(3,13)) && parseD(k.slice(3,13)).getDay()===0);
-  const prs = ks.filter(k=>k.startsWith("ck_")).reduce((n,k)=>n+((LOG[k]||{}).prs||0),0);
-  return [["7 dias seguidos",f.n>=7],["30 dias seguidos",f.n>=30],["1º recorde",prs>=1],["10 check-ins",ks.filter(k=>k.startsWith("ci_")).length>=10],
-    ["Madrugador",cedo,1],["Prato completo",fotos3,1],["Domingo sagrado",dom,1],["Influencer",posts>=5,1]];
-}
-function telaPerf(o){
-  const n = nivelXP(), f = foguinho(), a = aneis(), liga = ligaLista(), pos = liga.findIndex(x=>x.id===ME())+1, ms = missoes();
-  const des = (SOC.desafios||[]).filter(d=>!d.fim || parseD(d.fim)>=today);
-  const pl = planoAtual(), sem = pl ? pl.semanas : [], s = semanaDe(today);
-  const meds = medalhas();
-  // calendário do mês
-  const m0 = new Date(today.getFullYear(), today.getMonth(), 1), off = dow(m0), nd = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
-  let cal = ""; for (let i=0;i<off;i++) cal += '<i style="background:none"></i>'; for (let dd=1; dd<=nd; dd++){ const d = new Date(today.getFullYear(), today.getMonth(), dd), ts = treinosDe(d), fe = ts.filter((t,j)=>feito(d,j)).length; cal += '<i class="'+(fe&&fe===ts.length?'f':fe||LOG["ci_"+key(d)]?'p':'')+(+d===+today?' t':'')+'" title="'+dd+'"></i>'; }
-  const h = topo("temporada de "+today.toLocaleDateString("pt-BR",{month:"long"}), "Performance")+
-    '<button type="button" class="ci" style="border:2px solid var(--ink)" data-go="perf|nivel"><span><b>Nível '+n.n+' · '+esc(n.faixa)+'</b><small>'+n.x.toLocaleString("pt-BR")+' / '+n.fim.toLocaleString("pt-BR")+' XP · '+esc((BENEF.find(b=>b[0]>n.n)||[0,"todos os prêmios liberados"])[1])+' no nível '+((BENEF.find(b=>b[0]>n.n)||[n.n])[0])+'</small></span><span class="fire'+(f.hojeOk?'':' off')+'"><i></i>'+f.n+'</span></button>'+
-    '<div class="xpbar"><i style="width:'+Math.round(100*(n.x-n.ini)/(n.fim-n.ini))+'%"></i></div>'+
-    '<div class="rings">'+aneisSVG(a)+'<ul>'+a.map(x=>'<li><b style="color:'+x[2]+'">●</b> '+x[0]+' <b>'+Math.round(100*x[1])+'%</b></li>').join("")+'<li class="s">Feche os três anéis hoje.</li></ul></div>'+
-    '<span class="k">missões de hoje</span>'+ms.map(m=>'<div class="between" style="font-size:.88rem;border-bottom:1px solid var(--surface-2);padding:6px 0"><span>'+(m.ok?'✓ ':'○ ')+esc(m.t)+'</span><b class="n" style="color:var(--go-ink)">+'+m.xp+'</b></div>').join("")+
-    '<button type="button" class="ci" data-go="perf|liga"><span><b>Liga da semana · '+pos+'º de '+liga.length+'</b><small>'+(pos>1?'faltam '+(liga[pos-2].xp-liga[pos-1].xp+1)+' XP para passar '+esc(pessoa(liga[pos-2].id).nome.split(" ")[0]):'você lidera')+' · zera na segunda</small></span><span class="n">→</span></button>'+
-    '<button type="button" class="ci" data-go="perf|desafios"><span><b>Desafios com amigos'+(des.length?' · '+des.length+' ativo(s)':'')+'</b><small>'+(des[0]?esc(des[0].titulo):'crie um: quem corre mais, meta juntos, foguinho')+'</small></span><span class="n">→</span></button>'+
-    '<div class="kpi4"><div><b>'+f.n+'</b><span>dias seguidos</span></div><div><b>'+aderencia7()+'%</b><span>treinos feitos · 7 dias</span></div><div><b>'+num(kmPeriodo(30),1)+'</b><span>km no mês</span></div><div><b>'+(()=>{ let s2 = 0, c = 0; for (let i=0;i<7;i++){ const x = LOG["ci_"+key(addDays(today,-i))]; if (x){ s2 += +x.sono||0; c++; } } return c?num(s2/c,1):"—"; })()+'</b><span>sono médio · h</span></div></div>'+
-    (pl && !pl.semProva ? '<span class="k">longão por semana (km)</span><div class="bars">'+sem.map(x=>'<i class="'+(x.deload?'dl':'')+(s&&x.w===s.w?' now':'')+'" style="height:'+Math.max(4,100*x.longao/Math.max(...sem.map(y=>y.longao)))+'%"></i>').join("")+'</div>' : '')+
-    ritmosHTML()+recordesHTML()+
-    '<span class="k">'+esc(today.toLocaleDateString("pt-BR",{month:"long"}))+'</span><div class="cal">'+DIAS.map(d=>'<span class="k" style="text-align:center;font-size:.56rem">'+d[0]+'</span>').join("")+cal+'</div>'+
-    '<span class="k">medalhas</span><div class="meds">'+meds.map(m=>'<div class="'+(m[1]?'':'off')+(m[2]?' sec':'')+'"><i></i>'+(m[2]&&!m[1]?'???':esc(m[0]))+'</div>').join("")+'</div>'+
-    '<button type="button" class="btn" data-go="perf|retro">Retrospectiva do mês</button>';
-  const app = tela(h, o); bindGo(app);
-}
 function ritmosHTML(){
   const Z = zonas(); if (!Z.vdot) return '<div class="hint">Coloque seu melhor tempo de 5 ou 10 km (Perfil → Minha conta) para o app calcular seus ritmos.</div>';
   const ms = marcas().sort((a,b)=>a.d.localeCompare(b.d));
@@ -3196,21 +3155,21 @@ function recordesHTML(){
   const nomes = new Set(); Object.keys(LOG).filter(k=>k.startsWith("fs_")).forEach(k=>(LOG[k].ex||[]).forEach(e=>nomes.add(e.nome)));
   const rs = [...nomes].map(nm=>{ const h = historicoEx(nm); return h.length ? [nm, Math.max(...h.flatMap(s=>s.sets.map(x=>+x.kg||0))), Math.round(melhorE1(h))] : null; }).filter(Boolean).sort((a,b)=>b[2]-a[2]).slice(0,5);
   if (!rs.length) return '';
-  return '<span class="k">seus recordes de carga</span>'+rs.map(r=>'<button type="button" class="ba" style="width:100%;border-left:0;border-right:0;border-top:0;background:none;text-align:left" data-go="treino|ex|'+esc(r[0])+'"><span>'+esc(r[0])+'</span><b>'+num(r[1],1)+' kg <span class="s" style="font-family:var(--f)">· máx. ~'+r[2]+'</span></b></button>').join("");
+  return '<span class="k">seus recordes de carga</span>'+rs.map(r=>'<button type="button" class="ba" data-go="treino|ex|'+esc(r[0])+'"><span>'+esc(r[0])+'</span><b>'+num(r[1],1)+' kg <span class="s">· máx. ~'+r[2]+'</span></b></button>').join("");
 }
 function telaNivel(){
   const n = nivelXP();
   const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><span class="k">seu nível</span><div class="score"><b>'+n.n+'</b><small>'+esc(n.faixa)+'</small></div><div class="xpbar"><i style="width:'+Math.round(100*(n.x-n.ini)/(n.fim-n.ini))+'%"></i></div><span class="s">'+n.x.toLocaleString("pt-BR")+' / '+n.fim.toLocaleString("pt-BR")+' XP · faltam '+(n.fim-n.x)+'</span>'+
-    '<span class="k">como ganhar XP</span><div class="steps">'+[["Treino feito com dado (km, min ou carga)","+100"],["Feito como prescrito","+50"],["Recorde de carga","+75"],["Treinou com amigo","+100"],["Check-in","+20"],["Fechar o dia","+30"],["Foto de refeição (até 3/dia)","+10"],["Baú do dia (1/dia)","+40 a 150"],["Ganhar desafio","+200"]].map(x=>'<div><span>'+x[0]+'</span><b style="color:var(--go-ink)">'+x[1]+'</b></div>').join("")+'</div>'+
-    '<span class="k">benefícios</span>'+BENEF.map(b=>'<div class="between" style="border-bottom:1px solid var(--surface-2);padding:9px 0;font-size:.88rem"><span><b class="n" style="font-size:1.05rem;margin-right:8px">Nv '+b[0]+'</b>'+esc(benefTxt(b))+'</span><span class="badge" style="'+(benefLiberado(b,n.n)?'background:var(--ink);color:#fff':'')+'">'+(benefLiberado(b,n.n)?'liberado':n.n>=b[0]?'faltam '+(b[2]-mesesAssinante())+' meses':'bloqueado')+'</span></div>').join("")+
-    '<span class="k">faixas</span><div class="phase">'+FAIXAS.map(f=>'<span style="flex:1;background:'+(f[0]===n.faixa?'var(--ink)':'#c9ced4')+'">'+esc(f[0])+'</span>').join("")+'</div>'+
+    '<span class="k">como ganhar XP</span><div class="steps">'+[["Treino feito com dado (km, min ou carga)","+100"],["Feito como prescrito","+50"],["Recorde de carga","+75"],["Treinou com amigo","+100"],["Check-in","+20"],["Fechar o dia","+30"],["Foto de refeição (até 3/dia)","+10"],["Baú do dia (1/dia)","+40 a 150"],["Ganhar desafio","+200"]].map(x=>'<div><span>'+x[0]+'</span><b class="cor-go">'+x[1]+'</b></div>').join("")+'</div>'+
+    '<span class="k">benefícios</span><div class="steps">'+BENEF.map(b=>'<div><span><b class="n ben">Nv '+b[0]+'</b>'+esc(benefTxt(b))+'</span><span class="badge'+(benefLiberado(b,n.n)?' on':'')+'">'+(benefLiberado(b,n.n)?'liberado':n.n>=b[0]?'faltam '+(b[2]-mesesAssinante())+' meses':'bloqueado')+'</span></div>').join("")+'</div>'+
+    '<span class="k">faixas</span><div class="phase">'+FAIXAS.map(f=>f[0]===n.faixa?'<span style="flex:1;background:var(--go-fill)">'+esc(f[0])+'</span>':'<span class="off" style="flex:1">'+esc(f[0])+'</span>').join("")+'</div>'+
     '<p class="s">Protetor de foguinho: 1 por semana, automático. Se você perder um dia, ele segura a sequência.</p>', {tabs:true, fab:true});
   bindGo(app);
 }
 function telaLiga(){
   const l = ligaLista(), n = l.length;
   const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><span class="k">termina domingo 23h59</span><h1 class="h1">Liga da semana</h1><p class="s">XP desta semana entre você e quem você segue. Top 3 sobe de liga, os 2 últimos caem.</p>'+missoesSemanaHTML()+
-    l.map((x,i)=>{ const p = pessoa(x.id); return '<div class="rk'+(x.id===ME()?' me':'')+'"><b class="n" style="color:'+(i<3?'var(--done)':i>=n-2&&n>4?'var(--stop)':'var(--tx-2)')+'">'+(i+1)+'</b>'+avatar(x.id,32)+'<b style="font-size:.9rem;min-width:0">'+esc(x.id===ME()?"Você":p.nome)+(p.exemplo?' <span class="s">(exemplo)</span>':'')+'</b><b class="n">'+x.xp.toLocaleString("pt-BR")+'</b></div>'; }).join(""), {tabs:true, fab:true});
+      '<div class="rkl">'+l.map((x,i)=>{ const p = pessoa(x.id); return '<div class="rk'+(x.id===ME()?' eu':'')+'"><b class="n" style="color:'+(i<3?'var(--done-ink)':i>=n-2&&n>4?'var(--stop-ink)':'var(--tx-2)')+'">'+(i+1)+'</b>'+avatar(x.id,32)+'<b class="mw0">'+esc(x.id===ME()?"Você":p.nome)+(p.exemplo?' <span class="s">(exemplo)</span>':'')+'</b><b class="n">'+x.xp.toLocaleString("pt-BR")+'</b></div>'; }).join("")+'</div>', {tabs:true, fab:true});
   bindGo(app); bindMissoesSemana(app);
 }
 /* ---- grupos reais e parceiro de responsa (fase 4) ---- */
@@ -3254,7 +3213,7 @@ function carregarGrupos(){
 function avisoGrupos(seguir){
   if (LOG.gaviso){ seguir(); return; }
   const ov = $("ov");
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">O que os outros veem</h2><p>Quem estiver no grupo vê o seu apelido, o nome do grupo e os seus números do desafio: km, treinos ou dias de foguinho. Na dupla, também os treinos da semana e o foguinho.</p><p class="s">Nunca aparecem peso, fotos, comida, saúde ou trajetos. Quem tem acesso ao app e sabe mexer no banco de dados consegue ler esses mesmos números.</p><button type="button" class="btn go" id="gav">Entendi, continuar</button></div>';
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><h2 class="h2">O que os outros veem</h2><p>Quem estiver no grupo vê o seu apelido, o nome do grupo e os seus números do desafio: km, treinos ou dias de foguinho. Na dupla, também os treinos da semana e o foguinho.</p><p class="s">Nunca aparecem peso, fotos, comida, saúde ou trajetos. Quem tem acesso ao app e sabe mexer no banco de dados consegue ler esses mesmos números.</p><button type="button" class="btn go" id="gav">Entendi, continuar</button></div>';
   $("dim").addEventListener("click", ()=>{ fecharSheet(); });
   $("gav").addEventListener("click", async ()=>{ fecharSheet(); await salvarLog("gaviso", true); seguir(); });
 }
@@ -3289,17 +3248,17 @@ async function entrarComCodigo(txt){
   await salvarLog("gcod_"+gid, cod); agendarGrupos(); return {gid, dupla:!!(def && def.dupla)};
 }
 async function deixarGrupo(gid){ if (!gruposCarregado){ toast("Carregando os grupos, tente de novo em instantes."); return false; } try{ await escreverGrupos(sairDoGrupo(MEUS_GS, gid)); await salvarLog("gcod_"+gid, null); return true; }catch(e){ toast("Não consegui sair agora. Tente de novo."); return false; } }
-const avatarNome = (ap, eu) => '<span class="av" style="width:32px;height:32px;background:'+(eu?'#0B0D10':'#5A626C')+'">'+esc(ini(ap))+'</span>';
+const avatarNome = (ap, eu) => '<span class="av" style="background:var(--'+(eu?'go-fill':'neutro')+')">'+esc(ini(ap))+'</span>';
 function gruposSecaoHTML(){
   if (!gruposOk()) return '<span class="k">grupos de verdade</span><p class="s">Grupos só funcionam no app publicado, com a sua conta.</p>';
   const lista = MEUS_GS.filter(g=>!g.dupla), dp = MEUS_GS.find(g=>g.dupla);
   return '<span class="k">grupos de verdade</span>'+
     (lista.length ? lista.map(g=>{ const mem = membrosDoGrupo(GRUPOS, g.g), def = definicaoDoGrupo(mem) || g, pc = placarGrupo(mem, me, def), pos = pc.lista.findIndex(x=>x.eu)+1, acabou = !!def.fim && parseD(def.fim) < today, dias = def.fim ? Math.max(0, Math.ceil((parseD(def.fim)-today)/DAY)+1) : 0;
-      return '<button type="button" class="box" data-go="perf|grupo|'+esc(g.g)+'" style="text-align:left;width:100%"><div class="between"><b>'+esc(def.nome)+'</b><b class="n" style="color:var(--go-ink)">'+(acabou?'encerrado':dias+'d')+'</b></div><span class="s">'+mem.length+' pessoa'+(mem.length===1?'':'s')+' · '+(def.formato==="juntos" ? num(pc.total,1)+'/'+def.meta+' '+UNI[def.tipo] : 'você '+(pos||"-")+'º')+'</span></button>'; }).join("") : '<p class="s">Você não está em nenhum grupo ainda.</p>')+
-    (gruposEscreve() ? '<div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm go" data-go="perf|ngrupo">Criar grupo</button>'+(dp ? '' : '<button type="button" class="btn sm" id="gdupla">Chamar um parceiro</button>')+'</div>'+
-      '<div class="row" style="flex-wrap:nowrap"><input class="inp" id="gcod" maxlength="12" placeholder="Código de 8 letras" autocapitalize="characters" autocomplete="off"><button type="button" class="btn sm" id="gent">Entrar</button></div><p class="msg" id="gmsg"></p>'
+      return '<button type="button" class="box" data-go="perf|grupo|'+esc(g.g)+'"><div class="between"><b>'+esc(def.nome)+'</b><b class="n cor-go">'+(acabou?'encerrado':dias+'d')+'</b></div><span class="s">'+mem.length+' pessoa'+(mem.length===1?'':'s')+' · '+(def.formato==="juntos" ? num(pc.total,1)+'/'+def.meta+' '+UNI[def.tipo] : 'você '+(pos||"-")+'º')+'</span></button>'; }).join("") : '<p class="s">Você não está em nenhum grupo ainda.</p>')+
+    (gruposEscreve() ? '<div class="row"><button type="button" class="btn sm go" data-go="perf|ngrupo">Criar grupo</button>'+(dp ? '' : '<button type="button" class="btn sm" id="gdupla">Chamar um parceiro</button>')+'</div>'+
+      '<div class="row nw"><input class="inp" id="gcod" maxlength="12" placeholder="Código de 8 letras" autocapitalize="characters" autocomplete="off"><button type="button" class="btn sm" id="gent">Entrar</button></div><p class="msg" id="gmsg"></p>'
       : '<p class="s">Peça acesso de colaborador ao dono do app para criar ou entrar em grupos.</p>')+
-    (dp ? '<button type="button" class="box" data-go="perf|dupla" style="text-align:left;width:100%"><b>Parceiro de responsa</b><span class="s">ver a dupla e cutucar</span></button>' : '');
+    (dp ? '<button type="button" class="box" data-go="perf|dupla"><b>Parceiro de responsa</b><span class="s">ver a dupla e cutucar</span></button>' : '');
 }
 function bindGrupos(app){
   const gd = $("gdupla"); if (gd) gd.addEventListener("click", ()=>avisoGrupos(async ()=>{ const g = await criarGrupo({nome:"Dupla", tipo:"treinos", formato:"mais", meta:0, ini:"", fim:"", dupla:true}); if (g) ir("perf","dupla"); }));
@@ -3340,10 +3299,10 @@ function telaGrupo(gid){
   h += acabou
     ? '<div class="box strong"><span class="k">grupo encerrado</span><h2 class="h2">'+(def.formato==="juntos" ? (pc.pct>=100 ? "Meta batida!" : "Meta não batida: "+pc.pct+"%") : esc(pc.lista[0] && pc.lista[0].eu ? "Você venceu!" : ((pc.lista[0]||{}).ap||"Alguém")+" venceu."))+'</h2></div>'
     : '<div class="big3"><div><b>'+Math.floor(rest/24)+'</b><span>dias</span></div><div><b>'+Math.floor(rest%24)+'</b><span>horas</span></div><div><b>'+(def.formato==="juntos" ? pc.pct+'%' : (pc.lista.findIndex(x=>x.eu)+1)+'º')+'</b><span>'+(def.formato==="juntos" ? 'da meta' : 'sua posição')+'</span></div></div>';
-  h += pc.lista.map((x,i)=>{ const velho = !!x.up && Date.now()-Date.parse(x.up) > 7*DAY;
-    return '<div class="rk'+(x.eu?' me':'')+'" style="grid-template-columns:18px 32px minmax(0,1fr) auto'+(velho?';opacity:.55':'')+'"><b class="n">'+(i+1)+'</b>'+avatarNome(x.ap, x.eu)+'<span style="min-width:0"><b style="font-size:.88rem">'+esc(x.eu ? "Você" : x.ap)+'</b><span class="xpbar" style="display:block;height:6px;margin-top:4px"><i style="width:'+Math.round(100*x.v/mx)+'%;background:'+(i===0?'var(--done)':'var(--ink)')+'"></i></span>'+(x.up ? '<span class="s">atualizado '+esc(relTempo(x.up))+'</span>' : '')+'</span><b class="n">'+num(x.v,1)+(def.tipo==="km" ? ' km' : '')+'</b></div>'; }).join("");
+  h += '<div class="rkl">'+pc.lista.map((x,i)=>{ const velho = !!x.up && Date.now()-Date.parse(x.up) > 7*DAY;
+    return '<div class="rk'+(x.eu?' eu':'')+(velho?' old':'')+'"><b class="n">'+(i+1)+'</b>'+avatarNome(x.ap, x.eu)+'<span class="mw0"><b>'+esc(x.eu ? "Você" : x.ap)+'</b><span class="xpbar"><i'+(i===0?' class="ok"':'')+' style="width:'+Math.round(100*x.v/mx)+'%"></i></span>'+(x.up ? '<span class="s">atualizado '+esc(relTempo(x.up))+'</span>' : '')+'</span><b class="n">'+num(x.v,1)+(def.tipo==="km" ? ' km' : '')+'</b></div>'; }).join("")+'</div>';
   h += (def.formato==="juntos" ? '<p class="s">Batendo a meta, todo mundo ganha +200 XP.</p>' : '')+
-    (codTxt ? '<span class="k">convide pelo código</span><div class="box"><div class="between"><b class="n" style="font-size:1.2rem">'+esc(codTxt)+'</b><button type="button" class="btn sm" id="gcp">Copiar convite</button></div></div>' : '<p class="s">O código deste grupo não está guardado neste aparelho. Peça a quem criou.</p>')+
+    (codTxt ? '<span class="k">convide pelo código</span><div class="box"><div class="between"><b class="n big-n">'+esc(codTxt)+'</b><button type="button" class="btn sm" id="gcp">Copiar convite</button></div></div>' : '<p class="s">O código deste grupo não está guardado neste aparelho. Peça a quem criou.</p>')+
     '<button type="button" class="btn ghost" id="gsai">Sair do grupo</button><p class="s">Sair apaga o seu progresso deste grupo. Os outros continuam vendo o grupo.</p>';
   const app = tela(h, {tabs:true, fab:true}); bindGo(app);
   const cp = $("gcp"); if (cp) cp.addEventListener("click", ()=>copiar("Entra no meu grupo da Tropa! Código: "+codTxt+" (Performance, Desafios, Entrar com código)"));
@@ -3358,9 +3317,9 @@ function telaDupla(){
   let h = '<button type="button" class="back" data-go="perf|desafios">← Desafios</button><span class="k">parceiro de responsa</span><h1 class="h1">'+esc(rd.par ? rd.par.ap : "Dupla")+'</h1>';
   if (rd.vazia){
     h += '<div class="box"><b>Chame alguém para treinar com você</b><span class="s">A dupla tem 2 pessoas e cada um vê só os treinos da semana e o foguinho do outro.</span>'+
-      (codTxt ? '<div class="between" style="margin-top:8px"><b class="n" style="font-size:1.2rem">'+esc(codTxt)+'</b><button type="button" class="btn sm" id="dcp">Copiar convite</button></div>' : '<span class="s">O código desta dupla não está guardado neste aparelho.</span>')+'</div>';
+      (codTxt ? '<div class="between mt8"><b class="n big-n">'+esc(codTxt)+'</b><button type="button" class="btn sm" id="dcp">Copiar convite</button></div>' : '<span class="s">O código desta dupla não está guardado neste aparelho.</span>')+'</div>';
   } else {
-    const col = (tit, x, extra) => '<div class="box"><span class="k">'+esc(tit)+'</span><b class="n" style="font-size:1.4rem">'+x.t+' treino'+(x.t===1?'':'s')+'</b><span class="s">foguinho '+x.f+(extra||'')+'</span></div>';
+    const col = (tit, x, extra) => '<div class="box"><span class="k">'+esc(tit)+'</span><b class="n big-n">'+x.t+' treino'+(x.t===1?'':'s')+'</b><span class="s">foguinho '+x.f+(extra||'')+'</span></div>';
     h += '<div class="grid2">'+col("você", rd.eu)+col(rd.par.ap, rd.par, rd.par.up ? ' · atualizado '+relTempo(rd.par.up) : '')+'</div>'+
       '<span class="k">cutucada de hoje</span>'+(jaCut ? '<p class="s">Você já cutucou hoje. Amanhã tem outra.</p>' : '<div class="chips" id="cuts">'+FRASES_CUT.map((f,k)=>'<button type="button" class="chip" data-k="'+k+'">'+esc(f)+'</button>').join("")+'</div>');
   }
@@ -3388,7 +3347,7 @@ function telaDesafios(){
   const ds = SOC.desafios||[];
   const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Desafios</h1><button type="button" class="btn go" data-go="perf|novo">Criar desafio</button>'+gruposSecaoHTML()+'<span class="k">desafios com amigos de exemplo (simulados)</span>'+
     (ds.length ? ds.slice().reverse().map(dz=>{ const pc = placar(dz), pos = pc.findIndex(x=>x.id===ME())+1, acabou = parseD(dz.fim)<today, tot = pc.reduce((a,x)=>a+x.v,0);
-      return '<button type="button" class="box" data-go="perf|desafio|'+esc(dz.id)+'" style="text-align:left;width:100%"><div class="between"><b>'+esc(dz.titulo)+'</b><b class="n" style="color:var(--go-ink)">'+(acabou?'encerrado':Math.max(0,Math.ceil((parseD(dz.fim)-today)/DAY)+1)+'d')+'</b></div><span class="s">'+dz.membros.length+' pessoas'+(dz.valendo?' · '+esc(dz.valendo):'')+' · '+(dz.formato==="juntos"?num(tot,1)+'/'+dz.meta+' '+UNI[dz.tipo]:'você '+pos+'º')+'</span><div class="xpbar"><i style="width:'+Math.min(100, dz.formato==="juntos" ? Math.round(100*tot/dz.meta) : Math.round(100*(pc.find(x=>x.id===ME()).v)/Math.max(1,pc[0].v)))+'%"></i></div></button>'; }).join("") : '<p class="s">Nenhum desafio ainda. Chame os amigos: quem corre mais até domingo, meta juntos de km no mês ou quem segura o foguinho.</p>')+
+      return '<button type="button" class="box" data-go="perf|desafio|'+esc(dz.id)+'"><div class="between"><b>'+esc(dz.titulo)+'</b><b class="n cor-go">'+(acabou?'encerrado':Math.max(0,Math.ceil((parseD(dz.fim)-today)/DAY)+1)+'d')+'</b></div><span class="s">'+dz.membros.length+' pessoas'+(dz.valendo?' · '+esc(dz.valendo):'')+' · '+(dz.formato==="juntos"?num(tot,1)+'/'+dz.meta+' '+UNI[dz.tipo]:'você '+pos+'º')+'</span><div class="xpbar"><i style="width:'+Math.min(100, dz.formato==="juntos" ? Math.round(100*tot/dz.meta) : Math.round(100*(pc.find(x=>x.id===ME()).v)/Math.max(1,pc[0].v)))+'%"></i></div></button>'; }).join("") : '<p class="s">Nenhum desafio ainda. Chame os amigos: quem corre mais até domingo, meta juntos de km no mês ou quem segura o foguinho.</p>')+
     '<p class="s">Fase de teste: o placar dos amigos de exemplo é simulado. No app oficial, cada um vê o progresso real de todos.</p>', {tabs:true, fab:true});
   bindGo(app); bindGrupos(app);
 }
@@ -3417,38 +3376,13 @@ function telaNovoDesafio(){
     avisar("Desafio lançado: "+tit, "feed"); ir("perf","desafio",dz.id);
   });
 }
-function telaDesafio(id){
-  const dz = (SOC.desafios||[]).find(x=>x.id===id); if (!dz){ ir("perf","desafios"); return; }
-  const pc = placar(dz), acabou = parseD(dz.fim)<today, mx = Math.max(1, pc[0].v), tot = pc.reduce((a,x)=>a+x.v,0);
-  const rest = Math.max(0, (addDays(parseD(dz.fim),1) - new Date())/3600000);
-  let h = '<button type="button" class="back" data-go="perf|desafios">← Desafios</button>'+(dz.valendo?'<span class="k">valendo '+esc(dz.valendo)+'</span>':'')+'<h1 class="h1">'+esc(dz.titulo)+'</h1>';
-  if (acabou && dz.formato!=="juntos"){
-    const win = pc[0];
-    h += '<div class="box strong"><span class="k">desafio encerrado</span><h2 class="h2">'+esc(win.id===ME()?"Você venceu!":pessoa(win.id).nome.split(" ")[0]+" venceu.")+'</h2></div>'+
-      (dz.valendo ? '<span class="k">combinado: '+esc(dz.valendo)+'</span>'+pc.slice(1).map(x=>'<div class="between" style="padding:8px 0;border-bottom:1px solid var(--surface-2)"><span>'+esc(x.id===ME()?"Você":pessoa(x.id).nome)+'</span><button type="button" class="btn sm'+(dz.pagos[x.id]?'':' ghost')+'" data-pago="'+esc(x.id)+'">'+(dz.pagos[x.id]?'✓ acertou':'marcar que acertou')+'</button></div>').join("") : '')+
-      '<button type="button" class="btn go" id="rev">Revanche</button>';
-  } else {
-    h += '<div class="big3"><div><b>'+Math.floor(rest/24)+'</b><span>dias</span></div><div><b>'+Math.floor(rest%24)+'</b><span>horas</span></div><div><b>'+(dz.formato==="juntos"?Math.round(100*tot/dz.meta)+'%':pc.findIndex(x=>x.id===ME())+1+'º')+'</b><span>'+(dz.formato==="juntos"?'da meta':'sua posição')+'</span></div></div>';
-  }
-  h += pc.map((x,i)=>'<div class="rk'+(x.id===ME()?' me':'')+'" style="grid-template-columns:18px 32px minmax(0,1fr) auto"><b class="n">'+(i+1)+'</b>'+avatar(x.id,32)+'<span style="min-width:0"><b style="font-size:.88rem">'+esc(x.id===ME()?"Você":pessoa(x.id).nome)+'</b><span class="xpbar" style="display:block;height:6px;margin-top:4px"><i style="width:'+Math.round(100*x.v/mx)+'%;background:'+(i===0?'var(--done)':'var(--ink)')+'"></i></span></span><b class="n">'+num(x.v,1)+' '+(dz.tipo==="km"?"km":"")+'</b></div>').join("")+
-    (dz.formato==="juntos"?'<p class="s">Batendo a meta, todo mundo ganha +200 XP.</p>':'')+
-    '<span class="k">provocações</span>'+((dz.chat||[]).slice(-6).map(m=>'<div class="m '+(m.de===ME()?'u':'a')+'" style="max-width:100%"><b>'+esc(m.de===ME()?"Você":pessoa(m.de).nome.split(" ")[0])+':</b> '+esc(m.t)+'</div>').join("")||'<p class="s">Ninguém provocou ainda.</p>')+
-    '<div class="row" style="flex-wrap:nowrap"><input class="inp" id="prv" maxlength="120" placeholder="Provocar…"><button type="button" class="btn sm go" id="prok">Enviar</button></div>'+
-    (dz.membros.some(x=>SOC.people[x]&&SOC.people[x].exemplo)?'<p class="s">Placar dos amigos de exemplo é simulado.</p>':'');
-  const app = tela(h, {tabs:true, fab:true}); bindGo(app);
-  app.querySelectorAll("[data-pago]").forEach(b=>b.addEventListener("click", ()=>{ dz.pagos[b.dataset.pago] = !dz.pagos[b.dataset.pago]; salvarSocial(); render(true); }));
-  const rv = $("rev"); if (rv) rv.addEventListener("click", ()=>{ draft.nd_tipo = dz.tipo; draft.nd_formato = dz.formato; draft.nd_amigos = dz.membros.filter(x=>x!==ME()); ir("perf","novo"); });
-  $("prok").addEventListener("click", ()=>{ const t = $("prv").value.trim(); if (!t) return; dz.chat = (dz.chat||[]).concat([{de:ME(), t:t.slice(0,120), at:new Date().toISOString()}]); salvarSocial(); render(true); });
-  if (acabou && dz.formato!=="juntos" && pc[0].id===ME() && !dz.contado){ dz.contado = true; SOC.desafiosGanhos = (SOC.desafiosGanhos||0)+1; salvarSocial(); }
-  if (dz.formato==="juntos" && tot>=dz.meta && !dz.contado){ dz.contado = true; SOC.desafiosGanhos = (SOC.desafiosGanhos||0)+1; salvarSocial(); toast("Meta batida: +200 XP"); }
-}
 function telaRetro(){
   const mes = today.toLocaleDateString("pt-BR",{month:"long"}), m0 = new Date(today.getFullYear(), today.getMonth(), 1);
   let tr = 0, km = 0, ci = 0; for (let d = new Date(m0); d<=today; d = addDays(d,1)){ treinosDe(d).forEach((t,j)=>{ const c = feito(d,j); if (c){ tr++; km += +(c.km||0); } }); if (LOG["ci_"+key(d)]) ci++; }
   const prs = Object.keys(LOG).filter(k=>k.startsWith("ck_"+key(m0).slice(0,7))).reduce((n,k)=>n+((LOG[k]||{}).prs||0),0);
   const st = [[String(tr),"treinos"],[num(km,1),"km"],[String(prs),"recordes"],[String(foguinho().n),"dias seguidos"]];
   const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><span class="k">retrospectiva</span><h1 class="h1">Seu '+esc(mes)+'</h1>'+
-    '<div class="ph-card" style="aspect-ratio:9/14;margin:0"><span class="bad">'+esc(BRAND)+' · '+esc(mes)+'</span><div class="t" style="font-size:2.6rem">'+esc(P.perfil.apelido)+' não parou.</div><div class="nums">'+st.map(s=>'<div><b>'+esc(s[0])+'</b><span>'+esc(s[1])+'</span></div>').join("")+'</div><span class="s" style="color:rgba(255,255,255,.6)">nível '+nivelXP().n+' · '+ci+' check-ins</span></div>'+
+    '<div class="ph-card" style="aspect-ratio:9/14;margin:0"><span class="bad">'+esc(BRAND)+' · '+esc(mes)+'</span><div class="t" style="font-size:2.6rem">'+esc(P.perfil.apelido)+' não parou.</div><div class="nums">'+st.map(s=>'<div><b>'+esc(s[0])+'</b><span>'+esc(s[1])+'</span></div>').join("")+'</div><span class="s" style="color:rgba(255,255,255,.88)">nível '+nivelXP().n+' · '+ci+' check-ins</span></div>'+
     '<button type="button" class="btn go" id="rb">Baixar para o story</button>', {tabs:true, fab:true});
   bindGo(app); $("rb").addEventListener("click", ()=>cardConquista("Meu "+mes, st.slice(0,3)));
 }
@@ -3487,33 +3421,6 @@ function horasSemana(ini){
   for (let i=0;i<7;i++){ const d = addDays(ini,i), k = key(d); treinosDe(d).forEach((t,j)=>{ const c = feito(d,j); if (c) h[t.k] = (h[t.k]||0) + minDe(c,t)/60; }); postsDoDia(k).filter(p=>p.esporte==="race").forEach(p=>{ const tm = tempoDe((p.stats.find(s=>/tempo/.test(s[1]))||[])[0]); h.run += (tm||60)/60; }); }
   return h;
 }
-function kmMes(m0){ let km = 0; const fim = new Date(m0.getFullYear(), m0.getMonth()+1, 0);
-  for (let d = new Date(m0); d<=fim && d<=today; d = addDays(d,1)){ const k = key(d); treinosDe(d).forEach((t,j)=>{ const c = feito(d,j); if (c && t.k==="run") km += +(c.km||t.km||0); }); postsDoDia(k).forEach(p=>{ if (/race|run/.test(p.esporte)){ const v = parseFloat(String((p.stats.find(s=>s[1]==="km")||[])[0]||"").replace(",",".")); if (v) km += v; } }); }
-  return Math.round(km*10)/10; }
-function sonoMedio(off){ let s = 0, n = 0; for (let i=off;i<off+7;i++){ const c = LOG["ci_"+key(addDays(today,-i))]; if (c && +c.sono){ s += +c.sono; n++; } } return n ? s/n : null; }
-/* ---- TOPO ---- */
-function telaPerf(o){
-  const n = nivelXP(), f = foguinho(), ini0 = addDays(today,-dow(today));
-  const prox = BENEF.find(b=>b[0]>n.n);
-  let feitosSem = 0, planSem = 0; for (let i=0;i<7;i++){ const d = addDays(ini0,i); if (d>today) break; treinosDe(d).forEach((t,j)=>{ planSem++; if (feito(d,j)) feitosSem++; }); }
-  const Z = zonas(), ms = marcas().sort((a,b)=>a.d.localeCompare(b.d)), dv = ms.length>1 ? ms[ms.length-1].vdot - ms[0].vdot : 0;
-  const s1 = sonoMedio(0), s0 = sonoMedio(7), km = kmMes(new Date(today.getFullYear(), today.getMonth(), 1));
-  const prs = (SOC.posts||[]).filter(p=>p.autor===ME() && p.esporte==="race" && parseD(p.date) && parseD(p.date).getMonth()===today.getMonth()).length;
-  const med = medalhasV2(), ganhas = med.filter(m=>m.ok).length;
-  const des = (SOC.desafios||[]).filter(d=>!d.fim || parseD(d.fim)>=today), d0 = des[0];
-  const pos = d0 ? placar(d0).findIndex(x=>x.id===ME())+1 : 0;
-  const h = '<div class="between"><span class="k">temporada de '+esc(today.toLocaleDateString("pt-BR",{month:"long"}))+'</span><button type="button" class="badge" data-go="perf|nivel">nível '+n.n+' · '+esc(n.faixa)+'</button></div>'+
-    '<div class="fire-hero'+(f.n?'':' off')+'"><div class="flame">'+flameSVG(f.n>0)+'</div><div class="streak"><span class="k" style="color:var(--go-ink)">foguinho</span><b>'+f.n+'</b><span class="n" style="font-size:1rem">'+(f.n===1?'dia seguido':'dias seguidos')+'</span><p class="s" style="color:var(--go-ink);margin-top:4px">'+(f.hojeOk?'Aceso hoje. Volte amanhã para chegar a '+(f.n+1)+'.':f.n?'Em risco: faça o check-in ou marque um treino até 23h59.':'Apagado. Acenda hoje com o check-in.')+'</p></div>'+
-      '<div class="wkstrip">'+DIAS.map((dn,i)=>{ const d = addDays(ini0,i), on = d<=today && ativoNoDia(key(d)); return '<span><i class="'+(on?'on':'')+(+d===+today?' td':'')+'">'+(on?'✓':'')+'</i>'+dn[0]+'</span>'; }).join("")+'</div></div>'+
-    '<button type="button" class="rcard lvlc" data-go="perf|nivel"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="7"/><circle cx="32" cy="32" r="27" fill="none" stroke="#FF5A00" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+(169.6*Math.max(0.02,(n.x-n.ini)/(n.fim-n.ini)))+' 170" transform="rotate(-90 32 32)"/><text x="32" y="39" text-anchor="middle" font-size="20" font-weight="700" font-family="Barlow Condensed" fill="currentColor">'+n.n+'</text></svg><span style="min-width:0"><b>Nível '+n.n+' · faltam '+(n.fim-n.x)+' XP</b><span class="pbar" style="display:block;margin:6px 0"><i style="width:'+Math.round(100*(n.x-n.ini)/(n.fim-n.ini))+'%"></i></span><span class="s">'+(prox?'Nível '+prox[0]+' libera: '+esc(benefTxt(prox)):'Todos os prêmios liberados')+'</span></span></button>'+
-    '<div class="rtiles"><div><span class="k">km no mês</span><b>'+num(km,1)+'</b><em>'+(prs?prs+' prova'+(prs>1?'s':''):'corrida')+'</em></div><div><span class="k">treinos feitos</span><b>'+feitosSem+'/'+planSem+'</b><em>esta semana</em></div>'+
-      '<div><span class="k">VDOT</span><b>'+(Z.vdot?num(Z.vdot,1):'—')+'</b><em>'+(dv>0.05?'▲ '+num(dv,1)+' desde '+esc(fmt(parseD(ms[0].d))):Z.vdot?'seu condicionamento':'registre um tempo')+'</em></div>'+
-      '<div><span class="k">sono médio</span><b>'+(s1!=null?num(s1,1)+'h':'—')+'</b><em>'+(s1!=null&&s0!=null?(s1>=s0?'▲ ':'▼ ')+num(Math.abs(s1-s0),1)+'h':'7 dias')+'</em></div></div>'+
-    '<div class="nav4"><button type="button" data-go="perf|paineis"><b>Painéis</b><small>gráficos da sua evolução</small></button><button type="button" data-go="perf|cal"><b>Calendário</b><small>tudo o que fez, dia a dia</small></button><button type="button" data-go="perf|medalhas"><b>Medalhas</b><small>'+ganhas+' de '+med.length+'</small></button><button type="button" data-go="perf|desafios"><b>Desafios</b><small>'+(d0?(des.length+' ativo · você '+pos+'º'):'crie com os amigos')+'</small></button></div>'+
-    '<div class="nav4"><button type="button" data-go="perf|recordes" style="background:var(--surface);border-color:var(--sep)"><b>Recordes</b><small>tempos e cargas</small></button><button type="button" data-go="perf|liga"><b>Liga da semana</b><small>você '+(ligaLista().findIndex(x=>x.id===ME())+1)+'º</small></button></div>'+
-    '<button type="button" class="btn ghost" data-go="perf|retro">Retrospectiva do mês</button>';
-  const app = tela(h, o); bindGo(app);
-}
 /* ---- PAINÉIS ---- */
 function graficoVolume(){
   const W=320,H=160,P={l:26,r:4,t:10,b:22}, N=8, sem=[], cores=["#FF5A00","#1E88E5","#E39A06","#6E56CF"], ks=["run","swim","bike","gym"];
@@ -3539,21 +3446,21 @@ function intensidade(){
   let leve = 0, forte = 0; for (let i=0;i<28;i++){ const d = addDays(today,-i); treinosDe(d).forEach((t,j)=>{ const c = feito(d,j); if (!c) return; const m = minDe(c,t); if (/forte/.test(t.z||"") || /hyrox|intervalado/i.test(t.t) || c.rpe==="limite") forte += m; else leve += m; }); postsDoDia(key(d)).filter(p=>p.esporte==="race").forEach(p=>{ forte += tempoDe((p.stats.find(s=>/tempo/.test(s[1]))||[])[0]) || 30; }); }
   const tot = leve+forte; if (!tot) return {svg:'<p class="s">Sem treinos nos últimos 28 dias.</p>', txt:""};
   const f = leve/tot, r=40, c=2*Math.PI*r, pl = Math.round(100*f);
-  return {svg:'<svg viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="'+pl+'% leve e '+(100-pl)+'% forte"><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="12"/><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#1E88E5" stroke-width="12" stroke-dasharray="'+Math.max(0,c*f-2)+' '+c+'" transform="rotate(-90 50 50)"/><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#FF5A00" stroke-width="12" stroke-dasharray="'+Math.max(0,c*(1-f)-2)+' '+c+'" stroke-dashoffset="'+(-c*f)+'" transform="rotate(-90 50 50)"/><text x="50" y="55" font-size="17" font-weight="700" text-anchor="middle" font-family="Barlow Condensed" fill="currentColor">'+pl+'/'+(100-pl)+'</text></svg>',
+  return {svg:'<svg viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="'+pl+'% leve e '+(100-pl)+'% forte"><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="12"/><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#1E88E5" stroke-width="12" stroke-dasharray="'+Math.max(0,c*f-2)+' '+c+'" transform="rotate(-90 50 50)"/><circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#FF5A00" stroke-width="12" stroke-dasharray="'+Math.max(0,c*(1-f)-2)+' '+c+'" stroke-dashoffset="'+(-c*f)+'" transform="rotate(-90 50 50)"/><text x="50" y="55" font-size="17" font-weight="700" text-anchor="middle" fill="currentColor">'+pl+'/'+(100-pl)+'</text></svg>',
     txt: pl>=75 ? "Equilíbrio bom: maioria leve." : "Forte demais: deixe mais treinos leves de verdade."};
 }
 function prontidaoGraf(){
   const v = []; for (let i=6;i>=0;i--){ const d = addDays(today,-i), c = LOG["ci_"+key(d)]; v.push([c?prontidao(c):null, DIAS[dow(d)].toLowerCase()]); }
   if (!v.some(x=>x[0]!=null)) return '<p class="s">Faça o check-in para ver.</p>';
   const W=160,H=78,bw=16;
-  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Prontidão dos últimos 7 dias">'+v.map((p,i)=>{ const x=4+i*(bw+6); if (p[0]==null) return '<text x="'+(x+bw/2)+'" y="'+(H-3)+'" font-size="8" text-anchor="middle" fill="#9AA3AD">'+p[1]+'</text>'; const hh=(H-24)*p[0]/100; return '<rect x="'+x+'" y="'+(H-14-hh)+'" width="'+bw+'" height="'+hh+'" rx="4" fill="'+(p[0]>=75?"#13A150":p[0]>=50?"#E5A100":"#E0362B")+'"><title>'+p[1]+': '+p[0]+'</title></rect><text x="'+(x+bw/2)+'" y="'+(H-16-hh)+'" font-size="8.5" font-weight="700" text-anchor="middle" fill="currentColor">'+p[0]+'</text><text x="'+(x+bw/2)+'" y="'+(H-3)+'" font-size="8" text-anchor="middle" fill="currentColor" fill-opacity=".65">'+p[1]+'</text>'; }).join("")+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Prontidão dos últimos 7 dias">'+v.map((p,i)=>{ const x=4+i*(bw+6); if (p[0]==null) return '<text x="'+(x+bw/2)+'" y="'+(H-3)+'" font-size="8" text-anchor="middle" fill="currentColor" fill-opacity=".65">'+p[1]+'</text>'; const hh=(H-24)*p[0]/100; return '<rect x="'+x+'" y="'+(H-14-hh)+'" width="'+bw+'" height="'+hh+'" rx="4" fill="'+(p[0]>=75?"#13A150":p[0]>=50?"#E5A100":"#E0362B")+'"><title>'+p[1]+': '+p[0]+'</title></rect><text x="'+(x+bw/2)+'" y="'+(H-16-hh)+'" font-size="8.5" font-weight="700" text-anchor="middle" fill="currentColor">'+p[0]+'</text><text x="'+(x+bw/2)+'" y="'+(H-3)+'" font-size="8" text-anchor="middle" fill="currentColor" fill-opacity=".65">'+p[1]+'</text>'; }).join("")+'</svg>';
 }
 function telaPaineis(){
   const it = intensidade(), Z = zonas();
   const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Painéis</h1>'+
     '<div class="rcard chartc"><div class="between"><b>Volume por semana</b><span class="k">horas</span></div>'+graficoVolume()+'<div class="legend"><span style="--c:#FF5A00">Corrida</span><span style="--c:#1E88E5">Natação</span><span style="--c:#E39A06">Bike</span><span style="--c:#6E56CF">Força/Hyrox</span></div></div>'+
     '<div class="rcard chartc"><div class="between"><b>VDOT · condicionamento de corrida</b>'+(Z.vdot?'<span class="badge">'+num(Z.vdot,1)+'</span>':'')+'</div>'+graficoVdot()+'<span class="s">Cada ponto é uma prova ou teste. Toque para ver qual.</span></div>'+
-    '<div class="row" style="align-items:stretch;flex-wrap:nowrap"><div class="rcard" style="flex:1;align-items:center;min-width:0"><b style="font-size:.86rem">Intensidade · 28 dias</b>'+it.svg+'<span class="s" style="text-align:center"><b style="color:#1E88E5">leve</b> / <b style="color:#FF5A00">forte</b> · meta 80/20</span>'+(it.txt?'<span class="s" style="text-align:center">'+esc(it.txt)+'</span>':'')+'</div><div class="rcard" style="flex:1;min-width:0"><b style="font-size:.86rem">Prontidão · 7 dias</b>'+prontidaoGraf()+'<span class="s">verde ≥ 75 · amarelo 50–74</span></div></div>'+
+    '<div class="row nw st"><div class="rcard c grow"><b>Intensidade · 28 dias</b>'+it.svg+'<span class="s"><b class="cor-swim">leve</b> / <b class="cor-go">forte</b> · meta 80/20</span>'+(it.txt?'<span class="s">'+esc(it.txt)+'</span>':'')+'</div><div class="rcard grow"><b>Prontidão · 7 dias</b>'+prontidaoGraf()+'<span class="s">verde ≥ 75 · amarelo 50–74</span></div></div>'+
     ritmosHTML(), {tabs:true, fab:true});
   bindGo(app);
 }
@@ -3569,7 +3476,7 @@ function telaCal(){
     peek = '<div class="peek"><div class="between"><b>'+esc(fmtLongo(inf.d))+'</b><button type="button" class="btn sm ink" data-go="perf|dia|'+calSel+'">Ver dia</button></div>'+
       (inf.it.length ? inf.it.map(x=>'<div class="actv" style="--c:'+x.cor+'"><i>'+x.sig+'</i><span><b>'+esc(x.t)+'</b><small>'+esc(x.det)+'</small></span><span class="n">'+(x.ok?'✓':x.nf?'–':'')+'</span></div>').join("") : '<p class="s">Nada planejado nem registrado.</p>')+
       (inf.ci ? '<div class="actv" style="--c:#13A150"><i>CI</i><span><b>Check-in</b><small>'+num(inf.ci.sono,1)+' h de sono · energia '+inf.ci.humor+'/5 · dor '+inf.ci.dor+'/10</small></span><span class="n">'+prontidao(inf.ci)+'</span></div>' : '')+'</div>'; }
-  const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><div class="mhead"><button type="button" id="cp" aria-label="Mês anterior">‹</button><h1 class="h2" style="font-size:1.8rem">'+esc(m0.toLocaleDateString("pt-BR",{month:"long", year:"numeric"}))+'</h1><button type="button" id="cn" aria-label="Próximo mês"'+(calOff>=0?' disabled style="opacity:.3"':'')+'>›</button></div>'+
+  const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><div class="mhead"><button type="button" id="cp" aria-label="Mês anterior">‹</button><h1 class="h2">'+esc(m0.toLocaleDateString("pt-BR",{month:"long", year:"numeric"}))+'</h1><button type="button" id="cn" aria-label="Próximo mês"'+(calOff>=0?' disabled':'')+'>›</button></div>'+
     '<div class="mcal">'+g+'</div><div class="legend"><span style="--c:#FF5A00">Corrida</span><span style="--c:#1E88E5">Natação</span><span style="--c:#6E56CF">Força/Hyrox</span><span style="--c:#E39A06">Bike</span></div>'+
     (peek || '<p class="s">Toque num dia para ver o que você fez. Borda laranja = prova.</p>'), {tabs:true, fab:true});
   bindGo(app);
@@ -3581,14 +3488,14 @@ function telaDiaCompleto(k){
   const inf = diaInfo(k), race = inf.it.find(x=>x.race), Z = zonas();
   let h = '<button type="button" class="back" data-go="perf|cal">← Calendário</button><span class="k">'+esc(inf.d.toLocaleDateString("pt-BR",{weekday:"long"}))+'</span><h1 class="h1">'+esc(fmt(inf.d))+'</h1>';
   if (race){ const p = race.post, km = parseFloat(String((p.stats.find(s=>s[1]==="km")||[])[0]||"").replace(",",".")), tm = tempoDe((p.stats.find(s=>/tempo/.test(s[1]))||[])[0]);
-    h += '<div class="race-card"><div class="between"><span class="k" style="color:var(--go-ink)">prova'+(p.selo?' · '+esc(p.selo):'')+'</span></div><b class="h2" style="font-size:1.7rem">'+esc(p.titulo)+'</b><div class="big3" style="border:0">'+(p.stats||[]).slice(0,2).map(s=>'<div><b>'+esc(s[0])+'</b><span>'+esc(s[1])+'</span></div>').join("")+'<div><b>'+(km&&tm?num(vdotDe(km,tm),1):'—')+'</b><span>VDOT</span></div></div>'+(p.legenda?'<p class="s">'+esc(p.legenda)+'</p>':'')+'</div>'; }
-  inf.it.filter(x=>!x.race).forEach(x=>{ h += '<div class="actv" style="--c:'+x.cor+'"><i>'+x.sig+'</i><span><b>'+esc(x.t)+'</b><small>'+esc(x.det)+'</small></span>'+(x.foto?'<img src="'+esc(x.foto)+'" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px">':'<span class="n">'+(x.ok?'✓':x.nf?'–':'')+'</span>')+'</div>'; });
+    h += '<div class="race-card"><div class="between"><span class="k cor-go">prova'+(p.selo?' · '+esc(p.selo):'')+'</span></div><b class="h2">'+esc(p.titulo)+'</b><div class="big3">'+(p.stats||[]).slice(0,2).map(s=>'<div><b>'+esc(s[0])+'</b><span>'+esc(s[1])+'</span></div>').join("")+'<div><b>'+(km&&tm?num(vdotDe(km,tm),1):'—')+'</b><span>VDOT</span></div></div>'+(p.legenda?'<p class="s">'+esc(p.legenda)+'</p>':'')+'</div>'; }
+  inf.it.filter(x=>!x.race).forEach(x=>{ h += '<div class="actv" style="--c:'+x.cor+'"><i>'+x.sig+'</i><span><b>'+esc(x.t)+'</b><small>'+esc(x.det)+'</small></span>'+(x.foto?'<img src="'+esc(x.foto)+'" alt="">':'<span class="n">'+(x.ok?'✓':x.nf?'–':'')+'</span>')+'</div>'; });
   if (inf.ci) h += '<div class="actv" style="--c:#13A150"><i>CI</i><span><b>Check-in · prontidão '+prontidao(inf.ci)+'</b><small>'+inf.ci.sono+' h de sono · energia '+inf.ci.humor+'/5 · dor '+inf.ci.dor+'/10'+(inf.ci.texto?' · '+esc(inf.ci.texto):'')+'</small></span><span></span></div>';
   const fotos = inf.refs.filter(r=>r.thumb), comidas = inf.refs.filter(r=>!r.pulou);
-  if (inf.refs.length) h += '<span class="k">refeições</span>'+(fotos.length?'<div class="photos">'+fotos.slice(0,6).map(r=>'<img src="'+esc(r.thumb)+'" alt="'+esc(r.refeicao)+'">').join("")+'</div>':'')+inf.refs.map(r=>'<div class="ba"><span>'+esc(r.refeicao)+'<br><span class="s">'+esc(r.pulou?"não comeu · "+r.motivo:(r.comeu||""))+'</span></span><b style="font-size:.9rem">'+esc(r.estimativa||"")+'</b></div>').join("");
+  if (inf.refs.length) h += '<span class="k">refeições</span>'+(fotos.length?'<div class="photos">'+fotos.slice(0,6).map(r=>'<img src="'+esc(r.thumb)+'" alt="'+esc(r.refeicao)+'">').join("")+'</div>':'')+inf.refs.map(r=>'<div class="ba"><span>'+esc(r.refeicao)+'<br><span class="s">'+esc(r.pulou?"não comeu · "+r.motivo:(r.comeu||""))+'</span></span><b>'+esc(r.estimativa||"")+'</b></div>').join("");
   inf.d && treinosDe(inf.d).forEach((tt,ii)=>{ const an = LOG["an_"+k+"_"+ii]; if (an) h += '<div class="coach"><span class="av">IA</span><span><b>'+esc(tt.t)+':</b> '+esc(an.analise)+'</span></div>'; });
   h += balancoHTML(inf.d, true);
-  h += '<div class="rtiles"><div><span class="k">nota do dia</span><b>'+(inf.co?num(inf.co.nota,1):'—')+'</b><em>'+(inf.co&&inf.co.fb?esc(inf.co.fb.amanha||""):inf.co?'':'dia não fechado')+'</em></div><div><span class="k">xp ganho</span><b style="color:var(--go-ink)">+'+inf.xp+'</b><em>'+(comidas.length?comidas.length+' refeição(ões)':'')+'</em></div></div>';
+  h += '<div class="rtiles"><div><span class="k">nota do dia</span><b>'+(inf.co?num(inf.co.nota,1):'—')+'</b><em>'+(inf.co&&inf.co.fb?esc(inf.co.fb.amanha||""):inf.co?'':'dia não fechado')+'</em></div><div><span class="k">xp ganho</span><b class="cor-go">+'+inf.xp+'</b><em>'+(comidas.length?comidas.length+' refeição(ões)':'')+'</em></div></div>';
   if (!inf.it.length && !inf.ci && !inf.refs.length) h += '<p class="s">Nenhum registro neste dia.</p>';
   const app = tela(h, {tabs:true, fab:true}); bindGo(app);
 }
@@ -3618,14 +3525,14 @@ function medalhasV2(){
   ];
 }
 function hexSVG(m){
-  const lock = !m.ok, cor = lock ? "#E4E7EB" : m.cor;
-  return '<svg viewBox="0 0 80 88" aria-hidden="true"><path d="M40 4 L70 21 L70 55 L40 72 L10 55 L10 21 Z" fill="'+(lock?"#EEF0F2":m.cor)+'" opacity="'+(lock?1:.16)+'"/><path d="M40 10 L64 24 L64 52 L40 66 L16 52 L16 24 Z" fill="'+cor+'"/><text x="40" y="45" font-size="'+((m.secreta&&lock)?18:m.s.length>2?13:18)+'" font-weight="900" text-anchor="middle" fill="#fff" font-family="Big Shoulders Display">'+((m.secreta&&lock)?"?":m.s)+'</text>'+(lock&&!m.secreta?'<rect x="16" y="78" width="48" height="5" rx="2.5" fill="currentColor" fill-opacity=".12"/><rect x="16" y="78" width="'+(48*(m.p||0))+'" height="5" rx="2.5" fill="#FF5A00"/>':'')+'</svg>';
+  const lock = !m.ok, cor = lock ? "var(--tx-2)" : m.cor;
+  return '<svg viewBox="0 0 80 88" aria-hidden="true"><path d="M40 4 L70 21 L70 55 L40 72 L10 55 L10 21 Z" style="fill:'+(lock?"var(--surface-2)":m.cor)+'" opacity="'+(lock?1:.16)+'"/><path d="M40 10 L64 24 L64 52 L40 66 L16 52 L16 24 Z" style="fill:'+cor+'"/><text x="40" y="45" font-size="'+((m.secreta&&lock)?18:m.s.length>2?13:18)+'" font-weight="700" text-anchor="middle" style="fill:'+(lock?"var(--surface)":"#fff")+'">'+((m.secreta&&lock)?"?":m.s)+'</text>'+(lock&&!m.secreta?'<rect x="16" y="78" width="48" height="5" rx="2.5" fill="currentColor" fill-opacity=".12"/><rect x="16" y="78" width="'+(48*(m.p||0))+'" height="5" rx="2.5" fill="#FF5A00"/>':'')+'</svg>';
 }
 function telaMedalhas(){
   const ms = medalhasV2(), ok = ms.filter(m=>m.ok), and = ms.filter(m=>!m.ok);
   const perto = and.filter(m=>!m.secreta).sort((a,b)=>(b.p||0)-(a.p||0))[0];
-  const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Medalhas <span class="n" style="font-size:1.2rem;color:var(--tx-2)">'+ok.length+' de '+ms.length+'</span></h1>'+
-    (perto ? '<div class="rcard" style="flex-direction:row;align-items:center;background:var(--go-soft);border-color:#FFD6C2"><div style="width:64px;flex:none">'+hexSVG(perto)+'</div><div><span class="k" style="color:var(--go-ink)">mais perto</span><b style="display:block">'+esc(perto.n)+'</b><span class="s">'+esc(perto.falta||"")+'</span></div></div>' : '')+
+  const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Medalhas <span class="n big-n cor-2">'+ok.length+' de '+ms.length+'</span></h1>'+
+    (perto ? '<div class="rcard row hl"><div>'+hexSVG(perto)+'</div><div><span class="k cor-go">mais perto</span><b style="display:block">'+esc(perto.n)+'</b><span class="s">'+esc(perto.falta||"")+'</span></div></div>' : '')+
     (ok.length ? '<span class="k">conquistadas</span><div class="hexes">'+ok.map(m=>'<div class="hx">'+hexSVG(m)+esc(m.n)+(m.quando?'<small>'+esc(fmt(parseD(m.quando)))+'</small>':'')+'</div>').join("")+'</div>' : '')+
     '<span class="k">em andamento</span><div class="hexes">'+and.map(m=>'<div class="hx lock">'+hexSVG(m)+(m.secreta?'Secreta':esc(m.n))+'<small>'+(m.secreta?'???':esc(m.falta||""))+'</small></div>').join("")+'</div>', {tabs:true, fab:true});
   bindGo(app);
@@ -3636,7 +3543,7 @@ function telaRecordes(){
   let maiorKm = 0, maiorM = 0, dKm = "", dM = "";
   Object.keys(LOG).filter(k=>k.startsWith("ck_")).forEach(k=>{ const v = LOG[k]||{}, d = k.slice(3,13), t = treinosDe(parseD(d))[+k.split("_")[2]]; if (!t) return; if (t.k==="run" && +v.km>maiorKm){ maiorKm = +v.km; dKm = d; } if (t.k==="swim" && (+v.m||0)>maiorM){ maiorM = +v.m; dM = d; } });
   ms.forEach(m=>{ if (m.km>maiorKm){ maiorKm = m.km; dKm = m.d; } });
-  const linha = (n, v, d, selo) => '<div class="rcard" style="flex-direction:row;justify-content:space-between;align-items:center"><span><b>'+n+'</b><br><span class="s">'+esc(d?fmt(parseD(d)):"")+'</span></span><span style="text-align:right"><b class="n" style="font-size:1.6rem">'+v+'</b>'+(selo?'<br><span class="badge">'+esc(selo)+'</span>':'')+'</span></div>';
+  const linha = (n, v, d, selo) => '<div class="rcard row"><span><b>'+n+'</b><br><span class="s">'+esc(d?fmt(parseD(d)):"")+'</span></span><span class="tr"><b class="n big-n">'+v+'</b>'+(selo?'<br><span class="badge">'+esc(selo)+'</span>':'')+'</span></div>';
   const app = tela('<button type="button" class="back" data-go="perf">← Performance</button><h1 class="h1">Recordes</h1><span class="k">corrida</span>'+
     (Object.keys(por).sort((a,b)=>a-b).map(dk=>linha(dk+" km", fmtP(por[dk].min*60), por[dk].d, "VDOT "+num(por[dk].vdot,1))).join("") || '<p class="s">Registre provas ou testes para ver seus tempos.</p>')+
     (maiorKm ? linha("Maior distância", num(maiorKm,1)+" km", dKm) : '')+
@@ -3650,16 +3557,16 @@ function telaDesafio(id){
   const pc = placar(dz), acabou = parseD(dz.fim)<today, mx = Math.max(dz.formato==="juntos"?0:1, pc[0].v, 0.1), tot = pc.reduce((a,x)=>a+x.v,0);
   const rest = Math.max(0, (addDays(parseD(dz.fim),1) - new Date())/3600000);
   const alt = 26 + pc.length*38;
-  let h = '<button type="button" class="back" data-go="perf|desafios">← Desafios</button><h1 class="h1" style="font-size:1.9rem">'+esc(dz.titulo)+'</h1>'+
-    '<div class="row"><span class="badge" style="background:var(--go-soft);border-color:#FFD6C2;color:var(--go-ink)">'+(acabou?'encerrado':Math.floor(rest/24)+'d '+Math.floor(rest%24)+'h')+'</span><span class="badge">'+pc.length+' pessoas</span><span class="badge">'+esc(UNI[dz.tipo])+'</span></div>'+
+  let h = '<button type="button" class="back" data-go="perf|desafios">← Desafios</button><h1 class="h1">'+esc(dz.titulo)+'</h1>'+
+    '<div class="row"><span class="badge hot">'+(acabou?'encerrado':Math.floor(rest/24)+'d '+Math.floor(rest%24)+'h')+'</span><span class="badge">'+pc.length+' pessoas</span><span class="badge">'+esc(UNI[dz.tipo])+'</span></div>'+
     '<div class="track" style="height:'+alt+'px"><div class="finish"></div>'+pc.map((x,i)=>{ const top = 26+i*38, pct = dz.formato==="juntos" ? Math.min(1, x.v/Math.max(1,dz.meta/pc.length)) : x.v/mx; const p = pessoa(x.id);
       return '<div class="lane" style="top:'+top+'px"></div><div class="runner" style="left:calc(14px + '+(Math.max(0.04,pct)*0.86*100)+'%);top:'+top+'px">'+avatar(x.id,30)+'<small>'+esc(x.id===ME()?"Você":p.nome.split(" ")[0])+' '+num(x.v,1)+'</small></div>'; }).join("")+'</div>'+
     (dz.formato==="juntos" ? '<div class="pot"><span>Meta do grupo</span><b class="n">'+num(tot,1)+' / '+dz.meta+'</b></div>' : '')+
-    (dz.valendo ? '<div class="pot"><span><span class="k" style="color:rgba(255,255,255,.6)">valendo</span><br>'+esc(dz.valendo)+'</span><b>🏆</b></div>' : '');
+    (dz.valendo ? '<div class="pot"><span><span class="k">valendo</span><br>'+esc(dz.valendo)+'</span><b>🏆</b></div>' : '');
   if (acabou && dz.formato!=="juntos"){ const win = pc[0];
     h += '<div class="rcard"><span class="k">resultado</span><b class="h2">'+esc(win.id===ME()?"Você venceu!":pessoa(win.id).nome.split(" ")[0]+" venceu.")+'</b>'+(dz.valendo?pc.slice(1).map(x=>'<div class="between"><span>'+esc(x.id===ME()?"Você":pessoa(x.id).nome)+'</span><button type="button" class="btn sm'+(dz.pagos[x.id]?'':' ghost')+'" data-pago="'+esc(x.id)+'">'+(dz.pagos[x.id]?'✓ acertou':'marcar que acertou')+'</button></div>').join(""):'')+'<button type="button" class="btn go" id="rev">Revanche</button></div>'; }
-  h += '<span class="k">provocações</span>'+((dz.chat||[]).slice(-6).map(m=>'<div class="m '+(m.de===ME()?'u':'a')+'" style="max-width:85%"><b>'+esc(m.de===ME()?"Você":pessoa(m.de).nome.split(" ")[0])+':</b> '+esc(m.t)+'</div>').join("")||'<p class="s">Ninguém provocou ainda.</p>')+
-    '<div class="row" style="flex-wrap:nowrap"><input class="inp" id="prv" maxlength="120" placeholder="Provocar…"><button type="button" class="btn sm go" id="prok">Enviar</button></div>'+
+  h += '<span class="k">provocações</span>'+((dz.chat||[]).slice(-6).map(m=>'<div class="m '+(m.de===ME()?'u':'a')+'"><b>'+esc(m.de===ME()?"Você":pessoa(m.de).nome.split(" ")[0])+':</b> '+esc(m.t)+'</div>').join("")||'<p class="s">Ninguém provocou ainda.</p>')+
+    '<div class="row nw"><input class="inp" id="prv" maxlength="120" placeholder="Provocar…"><button type="button" class="btn sm go" id="prok">Enviar</button></div>'+
     (dz.membros.some(x=>SOC.people[x]&&SOC.people[x].exemplo)?'<p class="s">Placar dos amigos de exemplo é simulado.</p>':'');
   const app = tela(h, {tabs:true, fab:true}); bindGo(app);
   app.querySelectorAll("[data-pago]").forEach(b=>b.addEventListener("click", ()=>{ dz.pagos[b.dataset.pago] = !dz.pagos[b.dataset.pago]; salvarSocial(); telaDesafio(id); }));
@@ -3856,15 +3763,15 @@ function somaH(h){ return (h.run||0)+(h.swim||0)+(h.bike||0)+(h.gym||0); }
 function maiorFeito(k, campo){ let mx = 0; Object.keys(LOG).forEach(c=>{ const m = /^ck_(\d{4}-\d{2}-\d{2})_(\d+)$/.exec(c); if (!m || !LOG[c]) return; const t = treinosDe(parseD(m[1]))[+m[2]]; if (t && t.k===k){ const v = +LOG[c][campo]; if (v>mx) mx = v; } }); return mx; }
 function pfHoje(){
   const c = LOG["ci_"+key(today)], pr = prontidao(c), ts = treinosDe(today), s = semanaDe(today);
-  let h = '<div class="pf-card" style="align-items:center;text-align:center"><span class="k" style="align-self:flex-start"><span class="pf-n">1</span>hoje</span>';
+  let h = '<div class="pf-card c"><span class="k"><span class="pf-n">1</span>hoje</span>';
   if (!c){
-    h += '<svg viewBox="0 0 140 140" width="130" height="130" aria-hidden="true"><circle cx="70" cy="70" r="58" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="12"/><text x="70" y="82" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="44" fill="currentColor" fill-opacity=".35">—</text></svg>'+
-      '<b style="font-size:1.05rem">Sua prontidão aparece depois do check-in</b><span class="s">Sono, energia e dor, em 10 segundos.</span><button type="button" class="btn go" id="pf-ci">Fazer o check-in</button>';
+    h += '<svg viewBox="0 0 140 140" width="130" height="130" aria-hidden="true"><circle cx="70" cy="70" r="58" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="12"/><text x="70" y="82" text-anchor="middle" font-weight="700" font-size="44" fill="currentColor" fill-opacity=".35">—</text></svg>'+
+      '<b>Sua prontidão aparece depois do check-in</b><span class="s">Sono, energia e dor, em 10 segundos.</span><button type="button" class="btn go" id="pf-ci">Fazer o check-in</button>';
   } else {
     const b = bandaDe(pr), dor = +c.dor, sono = +c.sono, nd = normalDe("dor"), ns = normalDe("sono");
     const arco = 364.4*Math.max(0.02, pr/100);
-    h += '<svg viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="Prontidão '+pr+' de 100: '+esc(b[1])+'"><circle cx="70" cy="70" r="58" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="12"/><circle cx="70" cy="70" r="58" fill="none" style="stroke:'+b[2]+'" stroke-width="12" stroke-linecap="round" stroke-dasharray="'+arco.toFixed(1)+' 364.4" transform="rotate(-90 70 70)"/><text x="70" y="80" text-anchor="middle" font-family="Big Shoulders Display" font-weight="900" font-size="52" fill="currentColor">'+pr+'</text></svg>'+
-      '<b style="font-size:1.05rem">'+esc(b[1])+'</b>'+
+    h += '<svg viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="Prontidão '+pr+' de 100: '+esc(b[1])+'"><circle cx="70" cy="70" r="58" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="12"/><circle cx="70" cy="70" r="58" fill="none" style="stroke:'+b[2]+'" stroke-width="12" stroke-linecap="round" stroke-dasharray="'+arco.toFixed(1)+' 364.4" transform="rotate(-90 70 70)"/><text x="70" y="80" text-anchor="middle" font-weight="700" font-size="52" fill="currentColor">'+pr+'</text></svg>'+
+      '<b>'+esc(b[1])+'</b>'+
       '<span class="s">'+(ts.length ? esc(b[3])+' Plano de hoje: <b>'+esc(ts.map(t=>t.t).join(" + "))+'</b>'+(ts[0].ef?' · esforço '+esc(ts[0].ef):'')+'.' : 'Hoje é descanso no plano. Aproveite.')+'</span>'+
       (nd==null && dor>=0 ? '<span class="s">Dor em <b>'+dor+'</b> de 10 ('+esc(dorRotulo(dor))+').</span>' : '')+
       (dor>=0 && nd!=null ? '<span class="s">Dor em <b>'+dor+'</b> de 10 ('+esc(dorRotulo(dor))+') · seu normal é '+num(nd,1)+(dor>nd+1.5?' <span class="pf-dn">▲ acima: fique no leve</span>':dor<nd-1.5?' <span class="pf-ok">▼ abaixo</span>':' · dentro do normal')+'</span>' : '')+
@@ -3882,15 +3789,15 @@ function pfSemana(){
     ts.forEach((t,j)=>{ const c = feito(d,j), just = justificado(d,j); if (just) return; plan++; pm += minPlano(t); cor = CORK[t.k]||cor; if (c){ feitos++; fm += minDe(c,t); } else tudo = false; });
     hF += fm/60; hP += pm/60; dias.push({pm, fm, cor, tudo, hoje:+d===+today, n:ts.length, longao:(ts.find(t=>/longão/i.test(t.t))||{}).km}); }
   const mx = Math.max(40, ...dias.map(x=>Math.max(x.pm,x.fm))), W = 280, H = 50;
-  let g = '<svg viewBox="0 0 280 74" width="100%" role="img" aria-label="Esforço de cada dia da semana: cheio é feito, tracejado é o que falta">';
+  let g = '<svg viewBox="0 -12 280 86" width="100%" role="img" aria-label="Esforço de cada dia da semana: cheio é feito, tracejado é o que falta">';
   g += '<line x1="0" y1="'+(H+2)+'" x2="280" y2="'+(H+2)+'" stroke="currentColor" stroke-opacity=".15"/>';
   dias.forEach((x,i)=>{ const cx = 20+i*40, hp = Math.round(H*Math.min(1,x.pm/mx)), hf = Math.round(H*Math.min(1,x.fm/mx));
     if (x.pm>0 && !x.tudo) g += '<rect x="'+(cx-9)+'" y="'+(H+2-Math.max(4,hp))+'" width="18" height="'+Math.max(4,hp)+'" rx="4" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-width="1.6" stroke-dasharray="3 3"/>';
     if (hf>0) g += '<rect x="'+(cx-9)+'" y="'+(H+2-Math.max(4,hf))+'" width="18" height="'+Math.max(4,hf)+'" rx="4" style="fill:'+x.cor+'"/>';
-    if (x.longao) g += '<text x="'+cx+'" y="'+(H-Math.max(4,hp)-2)+'" font-size="9" text-anchor="middle" fill="currentColor">longão '+num(x.longao,0)+' km</text>';
+    if (x.longao) g += '<text x="'+(i>4?cx+9:cx)+'" y="'+(H-Math.max(4,hp)-2)+'" font-size="9" text-anchor="'+(i>4?'end':'middle')+'" fill="currentColor">longão '+num(x.longao,0)+' km</text>';
     g += '<text x="'+cx+'" y="70" font-size="10" text-anchor="middle" fill="currentColor" fill-opacity="'+(x.hoje?1:.65)+'" font-weight="'+(x.hoje?800:400)+'">'+DIAS[i][0]+'</text>'; });
   g += '</svg>';
-  return '<div class="pf-card"><span class="k"><span class="pf-n">2</span>a semana</span><div class="pf-row"><b style="font-size:1.15rem">'+feitos+' de '+plan+' treinos</b>'+(pl&&s&&s.w>0?'<span class="pf-chip">fase: '+esc(faseDaSemana(pl,s.w))+'</span>':'')+'</div>'+g+
+  return '<div class="pf-card"><span class="k"><span class="pf-n">2</span>a semana</span><div class="pf-row"><b>'+feitos+' de '+plan+' treinos</b>'+(pl&&s&&s.w>0?'<span class="pf-chip">fase: '+esc(faseDaSemana(pl,s.w))+'</span>':'')+'</div>'+g+
     '<span class="s">'+num(hF,1)+' h feitas de '+num(hP,1)+' h planejadas. Cheio é feito, tracejado é o que falta.'+(s&&s.sem&&s.sem.deload?' Semana leve de propósito.':'')+'</span></div>';
 }
 function pfRota(){
@@ -3908,11 +3815,11 @@ function pfRota(){
   const barra = (nome, atual, alvo, un2, cor) => alvo>0 ? '<div class="pf-row"><span class="s">'+nome+'</span><span><b>'+atual+' '+un2+'</b> <span class="s">de '+alvo+'</span></span></div><div class="pf-bar"><i style="width:'+Math.min(100,Math.round(100*(parseFloat(String(atual).replace(".","").replace(",","."))||0)/alvo))+'%;'+(cor?'background:'+cor:'')+'"></i></div>' : '';
   const nadoF = maiorFeito("swim","m"), bikeF = maiorFeito("bike","min"), bikeAlvo = Math.max(0, ...pl.semanas.flatMap(se=>se.dias.flatMap(d=>d.treinos.filter(t=>t.k==="bike").map(t=>+t.min||0))));
   return '<div class="pf-card"><span class="k"><span class="pf-n">3</span>a rota'+(prova?' até a prova':' do plano')+'</span>'+
-    '<div class="pf-row" style="align-items:flex-end"><span class="pf-big" style="font-family:var(--f);font-weight:900;font-size:3.2rem;line-height:.9">'+(dd!=null?dd:tot-w+1)+'</span><span class="s" style="text-align:right">'+(dd!=null?'dias para a prova<br>'+esc(fmt(prova)):'semanas restantes')+'<br>semana '+w+' de '+tot+'</span></div>'+svg+
+    '<div class="pf-row end"><span class="pf-big">'+(dd!=null?dd:tot-w+1)+'</span><span class="s">'+(dd!=null?'dias para a prova<br>'+esc(fmt(prova)):'semanas restantes')+'<br>semana '+w+' de '+tot+'</span></div>'+svg+
     barra("Maior corrida", String(Math.round(feitoL*10)/10).replace(".",","), Math.round(alvoL*10)/10, "km", "") +
     (tri ? barra("Natação contínua", nadoF||0, 1900, "m", "var(--swim)") + (bikeAlvo>0 ? barra("Maior pedal", bikeF||0, bikeAlvo, "min", "var(--bike)") : "") : "")+
     extrasDe().metas.filter(m=>m.status==="ativa"&&m.tipo==="km").map(m=>barra("Meta: "+num(m.alvo,0)+" km até "+fmt(parseD(m.ate)), String(Math.round(maiorCorridaFeita()*10)/10).replace(".",","), m.alvo, "km", "var(--done)")).join("")+
-    '<button type="button" class="pf-chip" data-go="perfil|extras" style="align-self:flex-start">Objetivos extras e metas</button>'+
+    '<button type="button" class="pf-chip" data-go="perfil|extras">Objetivos extras e metas</button>'+
     '<span class="s">'+esc(faseDaSemana(pl,w)?"Fase atual: "+faseDaSemana(pl,w)+".":"")+(meia>=0 && meia+1>w ? " A meia maratona é na semana "+(meia+1)+".":"")+'</span></div>';
 }
 function pfCarga(){
@@ -3929,16 +3836,16 @@ function pfCarga(){
   const ult = sem[N-2]; let estado, cor, txt;
   if (!ult || ult.plan==null){ estado = "Plano começou agora"; cor = "var(--tx-2)"; txt = "Daqui a uma semana eu comparo o seu treino com o que o plano pediu."; }
   else { const r = ult.plan>0 ? ult.h/ult.plan : 1;
-    if (r>1.25){ estado = "Acima do plano"; cor = "var(--caution)"; txt = "Você treinou mais do que o plano pediu. Cuidado para não acumular cansaço: respeite os dias leves."; }
-    else if (r>=0.8){ estado = "No ritmo do plano"; cor = "var(--done)"; txt = "A semana passada ficou dentro da faixa do plano ("+num(ult.h,1)+" h de "+num(ult.plan,1)+" h)."; }
-    else if (r>=0.5){ estado = "Abaixo do plano"; cor = "var(--caution)"; txt = "A semana passada ficou abaixo do plano ("+num(ult.h,1)+" h de "+num(ult.plan,1)+" h). Se foi por dor ou cansaço, fale com o coach."; }
-    else { estado = "Bem abaixo do plano"; cor = "var(--stop)"; txt = "Pouco treino na semana passada ("+num(ult.h,1)+" h de "+num(ult.plan,1)+" h). Quer pausar ou ajustar o plano? O coach ajuda."; } }
-  return '<div class="pf-card"><span class="k"><span class="pf-n">4</span>carga de treino: você está bem?</span><div class="pf-row"><b style="font-size:1.1rem">'+esc(estado)+'</b><span class="pf-chip" style="color:'+cor+'">'+(ult&&ult.plan!=null?"faixa do plano":"sem histórico")+'</span></div>'+g+'<span class="s">'+esc(txt)+' Faixa verde: o plano ±20%.</span></div>';
+    if (r>1.25){ estado = "Acima do plano"; cor = "var(--warn-ink)"; txt = "Você treinou mais do que o plano pediu. Cuidado para não acumular cansaço: respeite os dias leves."; }
+    else if (r>=0.8){ estado = "No ritmo do plano"; cor = "var(--done-ink)"; txt = "A semana passada ficou dentro da faixa do plano ("+num(ult.h,1)+" h de "+num(ult.plan,1)+" h)."; }
+    else if (r>=0.5){ estado = "Abaixo do plano"; cor = "var(--warn-ink)"; txt = "A semana passada ficou abaixo do plano ("+num(ult.h,1)+" h de "+num(ult.plan,1)+" h). Se foi por dor ou cansaço, fale com o coach."; }
+    else { estado = "Bem abaixo do plano"; cor = "var(--stop-ink)"; txt = "Pouco treino na semana passada ("+num(ult.h,1)+" h de "+num(ult.plan,1)+" h). Quer pausar ou ajustar o plano? O coach ajuda."; } }
+  return '<div class="pf-card"><span class="k"><span class="pf-n">4</span>carga de treino: você está bem?</span><div class="pf-row"><b>'+esc(estado)+'</b><span class="pf-chip" style="color:'+cor+'">'+(ult&&ult.plan!=null?"faixa do plano":"sem histórico")+'</span></div>'+g+'<span class="s">'+esc(txt)+' Faixa verde: o plano ±20%.</span></div>';
 }
 function pfConquistas(){
   const n = nivelXP(), f = foguinho(), ini = addDays(today,-dow(today)), liga = ligaLista(), pos = liga.findIndex(x=>x.id===ME())+1, mw = missoesSemana(), jan = (()=>{ let c = 0; for (let i=0;i<7;i++) if (LOG["tj_"+key(addDays(ini,i))]) c++; return c; })();
   return '<div class="pf-card"><span class="k"><span class="pf-n">5</span>conquistas</span>'+
-    '<div class="fire-hero'+(f.n?'':' off')+'" style="grid-template-columns:96px 1fr"><div class="flame" style="width:96px;height:108px">'+flameSVG(f.n>0)+'</div><div class="streak"><span class="k" style="color:var(--go-ink)">foguinho</span><b>'+f.n+'</b><span class="n" style="font-size:.95rem">'+(f.n===1?'dia seguido':'dias seguidos')+'</span><p class="s" style="margin-top:4px">'+(f.hojeOk?'Aceso hoje.':f.n?'Em risco: registre algo até 23h59.':'Faça o check-in para acender.')+'</p></div>'+
+    '<div class="fire-hero'+(f.n?'':' off')+'"><div class="flame">'+flameSVG(f.n>0)+'</div><div class="streak"><span class="k cor-go">foguinho</span><b>'+f.n+'</b><span class="n">'+(f.n===1?'dia seguido':'dias seguidos')+'</span><p class="s mt8">'+(f.hojeOk?'Aceso hoje.':f.n?'Em risco: registre algo até 23h59.':'Faça o check-in para acender.')+'</p></div>'+
       '<div class="wkstrip">'+DIAS.map((dn,i)=>{ const d = addDays(ini,i), on = d<=today && ativoNoDia(key(d)); return '<span><i class="'+(on?'on':'')+(+d===+today?' td':'')+'">'+(on?'✓':'')+'</i>'+dn[0]+'</span>'; }).join("")+'</div></div>'+
     '<button type="button" class="pf-link" data-go="perf|nivel"><span>Nível <b>'+n.n+'</b> · '+esc(n.faixa)+'</span><span class="s">faltam '+(n.fim-n.x)+' XP →</span></button>'+
     '<button type="button" class="pf-link" data-go="perf|liga"><span>Liga da semana</span><span class="s">'+pos+'º de '+liga.length+' →</span></button>'+
