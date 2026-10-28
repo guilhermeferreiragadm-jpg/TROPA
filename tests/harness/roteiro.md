@@ -32,7 +32,7 @@ Com `?eu=<id>&nome=<nome>` o stub vira esse usuário (não dono, já com acesso 
 1. Aba A `/?eu=ana&nome=Ana` (aluna) e aba B `/?eu=pedro&nome=Pedro` (profissional). O objeto `Pro` se acessa por `__T.ev("Pro")`.
 2. B: `await Pro.ativarPapel("personal", true); (await Pro.gerarConvite("personal")).cod`.
 3. A: `await Pro.aceitarConvite("<cod>", {treino:true, perf:true})` e conferir `snap/ana~personal_treino` em `__STUB.S`.
-4. B: `s = await Pro.lerSnap("ana~personal","treino")`; `await Pro.enviarProposta("ana~personal","carga", s.plano, <plano alterado>, "texto")`.
+4. B: `s = await Pro.lerSnap("ana~personal","treino")`; `await Pro.enviarProposta("ana~personal","treino", s.plano, <plano alterado só em semanas[...]>, "texto")` (o tipo é `treino` para Personal e `alimentar` para Nutri; tipo diferente do papel, caminho fora de `semanas` ou valor acima dos tetos devolve `{erro:"invalida"}``.
 5. A: `await Pro.responderProposta("ana~personal", <id>, "aceitar")`; `planoAtual()` passa a refletir a mudança e B lê o snap atualizado.
 6. Proposta com base antiga volta `desatualizada`. A: `await Pro.encerrar("ana~personal")`: os `snap/*` somem e `lerSnap` devolve `null`.
 7. Privacidade: `JSON.stringify(__STUB.S["snap/ana~personal_treino"])` e `__STUB.S["prop/..."]` só mostram `iv` e `ct` em base64, nenhum texto legível.

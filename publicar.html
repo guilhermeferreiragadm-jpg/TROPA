@@ -1264,10 +1264,18 @@ function opsPermitidas(tipo, ops){
   if (!Array.isArray(ops) || !ops.length || ops.length>400) return false;
   return ops.every(op=>{
     if (!ehObj(op) || Array.isArray(op) || !Array.isArray(op.p) || op.p.length>10 || !caminhoSeguro(op.p)) return false;
-    if (op.v!==undefined && JSON.stringify(op.v).length>2000) return false;
-    const p = op.p;
+    if (op.v!==undefined && JSON.stringify(op.v).length>(tipo==="alimentar" ? 8000 : 2000)) return false;
+    const p = op.p, mOk = k=>["kcal", "prot", "carb", "gord"].includes(k);
     if (tipo==="treino") return p[0]==="semanas" && p.length>=2 && Number.isInteger(p[1]) && p[1]<200;
-    if (tipo==="alimentar") return (p[0]==="metas" && p.length===2 && ["kcal", "prot", "carb", "gord"].includes(p[1])) || (p[0]==="orient" && (p.length===1 || (Number.isInteger(p[1]) && p[1]<50 && (p.length===2 || (p.length===3 && ["ref", "t"].includes(p[2]))))));
+    if (tipo!=="alimentar") return false;
+    if (p[0]==="metas"){
+      if (p.length===2) return mOk(p[1]);
+      return p.length===1 && (op.del===true || (ehObj(op.v) && !Array.isArray(op.v) && Object.keys(op.v).every(k=>mOk(k) && numOk(op.v[k], TETO.meta))));
+    }
+    if (p[0]==="orient"){
+      if (p.length===1) return op.del===true || (Array.isArray(op.v) && op.v.length<=20);
+      return Number.isInteger(p[1]) && p[1]<50 && (p.length===2 || (p.length===3 && ["ref", "t"].includes(p[2])));
+    }
     return false;
   });
 }
@@ -1287,8 +1295,10 @@ function planoValido(tipo, o){
   }catch(e){ return false; }
 }
 // st: ok (pode aplicar, com novo), velha (a base não é o plano de hoje) ou invalida (tipo trocado, ops ou resultado fora do permitido)
+const corteAlim = o => ehObj(o) && Array.isArray(o.orient) && o.orient.length>20 ? Object.assign({}, o, {orient:o.orient.slice(0, 20)}) : o;   // plano antigo com mais de 20 orientações: base e edição usam as 20 primeiras
 function avaliarProposta(tipo, p, antes){
   if (!p || p.tipo!==tipo) return {st:"invalida"};
+  if (tipo==="alimentar") antes = corteAlim(antes);
   if (antes==null || !propostaAtual(p, JSON.stringify(antes))) return {st:"velha"};
   if (!opsPermitidas(tipo, p.ops)) return {st:"invalida"};
   try{ const novo = aplicarPatch(antes, p.ops); return planoValido(tipo, novo) ? {st:"ok", novo} : {st:"invalida"}; }catch(e){ return {st:"velha"}; }
@@ -2647,6 +2657,7 @@ async function sheetPropostaAluno(vid, id){
     let antes, ler = true;
     if (prof){ const sn = await snapPro(vid, tipo==="alimentar" ? "comida" : "treino", true); if (sn) antes = tipo==="alimentar" ? sn.planoAlim || {} : sn.plano; else ler = false; }   // sem leitura do plano, o profissional não afirma nada
     else antes = tipo==="alimentar" ? P.planoAlim || {} : planoAtual();
+    if (tipo==="alimentar") antes = corteAlim(antes);
     const av = p.tipo!==tipo ? {st:"invalida"} : ler ? avaliarProposta(tipo, p, antes) : {st:"?"};   // o tipo é o do vínculo, não o do payload
     const velha = p.estado==="pendente" && (av.st==="velha" || av.st==="invalida" || (prof && SUBST.has(vid+"."+id))), est = velha ? "desatualizada" : p.estado, e = ESTPROP[est] || [esc(est), "wait"];
     const lin = av.novo ? diffTxt(antes, av.novo) : [];
@@ -2698,7 +2709,7 @@ function edHTML(){
   if (ED.tipo==="alimentar"){
     const m = ED.dep.metas || {}, or = ED.dep.orient || [];
     return '<div class="box"><b>Metas do dia</b><p class="s">Opcional. O aluno vê estes números, mas eles não mudam os cálculos do app.</p><div class="grid2">'+Object.keys(METAROT).map(k=>inp(METAROT[k]+metaU(k), "m|"+k, m[k]==null ? "" : m[k], 1, 1)).join("")+'</div></div>'+
-      '<div class="box"><b>Orientações por refeição</b>'+or.map((r, i)=>'<div class="ped"><label class="fld"><span class="k">Refeição</span><input class="inp" data-f="o|'+i+'|ref" maxlength="40" value="'+esc(r.ref)+'"></label><label class="fld"><span class="k">Orientação</span><textarea class="inp" data-f="o|'+i+'|t" rows="3" maxlength="300">'+esc(r.t)+'</textarea></label><button type="button" class="lk" data-orm="'+i+'">Remover</button></div>').join("")+(or.length<20 ? '<button type="button" class="btn" id="ora">Adicionar orientação</button>' : '<p class="s">Limite de 20 orientações.</p>')+'</div>';
+      '<div class="box"><b>Orientações por refeição</b>'+(ED.cortou ? '<p class="s">Mostrando só as 20 primeiras orientações</p>' : '')+or.map((r, i)=>'<div class="ped"><label class="fld"><span class="k">Refeição</span><input class="inp" data-f="o|'+i+'|ref" maxlength="40" value="'+esc(r.ref)+'"></label><label class="fld"><span class="k">Orientação</span><textarea class="inp" data-f="o|'+i+'|t" rows="3" maxlength="300">'+esc(r.t)+'</textarea></label><button type="button" class="lk" data-orm="'+i+'">Remover</button></div>').join("")+(or.length<20 ? '<button type="button" class="btn" id="ora">Adicionar orientação</button>' : '<p class="s">Limite de 20 orientações.</p>')+'</div>';
   }
   return ED.dep.semanas[ED.wi].dias.map((d, i)=>{ const tr = diaTravado(i);
     return '<div class="box"><b>'+PROPDIA[i]+'</b>'+(tr ? '<div class="flag">Esse dia já tem treino registrado ou já passou: só os campos podem mudar, não dá para remover, mover nem inserir treinos.</div>' : "")+(d.treinos.length ? "" : '<p class="s">Descanso</p>')+d.treinos.map((t, j)=>{
@@ -2777,7 +2788,7 @@ function telaProPropor(vid){
       const r = planoValido("treino", s.plano) && semanaEm(s.plano, [], key(today));
       if (!r || !r.sem) throw "O plano do aluno não está em andamento nesta semana.";
       ED.ant = s.plano; ED.wi = r.w-1; ED.ini = addDays(parseD(s.plano.inicio), 7*(r.w-1)); ED.feitos = s.feitos && typeof s.feitos==="object" ? s.feitos : {};
-    }else ED.ant = planoValido("alimentar", s.planoAlim || {}) ? s.planoAlim || {} : {};
+    }else{ const pa = s.planoAlim || {}, c = corteAlim(pa); ED.cortou = c!==pa; ED.ant = planoValido("alimentar", c) ? c : {}; }
     ED.tipo = tipo; ED.dep = copia(ED.ant);
   });
   carrega().then(()=>{

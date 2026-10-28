@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -197,4 +197,32 @@ test("avaliarProposta usa o tipo do vínculo: payload com tipo trocado nunca vir
   assert.equal(F.avaliarProposta("alimentar", {tipo: "alimentar", base, ops}, {}).st, "velha");
   assert.equal(F.avaliarProposta("treino", {tipo: "treino", base, ops: [{p: [], v: "lixo"}]}, a).st, "invalida");
   assert.equal(F.avaliarProposta("treino", {tipo: "treino", base: "zz", ops}, a).st, "velha");
+});
+
+test("opsPermitidas alimentar: primeira meta, apagar metas, meta isolada e orient do zero ou apagado", () => {
+  const ok = op => F.opsPermitidas("alimentar", [op]);
+  assert.equal(ok({p: ["metas"], v: {kcal: 2000, prot: 120}}), true);
+  assert.equal(ok({p: ["metas"], del: true}), true);
+  assert.equal(ok({p: ["metas", "kcal"], v: 2100}), true);
+  assert.equal(ok({p: ["metas", "x"], v: 1}), false);
+  assert.equal(ok({p: ["metas"], v: {zzz: 1}}), false);
+  assert.equal(ok({p: ["metas"], v: {kcal: 99999}}), false);
+  assert.equal(ok({p: ["metas"], v: 5}), false);
+  assert.equal(ok({p: ["metas"], v: [1]}), false);
+  const lista = Array.from({length: 20}, (_, i) => ({ref: "R" + i, t: "x".repeat(300)}));
+  assert.equal(ok({p: ["orient"], v: lista}), true);
+  assert.equal(ok({p: ["orient"], v: lista.concat(lista[0])}), false);
+  assert.equal(ok({p: ["orient"], del: true}), true);
+  assert.equal(ok({p: ["orient"], v: "texto"}), false);
+  const a = {}, b = {metas: {kcal: 2000}, orient: [{ref: "Café", t: "x"}]};
+  assert.equal(F.opsPermitidas("alimentar", F.criarPatch(a, b)), true);
+  assert.equal(F.opsPermitidas("alimentar", F.criarPatch(b, {})), true);
+  assert.equal(F.avaliarProposta("alimentar", {tipo: "alimentar", base: F.hash32("{}"), ops: F.criarPatch(a, b)}, {}).st, "ok");
+});
+
+test("corteAlim usa as 20 primeiras orientações na base e a proposta segue válida", () => {
+  const velho = {orient: Array.from({length: 25}, (_, i) => ({ref: "R" + i, t: "t"}))}, cort = F.corteAlim(velho);
+  assert.equal(cort.orient.length, 20);
+  const dep = {...cort, metas: {kcal: 1800}}, p = {tipo: "alimentar", base: F.hash32(JSON.stringify(cort)), ops: F.criarPatch(cort, dep)};
+  assert.equal(F.avaliarProposta("alimentar", p, velho).st, "ok");
 });
