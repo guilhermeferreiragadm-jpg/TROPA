@@ -41,9 +41,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 :focus-visible{outline:2px solid var(--go);outline-offset:2px}
 img{max-width:100%}
-.wrap{max-width:480px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:calc(112px + var(--safe-b))}
+.wrap{max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow:clip;padding-bottom:calc(112px + var(--safe-b))}
 #app{display:flex;flex-direction:column;gap:12px;padding-inline:16px;padding-block:calc(12px + env(safe-area-inset-top,0px)) 24px;transform-origin:50% 0}
 #app.full{padding-inline:0;padding-block:0;gap:0}
+.wrap:has(#app.full){padding-bottom:0}   /* telas cheias não têm barra de abas: sem folga embaixo (o chat rolava 112px e escondia a primeira mensagem sob o cabeçalho) */
 /* tipografia: tracking negativo nos títulos, entrelinha curta; corpo solto */
 .h1{font-weight:700;font-size:2.125rem;line-height:1.1;letter-spacing:-.03em;margin:0;text-wrap:balance}
 .h2{font-weight:700;font-size:1.375rem;line-height:1.15;letter-spacing:-.02em;margin:0}
@@ -212,7 +213,7 @@ textarea.inp{resize:vertical;min-height:88px}
 /* barra de abas flutuante de vidro + botão Coach · Nutri ao lado */
 .cab{position:fixed;top:0;left:0;right:0;margin:0 auto;width:min(480px,100%);height:calc(48px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;justify-content:center;z-index:25;opacity:0;pointer-events:none;border-width:0 0 1px;border-color:transparent;transition:opacity .2s ease-out,border-color .2s}
 .cab.on{opacity:1;border-color:var(--sep)}
-.cab span{font-weight:600;font-size:1.0625rem;letter-spacing:-.01em}
+.cab span{font-weight:600;font-size:1.0625rem;letter-spacing:-.01em;max-width:calc(100% - 96px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tabs{position:fixed;left:0;right:0;margin:0 auto;width:min(480px,100%);bottom:calc(8px + var(--safe-b));padding:0 12px;display:flex;gap:8px;align-items:center;z-index:30}
 .tabs-pill{flex:1;min-width:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-radius:999px;padding:4px;position:relative;box-shadow:var(--sh2)}
 .tabs-ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--go-soft);z-index:0;will-change:transform}
@@ -222,6 +223,8 @@ textarea.inp{resize:vertical;min-height:88px}
 .tabs-pill .tico svg{width:22px;height:22px}
 .tabs-pill button[aria-selected="true"]{color:var(--go-ink)}
 .tabs-pill em{position:absolute;top:3px;left:calc(50% + 6px);background:var(--go-fill);color:#fff;font-style:normal;font-size:.625rem;font-weight:600;min-width:16px;height:16px;border-radius:8px;display:grid;place-content:center;padding:0 4px}
+#borda{position:fixed;top:0;bottom:0;left:max(0px,calc(50% - 240px));width:20px;z-index:20;touch-action:pan-y}
+.sheet-aberta #borda{display:none}
 .fab{flex:none;width:56px;height:56px;border-radius:50%;padding:0;display:grid;place-content:center;color:var(--go-ink);box-shadow:var(--sh2);transition:transform .1s ease-out}
 .fab:active{transform:scale(.97)}
 .fab svg{width:26px;height:26px}
@@ -342,7 +345,8 @@ tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 .sbars b{font-family:var(--f);text-align:right}
 /* chat */
 .chat{display:flex;flex-direction:column;min-height:100vh}
-.chat-h{position:sticky;top:env(safe-area-inset-top,0px);background:var(--surface);padding:12px 18px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--sep);z-index:5}
+.chat-h{position:sticky;top:env(safe-area-inset-top,0px);padding:4px 16px 12px;display:flex;flex-direction:column;gap:10px;z-index:5;border-width:0 0 1px}
+.chat-h .grab{margin:0 -16px -4px}
 .msgs{display:flex;flex-direction:column;gap:8px;padding:14px 18px;flex:1}
 .m{max-width:86%;padding:9px 11px;font-size:.9rem;line-height:1.38;white-space:pre-wrap}
 .m.u{align-self:flex-end;background:var(--ink);color:#fff}
@@ -351,12 +355,13 @@ tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 .thumbs{display:flex;gap:6px;align-self:flex-start;margin-top:-4px}
 .thumbs button{border:1px solid var(--sep);background:var(--surface);font-size:.8rem;padding:2px 8px}
 .thumbs button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-.cin{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--sep);background:var(--surface)}
-.cin textarea{flex:1;min-height:46px;max-height:140px;border:1px solid var(--sep);background:var(--surface-2);padding:10px 12px;resize:none}
-.cin button{border:0;background:var(--go-fill);color:#fff;font-weight:800;padding:0 16px}
-.mode{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink)}
-.mode button{border:0;background:var(--surface);padding:9px;font-weight:800;font-size:.86rem}
-.mode button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.cin{position:sticky;bottom:0;display:flex;gap:8px;align-items:flex-end;padding:10px 16px calc(12px + var(--safe-b));background:var(--mat-reg);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+.cin textarea{flex:1;min-height:46px;max-height:140px;border:0;border-radius:23px;background:var(--surface-2);padding:12px 16px;resize:none}
+.cin button{border:0;border-radius:23px;min-height:46px;background:var(--go-fill);color:#fff;font-weight:600;padding:0 18px}
+.cin button:active{transform:scale(.97)}
+.mode{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:var(--r1);padding:2px;gap:2px}
+.mode button{border:0;border-radius:8px;background:transparent;padding:9px;font-weight:600;font-size:.9375rem}
+.mode button[aria-pressed="true"]{background:var(--surface);color:var(--go-ink);box-shadow:var(--sh1),inset 0 0 0 1.5px var(--go)}
 /* perfil, painel */
 .prof{display:flex;gap:12px;align-items:center}
 .prof .me{width:58px;height:58px;font-size:1rem}
@@ -1148,9 +1153,10 @@ const Mov = (() => {
       am.push({t:e.timeStamp, x:e.clientY}); if (am.length > 8) am.shift();
       aplicar(el); if (o.aoMover) o.aoMover(m);
     });
-    const fim = () => {
+    const fim = e => {
       if (!ativo) return; ativo = false;
       if (el.dataset.fechando) return;
+      if (e && e.type==="pointerup") am.push({t:e.timeStamp, x:e.clientY});   // dedo parado antes de soltar: velocidade zero
       const m = estado(el), v = velocidade(am), h = o.altura();
       if (projetar(m.y, v) > h*0.5) o.aoFechar(v);
       else para(el, {y:0}, "lancado", {y:v});
@@ -1186,6 +1192,86 @@ new MutationObserver(recs => { const ov = $("ov"), s = ov && ov.querySelector(".
   // substituiu um sheet montado e que não estava fechando (ex.: sheetDocumento redesenha a cada passo): troca na hora
   const trocou = recs.some(r => [...r.removedNodes].some(n => n.nodeType===1 && n.classList.contains("sheet") && n.dataset.m && !n.dataset.fechando));
   if (s) montarSheet(ov, s, trocou); else if (ov && !ov.querySelector(".sheet")) document.documentElement.classList.remove("sheet-aberta"); }).observe($("ov"), {childList:true});
+
+/* ===================== TRANSIÇÕES, ABAS, VOLTAR POR GESTO ===================== */
+/* transição da tela nova: o estado inicial vai antes do primeiro quadro, a mola leva a tela ao repouso */
+let proxTransicao = "nenhuma";
+function entrada(app, tipo){
+  if (tipo==="nenhuma") return;
+  const m = Mov.estado(app);
+  if (Mov.reduz()){ m.x = 0; m.y = 0; m.o = 0; m.s = 1; Mov.aplicar(app); void app.offsetWidth; Mov.para(app, {o:1}); return; }
+  const L = app.parentElement.clientWidth || 390, H = window.innerHeight;
+  const de = {aba:{x:0, y:8, o:0}, push:{x:L*0.3, y:0, o:0}, pop:{x:-L*0.3, y:0, o:0}, sobe:{x:0, y:H, o:1}, desce:{x:0, y:8, o:0}}[tipo];
+  Object.assign(m, de, {s:1, vx:0, vy:0, vo:0}); Mov.aplicar(app);
+  Mov.para(app, {x:0, y:0, o:1}, "suave");
+}
+/* indicador da barra de abas: capa a aba selecionada e desliza por mola */
+function moverIndicador(){
+  const pill = document.querySelector(".tabs-pill"), ind = $("tabs-ind"), sel = pill && pill.querySelector('button[aria-selected="true"]');
+  if (!pill || !ind || !sel || $("tabs").hidden) return;
+  const x = sel.offsetLeft, primeira = !ind.dataset.pos;
+  ind.style.width = sel.offsetWidth + "px"; ind.dataset.pos = "1";
+  if (primeira){ const m = Mov.estado(ind); cancelAnimationFrame(m.raf); m.x = x; Mov.aplicar(ind); } else Mov.para(ind, {x}, "ligeiro");
+}
+// o tamanho das abas muda com a janela, a rotação e a fonte: mede de novo, sem animar
+const remedirIndicador = () => { const i = $("tabs-ind"); if (i) delete i.dataset.pos; moverIndicador(); };
+window.addEventListener("resize", remedirIndicador);
+try{ if (document.fonts && document.fonts.ready) document.fonts.ready.then(remedirIndicador); }catch(e){}
+/* título grande: quando o h1 sai da tela, o título pequeno aparece no cabeçalho de vidro */
+let tituloObs = null;
+function tituloGrande(app){
+  if (tituloObs) tituloObs.disconnect();
+  const cab = $("cab"), h1 = app.querySelector("h1.h1"); if (!cab) return;
+  cab.classList.remove("on");
+  if (!h1 || app.classList.contains("full") || !("IntersectionObserver" in window)) return;
+  tituloObs = new IntersectionObserver(es => { cab.classList.toggle("on", !es[0].isIntersecting && es[0].boundingClientRect.top < 0); }, {rootMargin:"-8px 0px 0px 0px"});
+  tituloObs.observe(h1);
+}
+/* vibração curta nos momentos de conclusão, no mesmo quadro da mudança visual; só onde o aparelho suporta */
+function haptica(tipo){ try{ if (navigator.vibrate) navigator.vibrate(tipo==="conquista" ? [12,40,12] : 10); }catch(e){} }
+
+/* voltar arrastando da borda esquerda: a tela acompanha o dedo; soltar projeta o ponto de repouso e confirma pelo mesmo botão "←" da tela */
+function voltarPorGesto(){
+  const app = $("app"), borda = document.createElement("div"); borda.id = "borda"; borda.setAttribute("aria-hidden","true"); document.querySelector(".wrap").appendChild(borda);
+  let ativo = false, decidido = false, x0 = 0, y0 = 0, off0 = 0, am = [];
+  const botao = () => app.querySelector(".back");
+  const tel = () => { borda.hidden = !botao(); };
+  new MutationObserver(tel).observe(app, {childList:true}); tel();
+  borda.addEventListener("pointerdown", e => {
+    if (e.button > 0 || !botao()) return;
+    ativo = true; decidido = false; x0 = e.clientX; y0 = e.clientY; am = [{t:e.timeStamp, x:e.clientX}];
+    try{ borda.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  borda.addEventListener("pointermove", e => {
+    if (!ativo) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (!decidido){ if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; if (Math.abs(dy) > Math.abs(dx) || dx < 0){ ativo = false; return; }
+      decidido = true; const m0 = Mov.estado(app); cancelAnimationFrame(m0.raf); m0.vx = 0; off0 = m0.x;   // só agora interrompe a entrada em curso: pega a tela onde ela está
+    }
+    const m = Mov.estado(app); m.x = Math.max(0, off0 + dx); Mov.aplicar(app);
+    am.push({t:e.timeStamp, x:e.clientX}); if (am.length > 8) am.shift();
+  });
+  const fim = e => {
+    if (!ativo) return; ativo = false;
+    if (!decidido){   // toque sem arrasto: a borda cobre o começo do botão, então repassa o toque se caiu nele
+      const b = botao(), r = b && b.getBoundingClientRect();
+      if (e && e.type==="pointerup" && r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) b.click();
+      return;
+    }
+    if (e && e.type==="pointerup") am.push({t:e.timeStamp, x:e.clientX});   // dedo parado antes de soltar: velocidade zero
+    const m = Mov.estado(app), L = app.parentElement.clientWidth || 390, v = velocidade(am);
+    if (projetar(m.x, v) > L*0.5 || v > 800){
+      const sai = Mov.reduz() ? (m.x = 0, Mov.aplicar(app), Mov.para(app, {o:0})) : Mov.para(app, {x:L, o:0}, "suave", {x:v});
+      sai.then(() => {
+        const b = botao(); if (b) b.click();
+        // se o botão não trocou a tela por ir() (ex.: sub-tela do feed redesenhada no lugar), a tela nova ainda entra pela esquerda
+        requestAnimationFrame(() => requestAnimationFrame(() => { if (m.x >= L - 1 || m.o === 0) entrada(app, "pop"); }));
+      });
+    } else Mov.para(app, {x:0, o:1}, "lancado", {x:v});
+  };
+  borda.addEventListener("pointerup", fim); borda.addEventListener("pointercancel", fim);
+}
+voltarPorGesto();
 
 /* ===================== PLANO NO DIA A DIA ===================== */
 function planoAtual(){ return (A && A.plano) || (P && P.plano); }
@@ -1827,10 +1913,14 @@ function tela(html, opts){
   opts = opts || {};
   $("tabs").hidden = !opts.tabs; $("fab").hidden = !opts.fab;
   const app = $("app"); app.className = opts.full ? "full" : ""; app.innerHTML = html;
-  const cab = $("cab"); if (cab){ cab.classList.remove("on"); const h1 = app.querySelector("h1.h1"); cab.firstChild.textContent = h1 ? h1.textContent : ""; }
   if (!opts.keepScroll) window.scrollTo(0,0);
   $("ban").innerHTML = DEMO ? '<div class="demo-ban"><b>Modo demonstração: você está vendo o app como um amigo. Nada é salvo.</b><button type="button" class="btn sm ink" id="demo-out">Sair da demonstração</button></div>' : "";
   if (DEMO){ const o = $("demo-out"); if (o) o.addEventListener("click", ()=>location.reload()); }
+  const tipo = proxTransicao; proxTransicao = "nenhuma";
+  const cab = $("cab"); if (cab) cab.firstChild.textContent = (app.querySelector("h1.h1") || {}).textContent || "";
+  tituloGrande(app);
+  entrada(app, tipo);
+  moverIndicador();
   return app;
 }
 const voltar = (fn) => '<button type="button" class="back" data-back="1">← Voltar</button>';
@@ -2100,7 +2190,12 @@ function telaRevisao(){
 }
 
 /* ===================== NAVEGAÇÃO ===================== */
-function ir(tab, sub, arg){ R.tab = tab; R.sub = sub||null; R.arg = arg==null?null:arg; render(); }
+function ir(tab, sub, arg){
+  const antes = {tab:R.tab, sub:R.sub, arg:R.arg};
+  R.tab = tab; R.sub = sub||null; R.arg = arg==null?null:arg;
+  proxTransicao = tipoTransicao(antes, {tab:R.tab, sub:R.sub, arg:R.arg});
+  render();
+}
 function render(keep){
   try{ aplicarTeto(); }catch(e){ registrarErro("teto", e); }
   const t = R.tab, s = R.sub;
@@ -2266,13 +2361,13 @@ function bindChecks(app){
     const key2 = "ck_"+k+"_"+i, antes = nivelAntes();
     if (LOG[key2]){ await salvarLog(key2, null); render(true); toast("Desmarcado."); return; }
     if (LOG["nf_"+k+"_"+i]) await salvarLog("nf_"+k+"_"+i, null);
-    await salvarLog(key2, {at:new Date().toISOString(), rapido:true, comoPlano:true, km:t.km||0, m:t.m||null, min:t.min||null});
+    await salvarLog(key2, {at:new Date().toISOString(), rapido:true, comoPlano:true, km:t.km||0, m:t.m||null, min:t.min||null}); haptica("ok");
     render(true); toast("Feito: "+t.t+" · +150 XP"); checarNivel(antes); analisarTreino(k, +i);
   }));
   app.querySelectorAll("[data-ckr]").forEach(b=>b.addEventListener("click", async ()=>{
     const ref = b.dataset.ckr, k = key(today), lst = LOG["ref_"+k] || [], r = refeicoesHoje().find(x=>x.refeicao===ref);
     if (lst.some(x=>x.refeicao===ref)){ await salvarLog("ref_"+k, lst.filter(x=>x.refeicao!==ref)); render(true); toast("Desmarcado."); return; }
-    await registrarRefeicao(ref, {comeu: (r && r.planejado) || "comeu", rapido:true}); render(true); toast(ref+" marcado. Mande a foto para a Nutri estimar.");
+    await registrarRefeicao(ref, {comeu: (r && r.planejado) || "comeu", rapido:true}); haptica("ok"); render(true); toast(ref+" marcado. Mande a foto para a Nutri estimar.");
   }));
 }
 function sheetCheckin(editar){
@@ -2295,7 +2390,7 @@ function sheetCheckin(editar){
     if (!hs || !st.humor){ $("cm").textContent = !hs ? "Preencha o horário que dormiu e o que acordou." : "Escolha a energia."; return; }
     const antes = nivelAntes();
     const v = {sono:hs, dormiu:$("cdo").value, acordou:$("cac").value, humor:st.humor, dor:st.dor, peito:$("cp").checked, desmaio:$("cd").checked, at:new Date().toISOString()};
-    await salvarLog("ci_"+key(today), v); fecha(); render(true);
+    await salvarLog("ci_"+key(today), v); haptica("ok"); fecha(); render(true);
     const pr = prontidao(v);
     if (v.peito || v.desmaio) toast("Zero treino hoje. Procure atendimento médico; se for agora, SAMU 192.");
     else if (!pausaAtiva() && v.dor>=5 && (LOG["ci_"+key(addDays(today,-1))]||{}).dor>=5){ toast("Dor forte dois dias seguidos. Que tal pausar o plano?"); setTimeout(sheetPausar, 700); }
@@ -3699,6 +3794,7 @@ montarIcones();
 
 /* animação de conquista: a marca da Tropa aparece, faíscas sobem e tudo some sozinho */
 function celebrar(rotulo){
+  haptica("conquista");
   try{ if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return; }catch(e){}
   const velho = document.getElementById("cele"); if (velho) velho.remove();
   const el = document.createElement("div"); el.id = "cele"; el.setAttribute("aria-hidden","true");
@@ -4047,11 +4143,12 @@ function ferramentas(){
 function telaChat(){
   const L = CHAT[chatModo];
   const ola = chatModo==="coach" ? "Pergunte o que quiser do seu treino: carga, ritmo, dor, como encaixar na semana. Se eu sugerir mudar o dia e você topar, eu mudo o calendário." : "Me conte o que comeu (eu salvo no seu dia) ou pergunte sobre comida no treino: antes, durante, depois, proteína, hidratação.";
-  const app = tela('<div class="chat"><div class="chat-h"><div class="between"><button type="button" class="back" id="cx">← Voltar</button><span class="k">assistente</span><span></span></div><div class="mode"><button type="button" data-m="coach" aria-pressed="'+(chatModo==="coach")+'">Coach</button><button type="button" data-m="nutri" aria-pressed="'+(chatModo==="nutri")+'">Nutri</button></div></div>'+
+  const app = tela('<div class="chat"><div class="chat-h mat"><span class="grab" id="cgrab"></span><div class="between"><button type="button" class="back" id="cx">← Voltar</button><span class="k">assistente</span><span></span></div><div class="mode"><button type="button" data-m="coach" aria-pressed="'+(chatModo==="coach")+'">Coach</button><button type="button" data-m="nutri" aria-pressed="'+(chatModo==="nutri")+'">Nutri</button></div></div>'+
     '<div class="msgs" id="msgs"><div class="m a">'+esc(ola)+'</div>'+L.map((m,i)=>'<div class="m '+(m.sys?'sys':m.role==="user"?'u':'a')+'">'+esc(m.content)+'</div>'+(m.role==="assistant"&&!m.sys&&m.content!=="…"?'<div class="thumbs"><button type="button" data-th="'+i+'~1" aria-pressed="'+(m.av===1)+'" aria-label="Resposta boa">👍</button><button type="button" data-th="'+i+'~0" aria-pressed="'+(m.av===0)+'" aria-label="Resposta ruim">👎</button></div>':'')).join("")+'</div>'+
     '<div class="cin"><textarea id="cin" rows="1" placeholder="Escreva ou use o 🎙️ do teclado" aria-label="Mensagem">'+esc(chatPre)+'</textarea><button type="button" id="cs">Enviar</button></div></div>', {full:true});
   chatPre = "";
   $("cx").addEventListener("click", ()=>ir("hoje"));
+  Mov.arrastarFechar(app, $("cgrab"), {altura:()=>window.innerHeight, aoFechar:vy=>{ Mov.para(app, {y:window.innerHeight}, "suave", {y:vy}).then(()=>ir("hoje")); }});
   app.querySelectorAll("[data-m]").forEach(b=>b.addEventListener("click", ()=>{ chatModo = b.dataset.m; telaChat(); }));
   app.querySelectorAll("[data-th]").forEach(b=>b.addEventListener("click", ()=>{ const [i,v] = b.dataset.th.split("~").map(Number); const m = L[i]; m.av = v; const pg = L[i-1]; salvarLog("av_"+Date.now(), {modo:chatModo, pergunta:pg?String(pg.content).slice(0,300):"", resposta:String(m.content).slice(0,600), boa:v===1}); telaChat(); toast(v?"Valeu! Isso ensina o coach.":"Anotado. Essa resposta vai virar caso de teste."); }));
   $("cs").addEventListener("click", enviarChat);
