@@ -77,6 +77,7 @@ p{margin:0}
 .inp:focus{background:var(--surface);box-shadow:inset 0 0 0 2px var(--go);outline:none}
 textarea.inp{resize:vertical;min-height:88px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2 img{width:100%;height:auto;display:block;border-radius:var(--r1)}.sv{width:100%;height:auto}.inp.cd{font-size:1.5rem;letter-spacing:.18em}.inp.pct{min-height:44px;width:64px;padding:4px}
 .seg{display:grid;gap:2px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr));background:var(--surface-2);border-radius:var(--r1);padding:2px}
 .seg button{border:0;border-radius:8px;min-height:44px;font-weight:600;font-size:.9375rem;background:transparent;padding:4px}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--go-ink);box-shadow:var(--sh1),inset 0 0 0 1.5px var(--go)}
@@ -99,6 +100,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .chips span,.chip{font-size:.8125rem;font-weight:600;padding:6px 12px;border-radius:999px;background:var(--surface-2);border:0}
 .chip[aria-pressed="true"]{background:var(--go-soft);color:var(--go-ink);box-shadow:inset 0 0 0 1.5px var(--go)}
 .pill{font-size:.6875rem;font-weight:600;padding:3px 8px;border-radius:999px;color:var(--go-ink);background:var(--go-soft);display:inline-block}
+.pill.ok{background:var(--done-soft);color:var(--done-ink)}.pill.wait{background:var(--caution-soft);color:var(--warn-ink)}.pill.no{background:var(--stop-soft);color:var(--stop-ink)}
 .line{border-top:1px solid var(--sep)}
 .box{border-radius:var(--r2);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface);box-shadow:var(--sh1)}
 .box.strong{box-shadow:var(--sh2),inset 0 0 0 1.5px var(--go)}
@@ -112,54 +114,56 @@ textarea.inp{resize:vertical;min-height:88px}
 .lst>label input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--go-fill);margin:0}
 .lst>.cor-go{color:var(--go-ink)}.lst>.cor-ruim{color:var(--stop-ink)}
 .pv8{padding-block:8px}
-.mt0{margin-top:0}.mt8{margin-top:8px}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.mw0{min-width:0}.grow{flex:1;min-width:0}
+.mt0{margin-top:0}.mt8{margin-top:8px}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-warn{color:var(--warn-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.as0{align-self:flex-start}.ae{align-self:flex-end}.h2.lg{font-size:1.7rem}.mw0{min-width:0}.grow{flex:1;min-width:0}
 /* abertura */
-.open{min-height:100vh;background:var(--ink);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px 34px;gap:14px;overflow:hidden}
+.open{min-height:100vh;background:var(--noite);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px calc(34px + var(--safe-b));gap:14px;overflow:hidden}
 .open .photo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,16,.1),rgba(11,13,16,.25) 40%,rgba(11,13,16,.95) 80%),repeating-linear-gradient(115deg,#2a2f36 0 2px,#23272d 2px 9px)}
 .open>*{position:relative}
-.open .wm{position:absolute;top:22px;left:20px;color:#fff;font-size:1.9rem}.open .wm i{width:44px;height:31px}
-.mani{font-family:var(--f);font-weight:900;font-size:3.3rem;line-height:.86;text-transform:uppercase}
-.mani em{font-style:normal;color:var(--go)}
-.open .btn{border-color:#fff;background:transparent;color:#fff}
-.open .btn.go{background:var(--go);border-color:var(--go-ink)}
-.open .s{color:rgba(255,255,255,.75)}
+.open .wm{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));left:20px;color:#fff;font-size:1.9rem}.open .wm i{width:44px;height:31px}
+.mani{font-weight:700;font-size:3rem;line-height:1.02;letter-spacing:-.04em}
+.mani em{font-style:normal;color:#FF8A4C}
+.open .btn{background:rgba(255,255,255,.14);color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.open .btn.go{background:var(--go-fill)}
+.open .s,.open .lead{color:rgba(255,255,255,.78)}.open .lead{font-size:.9375rem}.open .msg{color:#fff}
 /* match */
-.dark{background:var(--ink);color:#fff;min-height:100vh;padding:24px 20px;display:flex;flex-direction:column;gap:12px}
-.dark .s,.dark .k{color:rgba(255,255,255,.6)}
-.mline{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:.88rem;opacity:.2;transition:opacity .4s}
+.dark{background:var(--noite);color:#fff;min-height:100vh;padding:calc(24px + env(safe-area-inset-top,0px)) 20px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px}
+.dark .s,.dark .k{color:rgba(255,255,255,.7)}
+.mline{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:.9375rem;opacity:.2;transition:opacity .4s}
 .mline.on{opacity:1}
-.mline i{font-style:normal;font-weight:900;color:var(--done-ink)}
-.mline small{display:block;color:rgba(255,255,255,.6);font-size:.78rem}
-.mbar{height:4px;background:rgba(255,255,255,.12)}.mbar i{display:block;height:100%;width:0;background:var(--go);transition:width .5s}
+.mline i{font-style:normal;font-weight:700;color:var(--done)}
+.mline small{display:block;color:rgba(255,255,255,.7);font-size:.8125rem}
+.mbar{height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}.mbar i{display:block;height:100%;width:0;background:var(--go);transition:width .5s cubic-bezier(.32,.72,0,1)}
 .who3{display:flex;gap:6px}
-.who3 span{flex:1;border:1px solid var(--go);color:var(--go-ink);padding:6px;font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.who3 span{flex:1;border-radius:999px;box-shadow:inset 0 0 0 1px var(--go);color:#FFB07A;padding:6px;font-size:.6875rem;font-weight:600;text-align:center}
 /* plano */
-.proj{border:2px solid var(--ink);padding:12px;display:flex;flex-direction:column;gap:2px}
-.proj b{font-family:var(--f);font-weight:700;font-size:2.8rem;line-height:.95}
-.phase{display:flex;height:26px;gap:3px}
+.proj{border-radius:var(--r3);background:var(--surface);box-shadow:var(--sh2);padding:16px;display:flex;flex-direction:column;gap:2px}
+.proj b{font-weight:700;font-size:2.75rem;line-height:1;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.phase{display:flex;height:24px;gap:3px;border-radius:8px;overflow:hidden}
+.phase span{display:grid;place-content:center;font-size:.625rem;font-weight:600;color:#fff;overflow:hidden;white-space:nowrap;padding:0 4px}
 .phase span.off{background:var(--surface-2);color:var(--tx-2)}
-.phase span{display:grid;place-content:center;font-size:.6875rem;font-weight:600;color:#fff;overflow:hidden;white-space:nowrap;border-radius:6px;padding:0 4px}
-.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-.wk div{border:1px solid var(--sep);padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.58rem;font-weight:800;color:var(--tx-2);text-transform:uppercase;text-align:center;min-width:0}
-.wk div b{font-family:var(--f);font-size:.78rem;color:var(--tx);text-transform:none;line-height:1.05;word-break:break-word}
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.wk div{border-radius:var(--r1);background:var(--surface);box-shadow:var(--sh1);padding:6px 1px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.625rem;font-weight:600;color:var(--tx-2);text-align:center;min-width:0}
+.wk div b{font-size:.6875rem;letter-spacing:-.02em;color:var(--tx);line-height:1.1;word-break:break-word}
 .wk div.r{background:var(--surface-2)}
 .bars{display:flex;align-items:flex-end;gap:3px;height:80px;border-bottom:1px solid var(--sep)}
-.bars i{flex:1;background:var(--tx-2);display:block;min-height:3px;border-radius:4px 4px 0 0}
-.bars i.dl{opacity:.4}.bars i.now{background:var(--go);opacity:1}
-.pledge{font-family:var(--f);font-weight:900;font-size:1.55rem;line-height:1;text-transform:uppercase}
+.bars i{flex:1;background:var(--go);border-radius:4px 4px 0 0;display:block;min-height:3px}
+.bars i.dl{background:var(--tx-2);opacity:.4}.bars i.now{background:var(--go-fill);opacity:1}
+.pledge{font-weight:700;font-size:1.5rem;line-height:1.15;letter-spacing:-.02em}
 .pledge em{font-style:normal;color:var(--go-ink)}
-.sig{border-bottom:2px solid var(--ink);height:110px;background:var(--surface-2);touch-action:none;display:block;width:100%}
+.sig{border-radius:var(--r2);height:110px;background:var(--surface-2);color:var(--tx);touch-action:none;display:block;width:100%}
 /* assinatura */
-.plans{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pl{border:1px solid var(--sep);padding:14px 10px 10px;display:flex;flex-direction:column;gap:4px;background:var(--surface);text-align:left;position:relative}
-.pl[aria-pressed="true"]{border:2px solid var(--ink);padding:13px 9px 9px}
-.pl b{font-family:var(--f);font-weight:700;font-size:1.9rem;line-height:1}
-.pl small{font-size:.76rem;color:var(--tx-2)}
-.pl .tag{position:absolute;top:-9px;right:8px;background:var(--go-fill);color:#fff;font-size:.6rem;font-weight:800;letter-spacing:.08em;padding:2px 6px;text-transform:uppercase}
-.cupom{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.9375rem;background:var(--done-soft);border-radius:var(--r2);padding:12px 14px;color:var(--done-ink);font-weight:600}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pl{border:0;border-radius:var(--r2);padding:16px 12px 12px;display:flex;flex-direction:column;gap:4px;background:var(--surface);box-shadow:var(--sh1);text-align:left;position:relative}
+.pl[aria-pressed="true"]{background:var(--go-soft);box-shadow:inset 0 0 0 1.5px var(--go)}
+.pl b{font-weight:700;font-size:1.875rem;line-height:1.05;letter-spacing:-.03em}
+.pl small{font-size:.8125rem;color:var(--tx-2)}
+.pl .tag{position:absolute;top:-9px;right:10px;background:var(--go-fill);color:#fff;font-size:.6875rem;font-weight:600;padding:2px 8px;border-radius:999px}
+.cupom{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.875rem;background:var(--done-soft);border-radius:var(--r1);padding:10px 12px;color:var(--done-ink);font-weight:600}
 .cupom.go{background:var(--go-soft);color:var(--go-ink)}
-.ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:.88rem}
-.ul li::before{content:"✓  ";color:var(--done-ink);font-weight:900}
+.ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.9375rem}
+.ul li::before{content:"✓  ";color:var(--done-ink);font-weight:700}
+.mic{width:64px;height:64px;border-radius:50%;background:var(--go);display:grid;place-content:center;box-shadow:0 0 0 10px var(--go-soft)}.mic i{width:14px;height:24px;border-radius:7px;background:#fff;display:block;position:relative;top:-3px}.mic i::after{content:"";position:absolute;left:-6px;right:-6px;top:15px;height:14px;border:3px solid #fff;border-top:0;border-radius:0 0 12px 12px}
+.qrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--sep)}.qrow>span{font-size:.875rem;min-width:0}.qrow>div{width:118px;flex:none}
 /* app: topo */
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .me{width:40px;height:40px;border-radius:50%;background:var(--go-fill);color:#fff;display:grid;place-content:center;font-size:.8125rem;font-weight:600;border:0;flex:none;padding:0;box-shadow:var(--sh1);position:relative}
@@ -174,6 +178,7 @@ textarea.inp{resize:vertical;min-height:88px}
 .stats3 b{display:block;font-weight:700;font-size:1.5rem;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .stats3 span{font-size:.75rem;color:var(--tx-2);font-weight:500}
 .recado{border-radius:var(--r2);background:var(--surface);box-shadow:var(--sh1);padding:12px 14px;font-size:.9375rem}
+.recado.pri{box-shadow:var(--sh1),inset 0 0 0 1.5px var(--go)}
 .recado b{display:block;font-size:.75rem;font-weight:600;color:var(--tx-2);margin-bottom:2px}
 .ci{border:0;border-radius:var(--r2);padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);box-shadow:var(--sh1);width:100%;text-align:left}
 .ci b{font-size:1.0625rem;font-weight:600;letter-spacing:-.01em}.ci small{display:block;font-size:.8125rem;color:var(--tx-2)}.ci .n{font-size:1.3rem}
@@ -231,9 +236,9 @@ textarea.inp{resize:vertical;min-height:88px}
 @media (prefers-reduced-transparency:reduce){.sheet{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){.sheet{background:var(--surface);box-shadow:0 0 0 1px var(--sep),var(--sh3)}}
 .pain{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:2px}
-.pain button{height:34px;border:0;font-family:var(--f);font-weight:700;font-size:.86rem;padding:0;color:var(--tx)}
-.pain button[aria-pressed="true"]{background:var(--ink)!important;color:#fff}
-.painleg{display:grid;grid-template-columns:3fr 2fr 2fr 4fr;gap:3px;font-size:.62rem;line-height:1.2}
+.pain button{height:44px;border:0;border-radius:8px;font-family:var(--f);font-weight:700;font-size:.875rem;padding:0;color:#0B0D10;position:relative}.pain button::after{content:"";position:absolute;inset:0 -1px}
+.pain button[aria-pressed="true"]{background:var(--tx)!important;color:var(--bg)}
+.painleg{display:grid;grid-template-columns:3fr 2fr 2fr 4fr;gap:3px;font-size:.6875rem;line-height:1.2}
 /* tabs */
 /* barra de abas flutuante de vidro + botão Coach · Nutri ao lado */
 .cab{position:fixed;top:0;left:0;right:0;margin:0 auto;width:min(480px,100%);height:calc(48px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;justify-content:center;z-index:25;opacity:0;pointer-events:none;border-width:0 0 1px;border-color:transparent;transition:opacity .2s ease-out,border-color .2s}
@@ -401,12 +406,12 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .mode button:active{transform:scale(.97)}
 .mode button[aria-pressed="true"]{background:var(--surface);color:var(--go-ink);box-shadow:var(--sh1),inset 0 0 0 1.5px var(--go)}
 /* perfil, painel */
-.prof{display:flex;gap:12px;align-items:center}
-.prof .me{width:58px;height:58px;font-size:1rem}
+.prof{display:flex;gap:14px;align-items:center}
+.prof .me{width:64px;height:64px;font-size:1.125rem}
 .lst{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);overflow:hidden}
 .lst>button,.lst>a{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--sep);background:none;padding:14px 16px;font-weight:600;text-align:left;width:100%;color:var(--tx);text-decoration:none;min-height:50px}
 .lst>button:last-child,.lst>a:last-child{border-bottom:0}
-.lst small{display:block;font-weight:400;color:var(--tx-2);font-size:.8125rem}
+.lst small{display:block;font-weight:400;color:var(--tx-2);font-size:.8125rem}.chev{color:var(--tx-2);font-weight:400;flex:none}
 .code{font-weight:700;font-size:1.8rem;letter-spacing:.12em;font-variant-numeric:tabular-nums}
 .tbl{width:100%;border-collapse:collapse;font-size:.875rem}
 .tbl th{font-size:.75rem;font-weight:600;color:var(--tx-2);text-align:left;padding:6px 4px;border-bottom:1px solid var(--sep)}
@@ -417,8 +422,10 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 .toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
 @media (prefers-reduced-motion:reduce){.toast{transform:translate(-50%,0)}}
 @media (prefers-reduced-transparency:reduce){.toast{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
-.lvl{background:var(--ink);color:#fff;position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;text-align:center;overflow-y:auto}
-.lvl .big{font-family:var(--f);font-weight:700;font-size:8rem;line-height:.8;color:var(--go-ink)}
+.lvl{background:var(--noite);color:#fff;position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;text-align:center;overflow-y:auto}
+.lvl .big{font-weight:700;font-size:8rem;line-height:.85;letter-spacing:-.06em;color:#FF8A4C;font-variant-numeric:tabular-nums}
+.lvl .k,.lvl .s{color:rgba(255,255,255,.7)}
+.lvl .btn:not(.go){background:rgba(255,255,255,.14);color:#fff}
 /* performance */
 .fire-hero{position:relative;border-radius:var(--r3);background:linear-gradient(135deg,var(--go-soft),var(--surface) 70%);padding:12px 16px;display:grid;grid-template-columns:64px 1fr;gap:4px 12px;align-items:center;box-shadow:var(--sh1)}
 .fire-hero.off{background:var(--surface)}
@@ -482,7 +489,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 #cele{position:fixed;inset:0;z-index:90;pointer-events:none;display:grid;place-content:center}
-#cele .cele-m{display:flex;flex-direction:column;align-items:center;gap:6px;animation:cele-in 1.6s cubic-bezier(.2,.8,.2,1) both;color:var(--tx);font-family:'Exo 2','Barlow Condensed',sans-serif;font-style:italic;font-weight:900;font-size:1.6rem;text-transform:uppercase}
+#cele .cele-m{display:flex;flex-direction:column;align-items:center;gap:6px;animation:cele-in 1.6s cubic-bezier(.2,.8,.2,1) both;color:var(--tx);font-family:var(--f-wm);font-style:italic;font-weight:900;font-size:1.6rem;text-transform:uppercase}
 #cele i{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;background:var(--c);opacity:0;animation:cele-p 1.3s ease-out both}
 @keyframes cele-in{0%{transform:scale(.4);opacity:0}25%{transform:scale(1.12);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
 @keyframes cele-p{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0}}
@@ -492,7 +499,7 @@ button.box{border:0;width:100%;text-align:left}button.ba{width:100%;border:0;bor
 
 .pf{display:flex;flex-direction:column;gap:12px}
 .pf-card{border-radius:var(--r2);padding:14px;background:var(--surface);box-shadow:var(--sh1);display:flex;flex-direction:column;gap:10px;min-width:0}
-.pf-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
+.pf-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}.pf-row.ln{border-top:1px solid var(--sep);padding-top:8px}.pf-link.col{flex-direction:column;align-items:stretch;gap:4px}.pf-card>b.t{font-size:1.125rem}
 .pf-n{display:inline-grid;place-content:center;width:22px;height:22px;border-radius:50%;background:var(--go-fill);color:#fff;font-size:.75rem;font-weight:600;margin-right:6px}
 .pf-bar{height:8px;background:var(--track);border-radius:99px;overflow:hidden}.pf-bar i{display:block;height:100%;border-radius:99px;background:var(--go)}
 .pf-chip{border:0;border-radius:99px;padding:6px 12px;font-size:.8125rem;background:var(--surface-2);color:var(--tx);font-weight:600}
@@ -1575,7 +1582,7 @@ function sheetDocumento(onboarding){
   const campo = (id, rot, v) => '<div class="fld"><label for="'+id+'">'+rot+'</label><input class="inp" id="'+id+'" value="'+esc(v||"")+'"></div>';
   const lst = id => rascunho ? (rascunho[id]||[]).join("; ") : "";
   const desenha = () => {
-    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Documento de fisioterapia"><span class="grab"></span><h2 class="h2" style="font-size:1.6rem">Laudo ou orientação do fisioterapeuta</h2>'+
+    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Documento de fisioterapia"><span class="grab"></span><h2 class="h2 lg">Laudo ou orientação do fisioterapeuta</h2>'+
       '<p class="s">A IA lê o documento e preenche um resumo. Você confere e edita. <b>O arquivo não é guardado</b>, só o resumo. O app só usa isso para deixar seu plano mais cuidadoso e não substitui seu fisioterapeuta: em dúvida, vale o que ele disse.</p>'+
       (rascunho ? '<div class="box">'+(rascunho.confianca==="baixa"?'<div class="flag">Li com pouca certeza. Confira tudo ou digite você mesmo.</div>':'')+
         campo("dl","Lesão",rascunho.lesao)+campo("dr","Região",rascunho.regiao)+campo("df","Fase do tratamento",rascunho.fase)+campo("de","O que evitar (separe com ponto e vírgula)",lst("evitar"))+campo("dp","O que está liberado",lst("permitido"))+
@@ -1664,8 +1671,8 @@ function dorRotulo(d){ d = +d; return d<=4 ? "de boa, só dolorido" : d===5 ? "d
 function dorFator(d){ d = +d||0; return d<=4 ? 1-d*0.03 : [0.8,0.6,0.45,0.3,0.15,0][Math.min(5,d-5)]; }
 function painScale(name, val){
   const cor = i => i<=4?"#D7F0E0":i===5?"#FBEFC8":i<=7?"#FAD9C9":"#F6CFCC";
-  return '<div class="pain" data-pain="'+name+'">'+Array.from({length:11},(_,i)=>'<button type="button" data-v="'+i+'" aria-pressed="'+(+val===i)+'" style="background:'+cor(i)+';color:#0B0D10" aria-label="Dor '+i+'">'+i+'</button>').join("")+'</div>'+
-    '<div class="painleg"><span><b style="color:var(--done-ink)">0–4 de boa</b><br>só dolorido, treina normal</span><span><b style="color:var(--warn-ink)">5 dá pra treinar</b><br>com dor, com atenção</span><span><b style="color:var(--go-ink)">6–7 piorando</b><br>alivia ou troca o treino</span><span><b style="color:var(--stop-ink)">8–10 forte</b><br>não treina; 10 é não consigo nada</span></div>';
+  return '<div class="pain" data-pain="'+name+'">'+Array.from({length:11},(_,i)=>'<button type="button" data-v="'+i+'" aria-pressed="'+(+val===i)+'" style="background:'+cor(i)+'" aria-label="Dor '+i+'">'+i+'</button>').join("")+'</div>'+
+    '<div class="painleg"><span><b class="cor-ok">0–4 de boa</b><br>só dolorido, treina normal</span><span><b class="cor-warn">5 dá pra treinar</b><br>com dor, com atenção</span><span><b class="cor-go">6–7 piorando</b><br>alivia ou troca o treino</span><span><b class="cor-ruim">8–10 forte</b><br>não treina; 10 é não consigo nada</span></div>';
 }
 function bindPain(root, cb){ root.querySelectorAll("[data-pain]").forEach(box=>box.addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (!b) return; box.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); cb(box.dataset.pain, +b.dataset.v); })); }
 let rascT = null;
@@ -1972,16 +1979,16 @@ function telaAbertura(){
   const logado = !!me;
   const app = tela('<section class="open"><div class="photo" aria-hidden="true"></div><span class="wm"><i></i>'+esc(BRAND)+'</span>'+
     '<div class="mani">Treino<br>não é<br><em>sorte.</em></div>'+
-    '<p style="font-size:.95rem;opacity:.85">Plano feito para o seu objetivo, ajustado todo dia por IA. Coach e nutri no bolso, seus amigos no feed. Você só precisa aparecer.</p>'+
+    '<p class="lead">Plano feito para o seu objetivo, ajustado todo dia por IA. Coach e nutri no bolso, seus amigos no feed. Você só precisa aparecer.</p>'+
     (logado ? '<button type="button" class="btn go" id="go">Começar como '+esc((meName||"você").split(" ")[0])+'</button><p class="s tc">Você entra com a sua conta do Claude. Fica conectado neste celular.</p>'
-      : '<a class="btn go" id="cpa" href="https://claude.ai" target="_blank" rel="noopener">Criar conta grátis</a><p class="s">Toque no botão, crie sua conta do Claude (grátis, dá para usar o Google) ou entre. Quando terminar, toque de novo no link do app que te mandaram.</p><button type="button" class="btn" id="cp" style="border-color:#fff;background:transparent;color:#fff">Copiar o link do app</button><p class="msg" id="cpm" style="color:#fff"></p><p class="msg" id="cpm" style="color:#fff"></p>')+
+      : '<a class="btn go" id="cpa" href="https://claude.ai" target="_blank" rel="noopener">Criar conta grátis</a><p class="s">Toque no botão, crie sua conta do Claude (grátis, dá para usar o Google) ou entre. Quando terminar, toque de novo no link do app que te mandaram.</p><button type="button" class="btn" id="cp">Copiar o link do app</button><p class="msg" id="cpm"></p>')+
     '</section>', {full:true});
   const g = $("go"); if (g) g.addEventListener("click", ()=>{ if (DEMO){ ACESSO = {status:"aceito", via:"demo"}; } rotear(true); });
   const c = $("cp"); if (c) c.addEventListener("click", async ()=>{ const u = "https://claude.ai/artifact/"+ARTIFACT_ID; try{ await navigator.clipboard.writeText(u); $("cpm").textContent = "Link copiado: "+u+" · cole no navegador onde você entrou no Claude."; }catch(e){ $("cpm").textContent = "Copie este link: "+u; } });
 }
 function telaCodigo(){
   const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo.</p>'+
-    '<input class="inp n upper" id="cd" maxlength="11" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2" style="font-size:1.5rem;letter-spacing:.18em">'+
+    '<input class="inp cd n upper" id="cd" maxlength="11" autocomplete="off" autocapitalize="characters" placeholder="ex.: K7P2QX-A1B2">'+
     '<button class="btn go" type="button" id="cdok">Entrar</button><p class="msg" id="cdm"></p><p class="s">Não tem? Peça para quem te mandou o link.</p>');
   const go = async ()=>{
     const v = $("cd").value.trim().toUpperCase();
@@ -2000,7 +2007,7 @@ function telaPedido(){
   if (LOCAL){ telaCodigo(); return; }
   const enviado = !!PEDIDO, recusado = ACESSO && ACESSO.status==="recusado";
   tela('<span class="wm"><i></i>'+esc(BRAND)+'</span>'+(recusado ? '<h1 class="h1">Acesso não liberado</h1><p>Seu acesso não foi liberado agora. Se acha que foi engano, fale com quem te convidou.</p>' :
-    enviado ? '<span class="pill" style="align-self:flex-start;background:var(--caution)">aguardando</span><h1 class="h1">Pedido enviado</h1><p>Assim que for aceito, este mesmo link abre as perguntas do seu plano.</p>' :
+    enviado ? '<span class="pill wait as0">aguardando</span><h1 class="h1">Pedido enviado</h1><p>Assim que for aceito, este mesmo link abre as perguntas do seu plano.</p>' :
     '<h1 class="h1">Pedir acesso</h1><p class="s">O app está em teste fechado e cada pessoa é aprovada. Leva 10 segundos.</p><div class="fld"><label for="pq">Quem te convidou?</label><input class="inp" id="pq" maxlength="40" placeholder="ex.: Lucas"></div><div class="fld"><label for="po">Seu objetivo, em uma frase</label><input class="inp" id="po" maxlength="80" placeholder="ex.: correr minha primeira meia"></div><button class="btn go" type="button" id="pok">Pedir acesso</button><p class="msg" id="pm"></p>'));
   const b = $("pok"); if (b) b.addEventListener("click", async ()=>{ const d = {quem:$("pq").value.trim().slice(0,40), obj:$("po").value.trim().slice(0,80), at:new Date().toISOString()}; try{ await db.collection("pedidos").doc(me).set(d); PEDIDO = d; telaPedido(); }catch(e){ $("pm").textContent = "Não consegui enviar. Tente de novo."; } });
 }
@@ -2009,8 +2016,10 @@ function telaMenor(){ tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 cla
 /* ===================== PERGUNTAS ===================== */
 const ETAPAS = ["Você","Objetivo","Me conta","Seu nível","Rotina","Saúde"];
 function onb(i){
+  // entre perguntas: direita ao avançar, esquerda ao voltar; vindo de outra tela (Perfil, abertura), entra como push
+  proxTransicao = $("app").querySelector(".prog") ? (i > step ? "push" : i < step ? "pop" : "nenhuma") : "push";
   step = i; salvarRascunho();
-  const prog = '<div class="prog">'+ETAPAS.map((_,j)=>'<i class="'+(j<=i?'on':'')+'"></i>').join("")+'</div><span class="k">'+(i+1)+' de '+ETAPAS.length+' · '+ETAPAS[i]+'</span>';
+  const prog = '<div class="prog">'+ETAPAS.map((_,j)=>'<i class="'+(j<i?'on':'')+'"></i>').join("")+'</div><span class="k">'+(i+1)+' de '+ETAPAS.length+' · '+ETAPAS[i]+'</span>';
   const nav = (lbl) => '<button type="button" class="btn go" id="nx">'+(lbl||"Continuar")+'</button><p class="msg" id="nm"></p>'+(i>0?'<button type="button" class="lk" id="bk">Voltar</button>':'');
   const forca = TPL[draft.objetivo] && TPL[draft.objetivo].forca, tri = ["tri","703"].includes(draft.objetivo), prova = PROVAS.some(x=>x[0]===draft.objetivo);
   let h = prog;
@@ -2032,12 +2041,12 @@ function onb(i){
       '<button type="button" class="lk" id="docb">'+(draft.fisio&&draft.fisio.lesao?'✓ Laudo informado: '+esc(draft.fisio.lesao)+' (editar)':'Tenho laudo ou orientação de fisioterapeuta')+'</button>'+nav();
   } else if (i===2){
     h += '<h1 class="h1">Me conta o que você busca</h1><p class="s">Escreva ou toque no microfone do teclado do celular e fale. A IA lê e preenche as próximas telas para você.</p>'+
-      '<label class="box" for="f-rel" style="align-items:center;cursor:text"><span style="width:64px;height:64px;border-radius:50%;background:var(--go);display:grid;place-content:center;box-shadow:0 0 0 10px rgba(255,77,26,.12)"><i style="width:14px;height:24px;border-radius:7px;border:3px solid #fff;display:block"></i></span><span class="s" style="text-align:center">Toque aqui e use o 🎙️ do teclado</span></label>'+
+      '<label class="box cam" for="f-rel"><span class="mic"><i></i></span><span class="s">Toque aqui e use o 🎙️ do teclado</span></label>'+
       '<textarea class="inp" id="f-rel" data-f="relato" rows="5" placeholder="ex.: faço academia 3x por semana, quero perder a barriga e melhorar o fôlego. Corro 10 km em uns 58 min. Tenho umas 5 h por semana."></textarea>'+
       '<button type="button" class="btn ink" id="ler">Preencher pelo que eu contei</button><p class="msg" id="lm"></p>'+
       (draft.lido ? '<div class="chips">'+draft.lido.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div>' : '')+nav(draft.relato?"Continuar":"Pular, prefiro responder")+'';
   } else if (i===3){
-    h += '<h1 class="h1">Onde você está hoje</h1>'+(draft.lido?'<div class="chips"><span style="border-color:var(--go-ink)">✓ preenchido pelo que você contou</span></div>':'')+
+    h += '<h1 class="h1">Onde você está hoje</h1>'+(draft.lido?'<div class="chips"><span>✓ preenchido pelo que você contou</span></div>':'')+
       (forca ? '<div class="grid2"><div class="fld"><label for="f-am">Meses de academia</label><input class="inp" id="f-am" data-f="academiaMeses" type="number" inputmode="numeric" placeholder="12"></div><div class="fld"><span class="lbl">Onde treina</span>'+seg("onde",[["academia","Academia"],["casa","Casa"]],2)+'</div></div>' : '')+
       '<div class="grid2"><div class="fld"><label for="f-cs">Corridas por semana</label><input class="inp" id="f-cs" data-f="corridasSem" type="number" inputmode="numeric" min="0" placeholder="2"></div><div class="fld"><label for="f-km">Km na semana</label><input class="inp" id="f-km" data-f="kmSemana" type="number" inputmode="decimal" min="0" placeholder="10"></div></div>'+
       '<div class="grid2"><div class="fld"><label for="f-ml">Maior corrida (30 dias, km)</label><input class="inp" id="f-ml" data-f="maiorLongao" type="number" inputmode="decimal" placeholder="6"></div><div class="fld"><label for="f-mt">Melhor 5 ou 10 km</label><input class="inp" id="f-mt" data-f="melhorTempo" maxlength="30" placeholder="10 km em 58 min"></div></div>'+
@@ -2054,11 +2063,12 @@ function onb(i){
       '<div class="fld"><span class="lbl">Orçamento para comida</span>'+seg("orcamento",[["apertado","Apertado"],["normal","Normal"],["tranquilo","Tranquilo"]])+'</div>'+nav();
   } else if (i===5){
     h += '<h1 class="h1">Sua segurança</h1><p class="s">Questionário oficial PAR-Q+. Responda com sinceridade.</p>'+
-      PARQ.concat(EXTRA).map(([k,t])=>'<div class="between" style="border-bottom:1px solid var(--surface-2);padding:8px 0;align-items:center"><span style="font-size:.86rem;min-width:0">'+esc(t)+'</span><div style="width:118px;flex:none">'+seg(k,[["nao","Não"],["sim","Sim"]],2)+'</div></div>').join("")+
-      (draft.sexo==="f"?'<div class="between" style="padding:8px 0"><span style="font-size:.86rem">Menstruação ausente ou irregular há 3 meses ou mais?</span><div style="width:118px;flex:none">'+seg("ciclo",[["nao","Não"],["sim","Sim"]],2)+'</div></div>':'')+
+      PARQ.concat(EXTRA).map(([k,t])=>'<div class="qrow"><span>'+esc(t)+'</span><div>'+seg(k,[["nao","Não"],["sim","Sim"]],2)+'</div></div>').join("")+
+      (draft.sexo==="f"?'<div class="qrow"><span>Menstruação ausente ou irregular há 3 meses ou mais?</span><div>'+seg("ciclo",[["nao","Não"],["sim","Sim"]],2)+'</div></div>':'')+
       '<div class="fld"><label for="f-dor">Alguma dor agora? Onde e quanto (0–10)</label><input class="inp" id="f-dor" data-f="dorAgora" maxlength="80" placeholder="ex.: nenhuma / joelho direito 2/10"></div>'+nav("Montar meu plano");
   }
   const app = tela(h);
+  const seg0 = app.querySelectorAll(".prog i")[i]; if (seg0){ void seg0.offsetWidth; seg0.classList.add("on"); }   // a etapa atual preenche com a transição
   bindForm(app, (n)=>{ if (n==="objetivo") onb(1); });
   app.querySelectorAll("[data-ob]").forEach(b=>b.addEventListener("click", ()=>{ const v = b.dataset.ob; if (v==="prova"){ draft.temProva = "sim"; if (!PROVAS.some(x=>x[0]===draft.objetivo)) draft.objetivo = ""; } else { draft.temProva = "nao"; draft.objetivo = v; draft.dataProva = ""; } salvarRascunho(); onb(1); }));
   const dp = $("f-dp"); if (dp) dp.addEventListener("change", ()=>{ draft.dataProva = dp.value; salvarRascunho(); onb(1); });
@@ -2143,11 +2153,11 @@ function telaMatch(){
   ];
   tela('<section class="dark"><div class="who3"><span>Coach</span><span>Nutri</span><span>Saúde</span></div><h1 class="h1">Montando o plano d'+(p.sexo==="f"?"a":"o")+' '+esc(p.apelido||"")+'</h1>'+
     ls.map(x=>'<div class="mline"><i>✓</i><span><b>'+esc(x[0])+'</b><small>'+esc(x[1])+'</small></span></div>').join("")+
-    '<div style="flex:1"></div><div class="mbar"><i id="mb"></i></div><button type="button" class="btn go" id="mgo" style="opacity:.3" disabled>Ver meu plano</button></section>', {full:true});
+    '<div class="grow"></div><div class="mbar"><i id="mb"></i></div><button type="button" class="btn go" id="mgo" disabled>Ver meu plano</button></section>', {full:true});
   const red = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, dt = red ? 120 : 750;
   const els = document.querySelectorAll(".mline");
   els.forEach((l,j)=>setTimeout(()=>{ l.classList.add("on"); $("mb").style.width = Math.round(100*(j+1)/els.length)+"%"; }, dt*(j+1)));
-  setTimeout(()=>{ const g = $("mgo"); if (g){ g.style.opacity = 1; g.disabled = false; } }, dt*(els.length+1));
+  setTimeout(()=>{ const g = $("mgo"); if (g) g.disabled = false; }, dt*(els.length+1));
   $("mgo").addEventListener("click", telaPlanoPronto);
 }
 function projecao(p){
@@ -2181,11 +2191,11 @@ function telaCompromisso(){
   const fim = p.dataProva && parseD(p.dataProva) ? fmt(parseD(p.dataProva)) : (pl ? fmt(addDays(parseD(pl.inicio), pl.semanas.length*7)) : "o fim do bloco");
   const app = tela('<h1 class="h1">Seu compromisso</h1><p class="s">Quantos treinos você promete por semana? Vira a meta do seu foguinho.</p>'+seg("promessa",[["3","3"],["4","4"],["5","5"],["6","6"]])+
     '<div class="pledge" id="pl">Eu, '+esc(p.apelido)+', vou aparecer <em>'+esc(draft.promessa)+' vezes</em> por semana até <em>'+esc(fim)+'</em>.</div>'+
-    '<span class="k">assine com o dedo</span><canvas class="sig" id="sig" width="440" height="110" aria-label="Espaço para assinar"></canvas><button type="button" class="lk" id="lim" style="align-self:flex-end">Limpar</button>'+
+    '<span class="k">assine com o dedo</span><canvas class="sig" id="sig" width="440" height="110" aria-label="Espaço para assinar"></canvas><button type="button" class="lk ae" id="lim">Limpar</button>'+
     '<p class="s">Descanso planejado conta como cumprido.</p><button type="button" class="btn go" id="ok" disabled>Assinar e continuar</button>');
   bindForm(app, ()=>{ $("pl").innerHTML = 'Eu, '+esc(p.apelido)+', vou aparecer <em>'+esc(draft.promessa)+' vezes</em> por semana até <em>'+esc(fim)+'</em>.'; });
   const cv = $("sig"), cx = cv.getContext("2d"); let des = false, tem = false;
-  cx.lineWidth = 3; cx.lineCap = "round"; cx.strokeStyle = "#0B0D10";
+  cx.lineWidth = 3; cx.lineCap = "round"; cx.strokeStyle = getComputedStyle(cv).color;   // --tx do tema: legível no claro e no escuro
   const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX-r.left)*cv.width/r.width, (e.clientY-r.top)*cv.height/r.height]; };
   cv.addEventListener("pointerdown", e=>{ des = true; cv.setPointerCapture(e.pointerId); const [x,y] = pos(e); cx.beginPath(); cx.moveTo(x,y); });
   cv.addEventListener("pointermove", e=>{ if (!des) return; const [x,y] = pos(e); cx.lineTo(x,y); cx.stroke(); if (!tem){ tem = true; $("ok").disabled = false; } });
@@ -2204,7 +2214,7 @@ function telaAssinatura(volta){
     '<button type="button" class="pl" data-pl="mensal" aria-pressed="'+(planoEsc==="mensal")+'"><span class="k">mensal</span><b>'+reais(men*(1-desc))+'</b><small>por mês</small>'+'<small>cancele quando quiser</small>'+'</button></div>'+
     (planoEsc==="anual" ? '<div class="cupom"><span>Você economiza</span><span>'+reais(eco)+' no ano</span></div>' : '')+
     (cupom ? '<div class="cupom"><span>Cupom '+esc(cupom.codigo)+'</span><span>−'+cupom.pct+'%</span></div>' : '')+
-    '<div class="row" style="flex-wrap:nowrap"><input class="inp upper" id="cp" placeholder="Cupom de desconto" value="'+esc(draft.cupom||"")+'"><button type="button" class="btn sm" id="cpok">Aplicar</button></div>'+
+    '<div class="row nw"><input class="inp upper" id="cp" placeholder="Cupom de desconto" value="'+esc(draft.cupom||"")+'"><button type="button" class="btn sm" id="cpok">Aplicar</button></div>'+
     '<ul class="ul"><li>Plano que se ajusta todo dia</li><li>Coach e Nutri no chat, 24 h</li><li>Treino de força com carga e histórico</li><li>Feed, desafios e liga com seus amigos</li></ul>'+
     '<div class="flag ok"><b>Fase de teste: hoje é grátis.</b> Escolha o plano que você pagaria. A cobrança (Pix Automático ou cartão) entra só no app oficial, e você é avisado antes.</div>'+
     '<button type="button" class="btn go" id="ok">Começar '+PRECOS.teste+' dias grátis</button>'+(volta?'':'<button type="button" class="lk" id="dep">Decidir depois</button>'));
@@ -2223,7 +2233,7 @@ async function atualizarRevisao(extra){
 }
 function telaRevisao(){
   const fl = P && P.perfil && P.perfil.flags || {red:[],amarelo:[]};
-  const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><span class="pill" style="align-self:flex-start;background:var(--caution)">em revisão</span><h1 class="h1">Seu plano está em revisão</h1>'+
+  const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><span class="pill wait as0">em revisão</span><h1 class="h1">Seu plano está em revisão</h1>'+
     (fl.red.length ? '<div class="flag red"><b>Antes de começar, passe no médico.</b> Pela sua resposta ('+esc(fl.red[0])+'), o plano libera quando a equipe receber a liberação médica por escrito.</div>' : '<p>A equipe revisa em até 48 h. Assim que aprovar, este link abre o seu dia a dia.</p>')+
     (A && A.status==="ajustar" ? '<div class="flag">A equipe pediu um ajuste: '+esc(A.nota||"")+'</div>' : '')+
     '<button class="btn" type="button" id="ed">Editar minhas respostas</button>');
@@ -2416,7 +2426,7 @@ function sheetCheckin(editar){
   const c = LOG["ci_"+key(today)] || {}; const ult = [1,2,3].map(i=>LOG["ci_"+key(addDays(today,-i))]).find(x=>x && x.dormiu) || {}; const ms = mediaSono(7);
   const st = {sono:c.sono||"", humor:c.humor||"", dor:c.dor!=null?c.dor:0, dormiu:c.dormiu||ult.dormiu||"23:00", acordou:c.acordou||ult.acordou||"07:00"};
   const ov = $("ov");
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Check-in"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Como você acordou?</h2>'+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Check-in"><span class="grab"></span><h2 class="h2 lg">Como você acordou?</h2>'+
     '<span class="k">sono</span><div class="grid2"><div class="fld"><label for="cdo">Dormi às</label><input class="inp" id="cdo" type="time" value="'+esc(st.dormiu)+'"></div><div class="fld"><label for="cac">Acordei às</label><input class="inp" id="cac" type="time" value="'+esc(st.acordou)+'"></div></div><span class="s" id="chs"></span>'+(ms.n>=2 ? '<span class="s">Sua média dos últimos 7 dias: '+(ms.dormiu?'dorme '+esc(ms.dormiu)+', ':'')+(ms.acordou?'acorda '+esc(ms.acordou)+', ':'')+num(ms.horas,1)+' h de sono.</span>' : '')+
     '<span class="k">energia</span><div class="seg" style="--c:5" id="ce">'+[1,2,3,4,5].map(v=>'<button type="button" data-v="'+v+'" aria-pressed="'+(+st.humor===v)+'">'+v+'</button>').join("")+'</div>'+
     '<span class="k">dor de 0 a 10</span>'+painScale("dor", st.dor)+
@@ -2452,7 +2462,7 @@ function sheetAjuste(motivo, dk){
 
 function sheetPausar(){
   const ov = $("ov"); let tipo = "doenca";
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Pausar plano"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Pausar o plano?</h2><p>Os dias de pausa saem do calendário, não contam como falta e o foguinho fica congelado. Na volta, o plano começa mais leve.</p>'+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Pausar plano"><span class="grab"></span><h2 class="h2 lg">Pausar o plano?</h2><p>Os dias de pausa saem do calendário, não contam como falta e o foguinho fica congelado. Na volta, o plano começa mais leve.</p>'+
     '<span class="k">motivo</span><div class="seg" style="--c:3" id="pt">'+[["doenca","Doença"],["lesao","Lesão"],["outro","Outro"]].map(([v,l])=>'<button type="button" data-v="'+v+'" aria-pressed="'+(v===tipo)+'">'+l+'</button>').join("")+'</div>'+
     '<input class="inp" id="pm" maxlength="120" placeholder="Quer contar o que houve? (opcional)"><button type="button" class="btn go" id="pok">Pausar a partir de hoje</button><button type="button" class="lk" id="pno">Cancelar</button></div>';
   const fecha = () => { fecharSheet(); };
@@ -2462,7 +2472,7 @@ function sheetPausar(){
 }
 function sheetRetomar(){
   const ov = $("ov"), pa = pausaAtiva(); if (!pa) return; let dor = null;
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Voltar a treinar"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Voltar a treinar?</h2><p>Como está a dor agora?'+(pa.tipo==="lesao"?' Em lesão, só volto com dor abaixo de 4.':'')+'</p>'+painScale("dor", -1)+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Voltar a treinar"><span class="grab"></span><h2 class="h2 lg">Voltar a treinar?</h2><p>Como está a dor agora?'+(pa.tipo==="lesao"?' Em lesão, só volto com dor abaixo de 4.':'')+'</p>'+painScale("dor", -1)+
     '<button type="button" class="btn go" id="vok">Voltar ao plano</button><button type="button" class="lk" id="vno">Ainda não</button><p class="msg" id="vm"></p></div>';
   const fecha = () => { fecharSheet(); };
   $("dim").addEventListener("click", fecha); $("vno").addEventListener("click", fecha);
@@ -2774,9 +2784,9 @@ function telaSubiu(n){
   const prox = BENEF.find(b=>b[0]>n.n), lib = BENEF.find(b=>b[0]===n.n);
   const ov = $("ov");
   celebrar("Nível "+n.n);
-  ov.innerHTML = '<div class="lvl" role="dialog" aria-label="Subiu de nível"><span class="k" style="color:rgba(255,255,255,.6)">subiu de nível</span><div class="big">'+n.n+'</div><h1 class="h1">'+esc(n.faixa)+'</h1>'+
-    (lib ? '<p>Liberou: <b>'+esc(benefLiberado(lib,n.n)?lib[1]:benefTxt(lib))+'</b></p>' : '')+(prox ? '<p style="opacity:.8">Próximo prêmio: nível '+prox[0]+' · '+esc(benefTxt(prox))+'</p>' : '')+
-    '<button type="button" class="btn go" id="lc">Compartilhar conquista</button><button type="button" class="btn" id="lx" style="border-color:#fff;background:transparent;color:#fff">Continuar</button></div>';
+  ov.innerHTML = '<div class="lvl" role="dialog" aria-label="Subiu de nível"><span class="k">subiu de nível</span><div class="big">'+n.n+'</div><h1 class="h1">'+esc(n.faixa)+'</h1>'+
+    (lib ? '<p>Liberou: <b>'+esc(benefLiberado(lib,n.n)?lib[1]:benefTxt(lib))+'</b></p>' : '')+(prox ? '<p class="s">Próximo prêmio: nível '+prox[0]+' · '+esc(benefTxt(prox))+'</p>' : '')+
+    '<button type="button" class="btn go" id="lc">Compartilhar conquista</button><button type="button" class="btn" id="lx">Continuar</button></div>';
   $("lx").addEventListener("click", ()=>{ fecharSheet(); });
   $("lc").addEventListener("click", ()=>cardConquista("Nível "+n.n+" · "+n.faixa, [[String(n.x),"XP total"],[String(foguinho().n),"dias seguidos"]]));
 }
@@ -2849,7 +2859,7 @@ function telaNota(k){
   const fb = co.fb;
   const app = tela('<button type="button" class="back" data-go="hoje">← Hoje</button><span class="k">'+esc(fmtLongo(parseD(k)))+'</span><div class="score"><b>'+num(co.nota,1)+'</b><small>/10</small></div>'+
     '<div class="sbars">'+(co.partes||[]).map(p=>'<div><span>'+esc(p[0])+'</span><i><em style="width:'+Math.round(100*p[1]/p[2])+'%"></em></i><b>'+num(p[1],1)+'/'+p[2]+'</b></div>').join("")+'</div>'+
-    (fb ? (fb.treino?'<div class="recado"><b>o treino</b>'+esc(fb.treino)+'</div>':'')+'<div class="recado"><b>o dia</b>'+esc(fb.dia)+'</div><div class="recado" style="border-color:var(--go-ink)"><b>prioridade de amanhã</b>'+esc(fb.amanha)+'</div>' : '<p class="s">O coach está escrevendo seu feedback…</p>')+
+    (fb ? (fb.treino?'<div class="recado"><b>o treino</b>'+esc(fb.treino)+'</div>':'')+'<div class="recado"><b>o dia</b>'+esc(fb.dia)+'</div><div class="recado pri"><b>prioridade de amanhã</b>'+esc(fb.amanha)+'</div>' : '<p class="s">O coach está escrevendo seu feedback…</p>')+
     balancoHTML(parseD(k))+
     '<button type="button" class="btn ghost" data-go="hoje|checkout">Editar respostas</button>', {tabs:true, fab:true});
   bindGo(app);
@@ -3946,10 +3956,10 @@ function extrasContexto(){ const ex = extrasDe(); if (!ex.fixos.length && !ex.me
 /* ---- telas ---- */
 function telaExtras(){
   const p = P.perfil, ex = extrasDe(); checarMetas();
-  const fx = ex.fixos.map(f=>'<div class="pf-row" style="border-top:1px solid var(--surface-2);padding-top:8px"><span><b>'+esc(f.nome)+'</b>'+(f.obrig?' <span class="pf-chip">obrigatório</span>':'')+'<br><span class="s">'+f.dias.map(i=>DIAS_PL[i]).join(", ")+' · '+f.min+' min</span></span><button type="button" class="pf-chip" data-fx="'+esc(f.id)+'">Editar</button></div>').join("") || '<p class="s">Nenhum ainda. Ex.: Hyrox toda terça.</p>';
-  const mt = ex.metas.map(m=>{ const pg = progressoMeta(m); return '<button type="button" class="pf-link" data-mt="'+esc(m.id)+'" style="flex-direction:column;align-items:stretch;gap:4px"><span class="pf-row"><b>'+esc(m.texto)+'</b><span class="pf-chip">'+(m.status==="cumprida"?"cumprida":"até "+esc(fmt(parseD(m.ate))))+'</span></span>'+(pg?'<span class="pf-bar"><i style="width:'+pg.pct+'%"></i></span><span class="s">Maior corrida: '+num(pg.atual,1)+' km de '+num(m.alvo,0)+'</span>':'')+(m.analise&&m.analise.aplicada?'<span class="s pf-ok">Encaixada no plano</span>':'')+'</button>'; }).join("") || '<p class="s">Nenhuma meta ainda. Ex.: 22 km em dezembro.</p>';
+  const fx = ex.fixos.map(f=>'<div class="pf-row ln"><span><b>'+esc(f.nome)+'</b>'+(f.obrig?' <span class="pf-chip">obrigatório</span>':'')+'<br><span class="s">'+f.dias.map(i=>DIAS_PL[i]).join(", ")+' · '+f.min+' min</span></span><button type="button" class="pf-chip" data-fx="'+esc(f.id)+'">Editar</button></div>').join("") || '<p class="s">Nenhum ainda. Ex.: Hyrox toda terça.</p>';
+  const mt = ex.metas.map(m=>{ const pg = progressoMeta(m); return '<button type="button" class="pf-link col" data-mt="'+esc(m.id)+'"><span class="pf-row"><b>'+esc(m.texto)+'</b><span class="pf-chip">'+(m.status==="cumprida"?"cumprida":"até "+esc(fmt(parseD(m.ate))))+'</span></span>'+(pg?'<span class="pf-bar"><i style="width:'+pg.pct+'%"></i></span><span class="s">Maior corrida: '+num(pg.atual,1)+' km de '+num(m.alvo,0)+'</span>':'')+(m.analise&&m.analise.aplicada?'<span class="s pf-ok">Encaixada no plano</span>':'')+'</button>'; }).join("") || '<p class="s">Nenhuma meta ainda. Ex.: 22 km em dezembro.</p>';
   const app = tela('<button type="button" class="back" data-go="perfil">← Perfil</button><span class="k">objetivos e metas</span><h1 class="h1">O que você quer</h1>'+
-    '<div class="pf-card"><span class="k">objetivo principal</span><b style="font-size:1.1rem">'+esc((TPL[p.objetivo]||{}).nome||p.objetivo||"—")+'</b><span class="s">'+(p.dataProva?'Prova em '+esc(fmt(parseD(p.dataProva)))+'. ':'')+'O plano inteiro é montado em cima dele.</span><button type="button" class="btn" id="exobj">Mudar o objetivo principal</button></div>'+
+    '<div class="pf-card"><span class="k">objetivo principal</span><b class="t">'+esc((TPL[p.objetivo]||{}).nome||p.objetivo||"—")+'</b><span class="s">'+(p.dataProva?'Prova em '+esc(fmt(parseD(p.dataProva)))+'. ':'')+'O plano inteiro é montado em cima dele.</span><button type="button" class="btn" id="exobj">Mudar o objetivo principal</button></div>'+
     '<div class="pf-card"><span class="k">objetivos extras e compromissos fixos</span><span class="s">Coisas que você faz além do principal. Fixos entram na sua semana e o coach respeita. Os obrigatórios ele não tira.</span>'+fx+'<button type="button" class="btn go" id="exfx">Adicionar compromisso fixo</button></div>'+
     '<div class="pf-card"><span class="k">metas</span><span class="s">Escreva uma meta e o coach analisa se cabe e como encaixa no seu treino, sem atrapalhar o objetivo principal.</span>'+mt+'<button type="button" class="btn go" id="exmt">Adicionar meta</button></div>', {tabs:true, fab:true});
   bindGo(app);
@@ -4015,7 +4025,7 @@ function bindMetaAcoes(root, m, fecha){
 }
 function sheetMetaVer(id){
   const ov = $("ov"), fecha = ()=>{ fecharSheet(); }, ex = extrasDe(), m = ex.metas.find(x=>x.id===id); if (!m) return;
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2" style="font-size:1.4rem">'+esc(m.texto)+'</h2><span class="s">'+(m.status==="cumprida"?"Cumprida em "+esc(fmt(parseD(m.cumpridaEm||m.ate))):"Até "+esc(fmt(parseD(m.ate))))+'</span><div id="mtr">'+analiseMetaHTML(m)+'</div>'+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2 lg">'+esc(m.texto)+'</h2><span class="s">'+(m.status==="cumprida"?"Cumprida em "+esc(fmt(parseD(m.cumpridaEm||m.ate))):"Até "+esc(fmt(parseD(m.ate))))+'</span><div id="mtr">'+analiseMetaHTML(m)+'</div>'+
     (m.status!=="cumprida" ? '<button type="button" class="btn" id="mtc">Marcar como cumprida</button>' : '')+'<button type="button" class="btn" id="mtd2">Remover meta</button></div>';
   bindMetaAcoes($("mtr"), m, fecha); $("dim").onclick = fecha;
   const c = $("mtc"); if (c) c.onclick = async ()=>{ m.status = "cumprida"; m.cumpridaEm = key(today); await salvarPerfil(); fecha(); celebrar("Meta cumprida"); telaExtras(); };
@@ -4127,7 +4137,7 @@ async function enviarChat(){
 /* ===================== PERFIL ===================== */
 function sheetFoto(){
   const ov = $("ov"), tem = fotoValida(P.perfil.foto);
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Foto de perfil"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Foto de perfil</h2><p class="s">Só você vê esta foto. Guardamos uma cópia pequena, não o arquivo original.</p>'+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Foto de perfil"><span class="grab"></span><h2 class="h2 lg">Foto de perfil</h2><p class="s">Só você vê esta foto. Guardamos uma cópia pequena, não o arquivo original.</p>'+
     '<label class="btn go" for="fup">Escolher foto</label><input type="file" id="fup" accept="image/*" hidden>'+
     (tem ? '<button type="button" class="lk cor-ruim" id="frem">Remover foto</button>' : '')+
     '<button type="button" class="lk" id="fno">Cancelar</button><p class="msg" id="fotom"></p></div>';
@@ -4147,7 +4157,7 @@ function sheetFoto(){
 }
 function sheetSair(){
   const ov = $("ov");
-  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Sair"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Sair do '+esc(BRAND)+'?</h2>'+
+  ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Sair"><span class="grab"></span><h2 class="h2 lg">Sair do '+esc(BRAND)+'?</h2>'+
     '<p class="s">Seus dados continuam salvos. Neste teste você entra com a sua conta do Claude, então ao voltar o app reconhece você. Quando o '+esc(BRAND)+' estiver no ar com login próprio, este botão encerra a sessão de verdade.</p>'+
     '<button type="button" class="btn go" id="sok">Sair</button><button type="button" class="lk" id="sno">Cancelar</button></div>';
   $("dim").addEventListener("click", ()=>{ fecharSheet(); }); $("sno").addEventListener("click", ()=>{ fecharSheet(); });
@@ -4165,7 +4175,7 @@ function graficoPeso(lista){
   const kgs = pts.map(x=>x.kg), mn = Math.min(...kgs) - 0.5, mx = Math.max(...kgs) + 0.5;
   const X = d => 10 + 300*(dia(d)-t0)/(t1-t0), Y = kg => 10 + 80*(1-(kg-mn)/(mx-mn));
   const d = pts.map((x,i)=>(i?"L":"M")+X(x.d).toFixed(1)+" "+Y(x.kg).toFixed(1)).join(" ");
-  return '<svg viewBox="0 0 320 100" role="img" aria-label="Peso nos últimos 90 dias" style="width:100%;height:auto"><path d="'+d+'" fill="none" stroke="var(--ink)" stroke-width="2"/>'+pts.map(x=>'<circle cx="'+X(x.d).toFixed(1)+'" cy="'+Y(x.kg).toFixed(1)+'" r="3" fill="var(--go)"/>').join("")+'</svg><span class="s">'+num(Math.min(...kgs),1)+' a '+num(Math.max(...kgs),1)+' kg nos últimos 90 dias</span>';
+  return '<svg viewBox="0 0 320 100" role="img" aria-label="Peso nos últimos 90 dias" class="sv"><path d="'+d+'" fill="none" stroke="var(--tx)" stroke-width="2"/>'+pts.map(x=>'<circle cx="'+X(x.d).toFixed(1)+'" cy="'+Y(x.kg).toFixed(1)+'" r="3" fill="var(--go)"/>').join("")+'</svg><span class="s">'+num(Math.min(...kgs),1)+' a '+num(Math.max(...kgs),1)+' kg nos últimos 90 dias</span>';
 }
 const fotosCorpo = () => Object.keys(LOG).filter(k=>/^fp_\d{4}-\d{2}-\d{2}$/.test(k) && fotoValida((LOG[k]||{}).th)).sort();
 function secaoCorpoExtra(menor){
@@ -4173,7 +4183,7 @@ function secaoCorpoExtra(menor){
   const fs = fotosCorpo(), cfg = LOG.corpo_cfg || {}, tem = (LOG.corpo||[]).length > 0;
   const dias = [["0","Seg"],["1","Ter"],["2","Qua"],["3","Qui"],["4","Sex"],["5","Sáb"],["6","Dom"]];
   return '<div class="box"><div class="between"><b>Fotos de progresso</b><span class="s">'+fs.length+' de 6</span></div>'+
-    (fs.length ? '<div class="grid2">'+fs.map(k=>'<div><img alt="Foto de '+esc(fmt(parseD(k.slice(3))))+'" src="'+esc(LOG[k].th)+'" style="width:100%;height:auto;display:block"><div class="between"><span class="s">'+esc(fmt(parseD(k.slice(3))))+'</span><button type="button" class="lk" data-fdel="'+esc(k)+'" aria-label="Apagar foto de '+esc(fmt(parseD(k.slice(3))))+'">apagar</button></div></div>').join("")+'</div>'+(fs.length > 1 ? '<button type="button" class="btn ghost" id="fcmp">Comparar primeira e última</button>' : '') : '<p class="s">A foto fica só no seu registro: não aparece para amigos nem vai para a IA. Guardamos uma cópia pequena, não o arquivo original.</p>')+
+    (fs.length ? '<div class="grid2">'+fs.map(k=>'<div><img alt="Foto de '+esc(fmt(parseD(k.slice(3))))+'" src="'+esc(LOG[k].th)+'"><div class="between"><span class="s">'+esc(fmt(parseD(k.slice(3))))+'</span><button type="button" class="lk" data-fdel="'+esc(k)+'" aria-label="Apagar foto de '+esc(fmt(parseD(k.slice(3))))+'">apagar</button></div></div>').join("")+'</div>'+(fs.length > 1 ? '<button type="button" class="btn ghost" id="fcmp">Comparar primeira e última</button>' : '') : '<p class="s">A foto fica só no seu registro: não aparece para amigos nem vai para a IA. Guardamos uma cópia pequena, não o arquivo original.</p>')+
     '<label class="btn" for="fpup">Adicionar foto de hoje</label><input type="file" id="fpup" accept="image/*" hidden><p class="msg" id="fpm"></p></div>'+
     (tem ? '<div class="box"><b>Lembrete de pesagem</b><label class="between pv8"><span>Lembrar de me pesar</span><input type="checkbox" id="lbon"'+(cfg.lembrar ? ' checked' : '')+'></label>'+
       '<div class="chips" id="lbdia" role="group" aria-label="Dia da pesagem">'+dias.map(([v,l])=>'<button type="button" class="chip" data-v="'+v+'" aria-pressed="'+(String(cfg.dia != null ? cfg.dia : 0) === v)+'">'+l+'</button>').join("")+'</div><span class="s">Um cartão aparece na tela Hoje no dia escolhido, até você registrar. Não é notificação do celular.</span></div>' : '');
@@ -4206,7 +4216,7 @@ function bindCorpoExtra(){
   const cp = $("fcmp");
   if (cp) cp.addEventListener("click", ()=>{
     const fs = fotosCorpo(), a = fs[0], z = fs[fs.length-1], ov = $("ov"), fecha = ()=>{ fecharSheet(); };
-    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Comparar fotos"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Antes e depois</h2><div class="grid2"><div><img alt="Primeira foto" src="'+esc(LOG[a].th)+'" style="width:100%;height:auto;display:block"><span class="s">'+esc(fmt(parseD(a.slice(3))))+'</span></div><div><img alt="Última foto" src="'+esc(LOG[z].th)+'" style="width:100%;height:auto;display:block"><span class="s">'+esc(fmt(parseD(z.slice(3))))+'</span></div></div><p class="s">Luz, ângulo e roupa mudam o que a foto mostra. Compare com calma.</p><button type="button" class="btn ghost" id="fcx">Fechar</button></div>';
+    ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Comparar fotos"><span class="grab"></span><h2 class="h2 lg">Antes e depois</h2><div class="grid2"><div><img alt="Primeira foto" src="'+esc(LOG[a].th)+'"><span class="s">'+esc(fmt(parseD(a.slice(3))))+'</span></div><div><img alt="Última foto" src="'+esc(LOG[z].th)+'"><span class="s">'+esc(fmt(parseD(z.slice(3))))+'</span></div></div><p class="s">Luz, ângulo e roupa mudam o que a foto mostra. Compare com calma.</p><button type="button" class="btn ghost" id="fcx">Fechar</button></div>';
     $("dim").addEventListener("click", fecha); $("fcx").addEventListener("click", fecha);
   });
   const lb = $("lbon");
@@ -4248,27 +4258,29 @@ function telaCorpo(o){
   bindCorpoExtra();
   app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async ()=>{ const antes = LOG.corpo || [], era = antes.length && antes[antes.length-1].d === b.dataset.del, resto = antes.filter(x=>x.d !== b.dataset.del); await salvarLog("corpo", resto); if (era && resto.length){ P.perfil.peso = Math.round(resto[resto.length-1].kg*10)/10; await salvarPerfil(); } render(true); }));
 }
+// linha da lista do Perfil: título e legenda juntos à esquerda, seta à direita (2 itens flex, não 3)
+const lr = (id, cls, t, sub) => '<button type="button" id="'+id+'"'+(cls?' class="'+cls+'"':'')+'><span class="grow">'+t+'<small>'+sub+'</small></span><span class="chev" aria-hidden="true">→</span></button>';
 function telaPerfil(){
   const p = P.perfil, pl = planoAtual(), n = nivelXP(), as = p.assinatura || {};
   const meus = Object.values(ACS_IND).length;
   const app = tela('<button type="button" class="back" data-go="hoje">← Hoje</button><div class="prof"><button type="button" class="me" id="fotob" aria-label="Trocar foto de perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(p.apelido)))+'</button><div><h1 class="h2">'+esc(p.apelido)+'</h1><span class="s">nível '+n.n+' · '+esc(pl?pl.nome:"")+(p.dataProva?' · '+esc(fmt(parseD(p.dataProva))):'')+'</span></div></div>'+
     (isOwner ? '' : '<div class="box"><span class="k">seu código de convite</span><span class="code">'+esc(meuCodigo()||"—")+'</span><span class="s">Quem entra com ele fica como seu indicado. Você vira afiliado e ganha uma parte de cada mensalidade de quem indicou.</span><div class="grid2"><button type="button" class="btn ink" id="cv">Copiar convite</button><a class="btn" id="wa" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(convite())+'">WhatsApp</a></div></div>')+
     '<div class="lst">'+
-      '<button type="button" id="ass">Assinatura<small>'+esc(as.plano==="anual"?"anual · "+reais(as.valor):as.plano==="mensal"?"mensal · "+reais(as.valor):"ainda não escolheu")+' · fase de teste grátis</small><span>→</span></button>'+
-      '<button type="button" id="tema">Aparência<small>'+esc(NOME_TEMA[temaSalvo()])+'</small><span>→</span></button>'+
-      '<button type="button" id="pau">'+(pausaAtiva()?'Voltar a treinar':'Pausar o plano')+'<small>'+(pausaAtiva()?'seu plano está em pausa':'lesão, doença ou viagem: o foguinho não apaga')+'</small><span>→</span></button>'+
-      '<button type="button" id="ext">Objetivos extras e metas<small>Hyrox, academia, compromissos fixos e metas</small><span>→</span></button>'+
-      '<button type="button" id="cor">'+(ehMenor(p) ? 'Meu peso' : 'Peso, medidas e fotos')+'<small>'+((LOG.corpo||[]).length ? 'último peso: '+num((LOG.corpo[LOG.corpo.length-1]||{}).kg||0, 1)+' kg · toque para registrar' : (ehMenor(p) ? 'registre o peso para as metas de comida' : 'acompanhe o seu corpo ao longo do tempo'))+'</small><span>→</span></button>'+
-      '<button type="button" id="obj">Meu plano e objetivo<small>mudar objetivo ou adicionar prova</small><span>→</span></button>'+
-      '<button type="button" id="doc">Laudo de fisioterapia<small>'+(p.fisio&&p.fisio.lesao?esc(p.fisio.lesao)+' · toque para editar':'suba um documento para o plano respeitar sua lesão')+'</small><span>→</span></button>'+
-      '<button type="button" id="foto">Foto de perfil<small>'+(fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+'</small><span>→</span></button>'+
-      '<button type="button" id="edt">Minha conta<small>nome, idade, peso, rotina</small><span>→</span></button>'+
+      lr("ass", "", 'Assinatura', esc(as.plano==="anual"?"anual · "+reais(as.valor):as.plano==="mensal"?"mensal · "+reais(as.valor):"ainda não escolheu")+' · fase de teste grátis')+
+      lr("tema", "", 'Aparência', esc(NOME_TEMA[temaSalvo()]))+
+      lr("pau", "", pausaAtiva()?'Voltar a treinar':'Pausar o plano', pausaAtiva()?'seu plano está em pausa':'lesão, doença ou viagem: o foguinho não apaga')+
+      lr("ext", "", 'Objetivos extras e metas', 'Hyrox, academia, compromissos fixos e metas')+
+      lr("cor", "", ehMenor(p) ? 'Meu peso' : 'Peso, medidas e fotos', ((LOG.corpo||[]).length ? 'último peso: '+num((LOG.corpo[LOG.corpo.length-1]||{}).kg||0, 1)+' kg · toque para registrar' : (ehMenor(p) ? 'registre o peso para as metas de comida' : 'acompanhe o seu corpo ao longo do tempo')))+
+      lr("obj", "", 'Meu plano e objetivo', 'mudar objetivo ou adicionar prova')+
+      lr("doc", "", 'Laudo de fisioterapia', p.fisio&&p.fisio.lesao?esc(p.fisio.lesao)+' · toque para editar':'suba um documento para o plano respeitar sua lesão')+
+      lr("foto", "", 'Foto de perfil', fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+
+      lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
-      '<button type="button" id="fb">Mandar feedback para a equipe<small>o que travou, o que curtiu, se pagaria</small><span>→</span></button>'+
-      '<button type="button" id="exp">Baixar meus dados<small>arquivo com tudo que o app guarda de você</small><span>→</span></button>'+
-      '<button type="button" id="sair">Sair<small>voltar para a tela inicial do app</small><span>→</span></button>'+
-      '<button type="button" id="del" class="cor-ruim">Apagar minha conta e meus dados<small>não dá para desfazer</small><span>→</span></button>'+
-      (isOwner && !DEMO ? '<button type="button" id="pn" class="cor-go">Painel do dono<small>pedidos, afiliados, preços, cupons e comissões</small><span>→</span></button>' : '')+
+      lr("fb", "", 'Mandar feedback para a equipe', 'o que travou, o que curtiu, se pagaria')+
+      lr("exp", "", 'Baixar meus dados', 'arquivo com tudo que o app guarda de você')+
+      lr("sair", "", 'Sair', 'voltar para a tela inicial do app')+
+      lr("del", "cor-ruim", 'Apagar minha conta e meus dados', 'não dá para desfazer')+
+      (isOwner && !DEMO ? lr("pn", "cor-go", 'Painel do dono', 'pedidos, afiliados, preços, cupons e comissões') : '')+
     '</div>'+
     '<div class="box"><b>Conexões</b><p class="s">Apple Saúde, Strava e Garmin, treino na tela bloqueada e lembrete no celular chegam no app oficial. Aqui no teste, o lembrete aparece quando você abre o app.</p></div>'+
     (LOCAL ? '<div class="flag">Seus dados ficam salvos neste celular. Se trocar de celular ou limpar o navegador, eles somem.</div>' : '')+
@@ -4288,7 +4300,7 @@ function telaPerfil(){
   $("fb").addEventListener("click", telaFeedback);
   $("exp").addEventListener("click", ()=>baixar("meus-dados-"+BRAND.toLowerCase()+".json", JSON.stringify({perfil:P.perfil, plano:planoAtual(), log:LOG, social:SOC}, null, 2), "application/json"));
   const del = $("del"); del.addEventListener("click", async ()=>{
-    if (del.dataset.armed!=="1"){ del.dataset.armed = "1"; del.firstChild.textContent = "Toque de novo para apagar tudo "; return; }
+    if (del.dataset.armed!=="1"){ del.dataset.armed = "1"; del.firstChild.firstChild.textContent = "Toque de novo para apagar tudo "; return; }
     try{ await Promise.all(["perfil","log","rascunho","social"].map(d=>db.collection(base()).doc(d).delete().catch(()=>{}))); await db.collection("revisao").doc(me).delete().catch(()=>{}); await db.collection("resumo").doc(me).delete().catch(()=>{}); }catch(e){}
     P = null; LOG = {}; Object.keys(draft).forEach(k=>delete draft[k]); try{ localStorage.removeItem("ar2-draft"); }catch(e){} step = 0; telaAbertura();
   });
@@ -4321,7 +4333,7 @@ function telaPainel(){
     h += '<div class="kpi4"><div><b>'+ids.length+'</b><span>cadastrados</span></div><div><b>'+pagantes.length+'</b><span>escolheram plano</span><em>'+reais(mrr)+'/mês se pagassem</em></div></div>'+
       '<span class="k">pedidos de acesso</span>'+(pend.length ? pend.map(id=>'<div class="box"><b data-pn="'+esc(id)+'">'+esc(PROFN[id]||"Alguém novo")+'</b><span class="s">'+esc([PED[id].quem?"convidado por "+PED[id].quem:"", PED[id].obj||""].filter(Boolean).join(" · "))+'</span><div class="grid2"><button class="btn go sm" type="button" data-aceita="'+esc(id)+'">Aceitar</button><button class="btn sm" type="button" data-recusa="'+esc(id)+'">Recusar</button></div></div>').join("") : '<p class="s">Nenhum pedido novo.</p>')+
       '<span class="k">planos</span>'+(ids.length ? ids.map(id=>{ const r = REV[id], ap = APR[id], rs = RES[id], red = r.flags&&r.flags.red&&r.flags.red.length;
-        return '<div class="box"><div class="between"><b>'+esc((r.apelido||"Amigo")+", "+(r.idade||"?")+" anos")+'</b><span class="pill" style="background:'+(ap&&ap.status==="aprovado"?'var(--done)':red?'var(--stop)':'var(--caution)')+'">'+(ap&&ap.status==="aprovado"?'aprovado':ap&&ap.status==="ajustar"?'ajuste pedido':red?'bloqueado':'automático')+'</span></div>'+
+        return '<div class="box"><div class="between"><b>'+esc((r.apelido||"Amigo")+", "+(r.idade||"?")+" anos")+'</b><span class="pill '+(ap&&ap.status==="aprovado"?'ok':red?'no':'wait')+'">'+(ap&&ap.status==="aprovado"?'aprovado':ap&&ap.status==="ajustar"?'ajuste pedido':red?'bloqueado':'automático')+'</span></div>'+
           '<span class="s">'+esc((TPL[r.objetivo]?TPL[r.objetivo].nome:r.objetivo)+(r.dataProva?" em "+r.dataProva:"")+" · "+r.corridasSem+" corridas/sem, "+r.kmSemana+" km · academia "+(r.academiaMeses||0)+" meses · "+r.diasSem+" dias · origem: "+(r.indicadoPor?(r.indicadoPor==="dono"?"seu código":"afiliado "+r.indicadoPor):"pedido de acesso")+" · plano: "+((r.assinatura&&r.assinatura.plano)||"—"))+'</span>'+
           (red?'<div class="flag red">Bloqueante: '+esc(r.flags.red.join("; "))+'. Aprove só com liberação médica por escrito.</div>':'')+(r.flags&&r.flags.amarelo&&r.flags.amarelo.length?'<div class="flag">'+esc(r.flags.amarelo.join("; "))+'</div>':'')+
           (rs?'<span class="s">7 dias: '+rs.checkins7+' check-ins · '+(rs.aderencia7==null?"—":rs.aderencia7+"%")+' feito · dor máx '+rs.dorMax7+'/10 · nível '+(rs.nivel||1)+' · foguinho '+(rs.foguinho||0)+(rs.alerta?' · ⚠ alerta de sintoma':'')+'</span>':'')+
@@ -4332,7 +4344,7 @@ function telaPainel(){
     const linhas = Object.keys(tags).filter(t=>t!=="—").map(t=>{ const pct = (AFIL[t]&&AFIL[t].pct!=null) ? AFIL[t].pct : (t==="dono"?0:PRECOS.comissao||25); const ps = tags[t].filter(id=>REV[id].assinatura && ["anual","mensal"].includes(REV[id].assinatura.plano)); const rec = ps.reduce((a,id)=>{ const s = REV[id].assinatura; return a + (s.plano==="anual"?(s.valor||PRECOS.anual)/12:(s.valor||PRECOS.mensal)); },0); return [t, tags[t].length, ps.length, pct, rec*pct/100, (AFIL[t]&&AFIL[t].nome)||""]; });
     h += '<p class="s">Cada amigo tem um código no formato '+esc(CODIGO||"CODIGO")+'-XXXX. A origem de cada cadastro aparece aqui. Comissão padrão: '+(PRECOS.comissao||25)+'%.</p>'+
       '<div class="tblw"><table class="tbl"><thead><tr><th>Afiliado</th><th>Indicados</th><th>Com plano</th><th>Comissão</th><th>A pagar/mês</th></tr></thead><tbody>'+
-      (linhas.length ? linhas.map(l=>'<tr><td><b>'+esc(l[0]==="dono"?"Você (código base)":l[0])+'</b>'+(l[5]?'<br><span class="s">'+esc(l[5])+'</span>':'')+'</td><td class="n">'+l[1]+'</td><td class="n">'+l[2]+'</td><td>'+(l[0]==="dono"?'—':'<input class="inp n" style="min-height:34px;width:64px;padding:4px" type="number" min="0" max="100" value="'+l[3]+'" data-pct="'+esc(l[0])+'" aria-label="Comissão de '+esc(l[0])+'">%')+'</td><td class="n">'+reais(l[4])+'</td></tr>').join("") : '<tr><td colspan="5" class="s">Nenhum cadastro por código ainda.</td></tr>')+'</tbody></table></div>'+
+      (linhas.length ? linhas.map(l=>'<tr><td><b>'+esc(l[0]==="dono"?"Você (código base)":l[0])+'</b>'+(l[5]?'<br><span class="s">'+esc(l[5])+'</span>':'')+'</td><td class="n">'+l[1]+'</td><td class="n">'+l[2]+'</td><td>'+(l[0]==="dono"?'—':'<input class="inp n pct" type="number" min="0" max="100" value="'+l[3]+'" data-pct="'+esc(l[0])+'" aria-label="Comissão de '+esc(l[0])+'">%')+'</td><td class="n">'+reais(l[4])+'</td></tr>').join("") : '<tr><td colspan="5" class="s">Nenhum cadastro por código ainda.</td></tr>')+'</tbody></table></div>'+
       '<div class="box"><b>Dar comissão especial</b><div class="grid2"><input class="inp upper" id="af-t" placeholder="Código (XXXX)"><input class="inp" id="af-p" type="number" placeholder="% ex.: 50"></div><input class="inp" id="af-n" placeholder="Nome (ex.: padrasto)"><button type="button" class="btn ink" id="af-ok">Salvar comissão</button></div>'+
       '<p class="s">Regra sugerida: pagar depois dos 7 dias de arrependimento e da 1ª renovação, só sobre o valor líquido, 1 nível só.</p>';
   } else if (painelAba==="precos"){
