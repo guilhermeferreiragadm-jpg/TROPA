@@ -52,6 +52,8 @@ Qualquer usuário pode ser **Personal** e/ou **Nutri**. O profissional convida a
 - O aluno publica **resumos cifrados** só das categorias liberadas, em documentos por categoria. O banco guarda só texto cifrado, mais um cabeçalho em claro (versão, data).
 - Propostas, respostas e comentários também são cifrados com a chave do vínculo.
 - Cada vínculo tem um par de chaves do aluno próprio. O profissional usa um único par dele.
+- O aluno guarda na área privada, junto do par do vínculo, a cópia que vale (`pin`: profissional, papel, permissões, estado). Só publica a partir dela; o vínculo em claro é só exibição, e um doc cujo id não seja `aluno~papel` é ignorado. Desvincular marca o `pin`, então o profissional regravar `ativo` não reabre nada.
+- A pública do vínculo fica em `papeis/{aluno}.vpub[papel]` (só o aluno grava). O profissional lê dali, não do vínculo em claro.
 - Revogar uma categoria: o aluno apaga o resumo daquela categoria e deixa de publicá-la. Desvincular: apaga todos os resumos do vínculo. **Não há rotação de chave:** o profissional consegue derivar qualquer chave futura a partir da chave pública do aluno, então rotacionar não o excluiria. Quem controla o acesso é o que o aluno publica, e a cifragem protege contra terceiros.
 - O sino usa uma caixa de entrada por usuário. Qualquer pessoa pode gravar nela, então cada item guarda só tipo e ponteiro. O app descarta item que não corresponda a um vínculo ou proposta real.
 - Limite: o que o profissional já leu pode ter sido copiado. A cifragem impede leitura futura.
@@ -64,13 +66,13 @@ Qualquer usuário pode ser **Personal** e/ou **Nutri**. O profissional convida a
 
 ## Modelo de dados (resumo)
 
-- `papeis/{uid}`: público, `{personal, nutri, pub}`.
+- `papeis/{uid}`: público, `{personal, nutri, pub, nome, vpub}` (`vpub`: pública do aluno por papel de vínculo).
 - `convites/{codigo}`: `{profId, papel, expira, usado}`.
 - `vinculos/{id}`: `{alunoId, profId, papel, perm, estado, criado}` em claro, sem dados de saúde.
 - `snap/{vinculoId}/{categoria}`: cifrado.
 - `prop/{vinculoId}/{id}`: cifrado.
 - `inbox/{uid}/{id}`: `{tipo, ref, quando, lida}`.
-- `data/users/{uid}/chaves`: par de chaves, privado.
+- `data/users/{uid}/chaves`: par de chaves e, por vínculo do aluno, `{vid, pub, priv, pin}`, privado.
 - Regras de leitura e escrita serão definidas no plano. O que o banco não consegue forçar, a cifragem cobre.
 
 ## Fora de escopo
@@ -98,3 +100,4 @@ Diferenças entre o que a spec descreve e o que foi construído, aceitas:
 - Propostas ganharam o evento `invalidar`, que leva ao estado `desatualizada` (gravado cifrado pelo app do aluno ao abrir uma proposta de base antiga), além de pendente, aceita e recusada.
 - Só foi testado no harness com chromium. Nenhum aparelho real, nem o artifact publicado.
 - O convite de profissional abre o beta fechado: quem recebe o código entra no app por ele. Decisão do dono pendente.
+- Convite sequestrável: como `convites` é listável e gravável, um terceiro pode trocar o `profId` de um código pendente e receber o vínculo se o aluno aceitar sem conferir o nome; a correção sugerida (hashes dos códigos no `papeis` do profissional) não fecha o buraco, porque o terceiro lê o código e põe o hash no próprio `papeis`, então fica aceito até haver ids de convite por hash.

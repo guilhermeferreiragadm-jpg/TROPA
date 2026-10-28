@@ -52,6 +52,8 @@ O que isso significa, sem rodeio:
 - `vinculos` e `prop` são lidos inteiros e filtrados no cliente. Isso vaza metadados (quem é aluno de quem, quando) e não escala bem com muitos vínculos.
 - O que um profissional já leu pode ter sido copiado. A cifragem impede a leitura futura, não a passada.
 - Não há rotação de chave: o profissional deriva qualquer chave futura a partir da chave pública do aluno. Quem controla o acesso é o que o aluno publica.
+- O aluno não confia no vínculo em claro: profissional, papel, permissões e estado valem da cópia privada dele em `data/users/{me}/chaves`, e a pública do vínculo que o profissional usa vem de `papeis/{aluno}.vpub`.
+- Convite sequestrável: como `convites` é listável e gravável, um terceiro pode trocar o `profId` de um código pendente e receber o vínculo se o aluno aceitar sem conferir o nome; a correção sugerida (hashes dos códigos no `papeis` do profissional) não fecha o buraco, porque o terceiro lê o código e põe o hash no próprio `papeis`, então fica aceito até haver ids de convite por hash.
 - A proteção só vale se essas regras forem reais no artifact publicado. Sem elas, o app não funciona ou fica aberto demais.
 
 ## Personal e Nutri
@@ -65,13 +67,13 @@ Qualquer usuário pode ser Personal e/ou Nutri, convida alunos por código (link
 - Passo a passo em `tests/harness/roteiro.md`.
 
 ### Coleções
-- `papeis/{uid}`: público, papéis ativos e chave pública.
+- `papeis/{uid}`: público, papéis ativos, chave pública e `vpub` (pública do aluno por vínculo).
 - `convites/{codigo}`: profissional, papel, validade (7 dias), uso único.
 - `vinculos/{aluno~papel}`: aluno, profissional, papel, permissões, estado. Em claro, sem dados de saúde.
 - `snap/{vinculo}_{categoria}`: resumos cifrados das categorias liberadas.
 - `prop/{vinculo}`: propostas, respostas e comentários, cifrados.
 - `inbox/{uid}/n`: avisos do sino (só tipo e ponteiro).
-- Privado do usuário: `data/users/{me}/chaves` (par de chaves) e `data/users/{me}/modelos` (modelos do profissional).
+- Privado do usuário: `data/users/{me}/chaves` (par de chaves e, por vínculo, o par do aluno com a cópia que vale do vínculo) e `data/users/{me}/modelos` (modelos do profissional).
 
 ### Limites da cifragem
 Protege contra terceiros e contra leitura futura depois de revogar. Não protege o que o profissional já leu, não rotaciona chaves, e metadados dos vínculos ficam em claro. Detalhes na seção "Regras do banco (Personal e Nutri)" acima e em "Desvios aceitos" na spec.
