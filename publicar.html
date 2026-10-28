@@ -55,7 +55,7 @@ p{margin:0}
 .wm{font-family:var(--f-wm);font-style:italic;font-weight:900;font-size:1.15rem;letter-spacing:.03em;text-transform:uppercase;display:inline-flex;align-items:center;gap:8px}
 .wm i{width:26px;height:18px;background:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20100%2070%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23FF9A1F%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%23FF3D00%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20fill=%22url(%23g)%22%20d=%22M38%204%20Q50%202%2062%204%20L98%2066%20L78%2066%20L56%2026%20L24%2027%20Z%22/%3E%3Cpath%20fill=%22url(%23g)%22%20d=%22M52%2029%20L10%2042%20L0%2066%20L22%2066%20Q31%2064%2038%2056%20Z%22/%3E%3C/svg%3E") center/contain no-repeat;display:inline-block}
 /* pressão: feedback no pointerdown, sem espera */
-.btn,.chip,.seg button,.opt,.pl,.ci,.pf-link,.nav4 button,.lst>button,.lst>a,.wrow,.mhead button,.mcal button,.lk,.thumbs button,.ck,.kudo{transition:transform .1s ease-out,background-color .15s ease-out,box-shadow .15s ease-out}
+.btn,.chip,.seg button,.opt,.pl,.ci,.pf-link,.nav4 button,.lst>button,.lst>a,.wrow,.mhead button,.mcal button,.lk,.thumbs button,.ck,.kudo,.proxc{transition:transform .1s ease-out,background-color .15s ease-out,box-shadow .15s ease-out}
 .btn:active,.chip:active,.seg button:active,.ck:active,.kudo:active,.mhead button:active,.thumbs button:active{transform:scale(.97)}
 .opt:active,.pl:active,.ci:active,.pf-link:active,.nav4 button:active,.lst>button:active,.lst>a:active,.wrow:active,.mcal button:active{transform:scale(.985)}
 /* botões */
@@ -106,12 +106,13 @@ textarea.inp{resize:vertical;min-height:88px}
 .btn.sm,.chip,.lk{position:relative}
 .btn.sm::after,.chip::after,.lk::after{content:"";position:absolute}
 .btn.sm::after{inset:-3px 0}.chip::after{inset:-7px -2px}.lk::after{inset:-3px 0}
+.lk.in{padding:0}.lk.in::after{inset:-12px -8px}   /* link dentro de texto: sem padding, alvo de 44px invisível */
 @media (prefers-contrast:more){.box,.opt,.ci{box-shadow:inset 0 0 0 1px var(--sep)}}
 .lst>label{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--sep);padding:14px 16px;font-weight:600;min-height:50px}
 .lst>label input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--go-fill);margin:0}
 .lst>.cor-go{color:var(--go-ink)}.lst>.cor-ruim{color:var(--stop-ink)}
 .pv8{padding-block:8px}
-.mt0{margin-top:0}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.mw0{min-width:0}.grow{flex:1;min-width:0}
+.mt0{margin-top:0}.mt8{margin-top:8px}.tc{text-align:center}.upper{text-transform:uppercase}.cor-go{color:var(--go-ink)}.cor-2{color:var(--tx-2)}.cor-ok{color:var(--done-ink)}.cor-ruim{color:var(--stop-ink)}.w600{font-weight:600}.mw0{min-width:0}.grow{flex:1;min-width:0}
 /* abertura */
 .open{min-height:100vh;background:var(--ink);color:#fff;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 20px 34px;gap:14px;overflow:hidden}
 .open .photo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,13,16,.1),rgba(11,13,16,.25) 40%,rgba(11,13,16,.95) 80%),repeating-linear-gradient(115deg,#2a2f36 0 2px,#23272d 2px 9px)}
@@ -158,42 +159,64 @@ textarea.inp{resize:vertical;min-height:88px}
 .ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:.88rem}
 .ul li::before{content:"✓  ";color:var(--done-ink);font-weight:900}
 /* app: topo */
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.me{width:36px;height:36px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-content:center;font-size:.72rem;font-weight:800;border:0;flex:none;overflow:hidden;padding:0}
-.me img{width:100%;height:100%;object-fit:cover}
-.fire{display:inline-flex;align-items:center;gap:5px;font-family:var(--f);font-weight:700}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.me{width:40px;height:40px;border-radius:50%;background:var(--go-fill);color:#fff;display:grid;place-content:center;font-size:.8125rem;font-weight:600;border:0;flex:none;padding:0;box-shadow:var(--sh1);position:relative}
+.me::after{content:"";position:absolute;inset:-2px}
+.me img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.fire{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-variant-numeric:tabular-nums}
 .fire i{width:12px;height:16px;background:var(--go);clip-path:polygon(50% 0,100% 60%,80% 100%,20% 100%,0 60%);display:inline-block}
-.fire.off i{background:#c9ced4}
-.stats3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--sep)}
-.stats3>div{padding:9px 10px;border-right:1px solid var(--sep);min-width:0}
+.fire.off i{background:var(--sep);filter:brightness(.85)}
+.stats3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1)}
+.stats3>div{padding:12px;border-right:1px solid var(--sep);min-width:0}
 .stats3>div:last-child{border-right:0}
-.stats3 b{display:block;font-family:var(--f);font-weight:700;font-size:1.55rem;line-height:1}
-.stats3 span{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--tx-2);font-weight:800}
-.recado{border-left:3px solid var(--ink);padding:2px 0 2px 10px;font-size:.88rem}
-.recado b{display:block;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--tx-2)}
-.ci{border:1px solid var(--sep);padding:11px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);width:100%;text-align:left}
-.ci b{font-size:.94rem}.ci small{display:block;font-size:.78rem;color:var(--tx-2)}
-.ci.done{background:var(--done-soft);border-color:var(--done-line)}
-.ci.hot{border:2px solid var(--go);padding:10px 11px}
+.stats3 b{display:block;font-weight:700;font-size:1.5rem;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stats3 span{font-size:.75rem;color:var(--tx-2);font-weight:500}
+.recado{border-radius:var(--r2);background:var(--surface);box-shadow:var(--sh1);padding:12px 14px;font-size:.9375rem}
+.recado b{display:block;font-size:.75rem;font-weight:600;color:var(--tx-2);margin-bottom:2px}
+.ci{border:0;border-radius:var(--r2);padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);box-shadow:var(--sh1);width:100%;text-align:left}
+.ci b{font-size:1.0625rem;font-weight:600;letter-spacing:-.01em}.ci small{display:block;font-size:.8125rem;color:var(--tx-2)}.ci .n{font-size:1.3rem}
+.dia-corpo .ci,.dia-corpo .box,.dia-corpo .rcard{background:var(--surface-2);box-shadow:none;border:0}
+.ci.done{background:var(--done-soft);box-shadow:inset 0 0 0 1px var(--done-line)}
+.ci.hot{background:var(--go-soft);box-shadow:inset 0 0 0 1.5px var(--go)}
+.proxc{background:var(--go-fill);color:#fff;border-radius:var(--r3);padding:18px;box-shadow:var(--sh2);display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;width:100%;text-align:left}
+.proxc .k,.proxc small{color:#fff}.proxc .k{display:block;opacity:.9}.proxc small{display:block;font-size:.875rem;margin-top:2px}.proxc .n{font-size:1.5rem}
+.proxc b{display:block;font-size:1.375rem;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.proxc:active:not([disabled]){background:var(--go-press);transform:scale(.985)}
+.proxc[disabled]{background:var(--done-soft);color:var(--done-ink);box-shadow:inset 0 0 0 1px var(--done-line);cursor:default}
+.proxc[disabled] .k,.proxc[disabled] small{color:var(--done-ink)}
+.avisos{display:flex;flex-direction:column;gap:8px}
 /* linha do tempo */
-.tline{display:flex;flex-direction:column}
-.ti{display:grid;grid-template-columns:44px 14px minmax(0,1fr);gap:8px;align-items:start;padding:8px 0;position:relative;background:none;border:0;text-align:left;width:100%}
+.tline{display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);padding:4px 14px}
+.dia-corpo>.tline{background:none;box-shadow:none;padding:0 2px}
+.ti{display:grid;grid-template-columns:44px 14px minmax(0,1fr);gap:8px;align-items:start;padding:10px 0;position:relative;background:none;border:0;text-align:left;width:100%}
 .ti::before{content:"";position:absolute;left:58px;top:0;bottom:0;width:1px;background:var(--sep)}
-.ti time{font-family:var(--f);font-weight:700;font-size:.88rem;color:var(--tx-2);text-align:right;padding-top:2px}
+.ti time{font-weight:600;font-size:.875rem;color:var(--tx-2);text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
 .ti .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--c,var(--sep));background:var(--surface);margin-top:4px;position:relative;z-index:1}
 .ti.done .dot{background:var(--c,var(--done))}
 .ti .tc{display:flex;justify-content:space-between;gap:8px;align-items:center;min-width:0}
 .ti .tc>span{min-width:0}
-.tlink{border:0;background:none;padding:0;text-align:left;flex:1;min-width:0;color:var(--tx)}
+.tlink{border:0;background:none;padding:0;text-align:left;flex:1;min-width:0;color:var(--tx);position:relative}
+.tlink::after{content:"";position:absolute;inset:-6px 0}
 .tlink b{display:block}
-.ck[aria-pressed="true"]{background:var(--done);border-color:var(--done);color:#fff}
+.ck{display:inline-grid;place-content:center;width:32px;height:32px;border:0;border-radius:50%;font-size:.875rem;background:var(--surface-2);font-weight:700;color:var(--tx-2);position:relative}
+.ck::after{content:"";position:absolute;inset:-6px}
+.ck[aria-pressed="true"],tr.done .ck{background:var(--done);color:#fff}
 .ti .ck{flex:none}
-.ti .tc b{font-size:.94rem;display:block}
-.ti .tc small{font-size:.76rem;color:var(--tx-2);display:block}
-.ti .ph{width:38px;height:38px;flex:none;object-fit:cover;background:var(--surface-2);border:1px solid var(--sep)}
-.ti .cam{width:34px;height:34px;flex:none;border:1px dashed var(--tx-2);display:grid;place-content:center;font-size:.6rem;font-weight:800;color:var(--tx-2);background:var(--surface)}
-.ti.big .tc b{font-family:var(--f);font-weight:900;font-size:1.25rem;text-transform:uppercase}
-.ti.next .dot{box-shadow:0 0 0 4px rgba(255,90,0,.2);border-color:var(--go-ink)}
+.ti .tc b{font-size:1rem;font-weight:600;display:block}
+.ti .tc small{font-size:.8125rem;color:var(--tx-2);display:block}
+.ti .ph{width:40px;height:40px;flex:none;object-fit:cover;background:var(--surface-2);border-radius:10px}
+.ti .cam{width:36px;height:36px;flex:none;border-radius:10px;border:1.5px dashed var(--tx-2);display:grid;place-content:center;font-size:.6875rem;font-weight:600;color:var(--tx-2)}
+.ti.big .tc b{font-size:1.1875rem;font-weight:700;letter-spacing:-.02em}
+.ti.next .dot{box-shadow:0 0 0 4px rgba(255,90,0,.2);border-color:var(--go)}
+.dia-sec{background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh1);overflow:hidden}
+.dia-sec>summary{padding:14px 16px;font-weight:600;font-size:1.0625rem;min-height:50px;display:flex;align-items:center;justify-content:space-between;list-style:none;cursor:pointer}
+.dia-sec>summary::-webkit-details-marker{display:none}
+.dia-sec>summary::after{content:"›";font-size:1.5rem;line-height:1;color:var(--tx-2);transition:transform .25s cubic-bezier(.32,.72,0,1)}
+.dia-sec[open]>summary::after{transform:rotate(90deg)}
+.dia-sec>.dia-corpo{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+.dia-corpo.abre{animation:abre .3s cubic-bezier(.32,.72,0,1)}
+@keyframes abre{from{opacity:0;transform:translateY(-8px)}}
+.mi{font-size:.875rem}
 /* folha (sheet): material grosso, topo arredondado, alça com área de toque de 44px */
 .dim{position:fixed;inset:0;background:rgba(11,13,16,.4);z-index:40}
 .sheet{position:fixed;left:0;right:0;margin:0 auto;bottom:0;width:min(480px,100%);max-height:92vh;overflow-y:auto;overscroll-behavior:contain;background:var(--mat-grosso);-webkit-backdrop-filter:blur(40px) saturate(160%);backdrop-filter:blur(40px) saturate(160%);border-radius:var(--r4) var(--r4) 0 0;box-shadow:var(--sh3);padding:8px 16px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:12px;z-index:41;will-change:transform}
@@ -250,7 +273,6 @@ textarea.inp{resize:vertical;min-height:88px}
 .exh{display:flex;gap:12px;align-items:center}
 .demo{width:92px;height:84px;flex:none;background:var(--surface-2);border:1px solid var(--sep);padding:4px;cursor:pointer}
 .demo.big{width:100%;height:auto;aspect-ratio:7/6;padding:10px;cursor:default}
-.diatodo{border:1px solid var(--sep);border-radius:12px;background:var(--surface)}.diatodo>summary{padding:14px;font-weight:700;cursor:pointer;min-height:48px;display:flex;align-items:center;list-style:none}.diatodo>summary::-webkit-details-marker{display:none}.diatodo>summary::after{content:'+';margin-left:auto;font-size:1.3rem}.diatodo[open]>summary::after{content:'–'}.diatodo>*:not(summary){margin:0 12px 12px}
 .movg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.movc{border:1px solid var(--sep);border-radius:10px;padding:8px;background:var(--surface);display:flex;flex-direction:column;gap:4px;min-width:0}.movc .demo{width:100%;height:92px;cursor:default;padding:2px;background:var(--surface-2)}.movc b{font-size:.82rem;line-height:1.2}.movc .s{font-size:.74rem}
 .exh b{font-family:var(--f);font-weight:900;font-size:1.35rem;text-transform:uppercase;line-height:.95;display:block}
 .exh small{font-size:.76rem;color:var(--tx-2);display:block}
@@ -262,8 +284,6 @@ textarea.inp{resize:vertical;min-height:88px}
 .sets td.prev{color:var(--tx-2);font-size:.82rem;font-weight:600}
 .sets tr.done td{background:var(--done-soft)}
 .sets input{width:100%;max-width:64px;min-height:36px;border:1px solid var(--sep);background:var(--surface-2);text-align:center;font-family:var(--f);font-weight:700;font-size:1rem;padding:0}
-.ck{display:inline-grid;place-content:center;width:30px;height:30px;border:2px solid var(--ink);font-size:.8rem;background:var(--surface);font-weight:900}
-tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 .pr{display:inline-flex;font-size:.58rem;font-weight:800;letter-spacing:.1em;background:var(--ink);color:#fff;padding:2px 5px;margin-left:3px;vertical-align:2px;font-family:var(--f)}
 .rest{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;z-index:5}
 .rest b{font-family:var(--f);font-size:1.6rem;line-height:1}
@@ -383,9 +403,9 @@ tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 .lvl{background:var(--ink);color:#fff;position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;text-align:center;overflow-y:auto}
 .lvl .big{font-family:var(--f);font-weight:700;font-size:8rem;line-height:.8;color:var(--go-ink)}
 /* performance */
-.fire-hero{position:relative;border-radius:22px;background:radial-gradient(120% 90% at 50% 100%,#FFE7D6 0%,#FFF6EF 45%,#FFFFFF 75%);padding:12px 14px 14px;display:grid;grid-template-columns:118px 1fr;gap:6px;align-items:center;border:1px solid #FFE0CC}
-.fire-hero.off{background:var(--surface-2);border-color:var(--sep)}
-.flame{width:118px;height:132px}.flame svg{width:100%;height:100%;overflow:visible}
+.fire-hero{position:relative;border-radius:var(--r3);background:linear-gradient(135deg,var(--go-soft),var(--surface) 70%);padding:12px 16px;display:grid;grid-template-columns:64px 1fr;gap:4px 12px;align-items:center;box-shadow:var(--sh1)}
+.fire-hero.off{background:var(--surface)}
+.flame{width:64px;height:72px}.flame svg{width:100%;height:100%;overflow:visible}
 .f1{transform-origin:50% 100%;transform-box:fill-box;animation:fl1 1.15s ease-in-out infinite alternate}
 .f2{transform-origin:50% 100%;transform-box:fill-box;animation:fl2 .9s ease-in-out infinite alternate}
 .f3{transform-origin:50% 100%;transform-box:fill-box;animation:fl3 .7s ease-in-out infinite alternate}
@@ -397,11 +417,14 @@ tr.done .ck{background:var(--done);border-color:var(--done);color:#fff}
 @keyframes gl{0%{opacity:.45;transform:scale(.95)}100%{opacity:.8;transform:scale(1.06)}}
 @keyframes sp{0%{opacity:0;transform:translateY(0)}15%{opacity:1}100%{opacity:0;transform:translateY(-46px)}}
 @media (prefers-reduced-motion:reduce){.f1,.f2,.f3,.glow,.spark{animation:none}}
-.streak b{font-family:var(--f);font-size:3.6rem;line-height:.85;display:block}
-.wkstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;grid-column:1/-1;margin-top:4px}
-.wkstrip span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.58rem;font-weight:800;color:var(--tx-2)}
-.wkstrip i{width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid var(--sep);display:grid;place-content:center;font-style:normal;font-size:.64rem;color:#fff}
-.wkstrip i.on{background:linear-gradient(160deg,#FFC24B,var(--go));border:0}.wkstrip i.td{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--go)}
+.streak b{font-weight:700;font-size:2.25rem;line-height:1;letter-spacing:-.04em;display:block;font-variant-numeric:tabular-nums}
+.streak b .n{font-size:.9375rem;letter-spacing:0}
+.streak .row{gap:14px;margin-top:4px}.streak .row b{display:inline;font-size:1.0625rem;letter-spacing:-.02em}
+.wkstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;grid-column:1/-1;margin-top:2px}
+.wkstrip span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.6875rem;font-weight:600;color:var(--tx-2)}
+.wkstrip i{width:26px;height:26px;border-radius:50%;background:var(--surface-2);display:grid;place-content:center;font-style:normal;font-size:.6875rem;color:#fff}
+.wkstrip i.on{background:linear-gradient(160deg,#FFC24B,var(--go))}
+.wkstrip i.td{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--go)}
 .rcard{border:1px solid var(--sep);border-radius:14px;padding:11px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
 .lvlc{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;text-align:left;width:100%}
 .pbar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}.pbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FF8A3D,var(--go))}
@@ -2214,7 +2237,7 @@ function render(keep){
   telaHoje(o);
 }
 const fotoSrc = () => (P && P.perfil && fotoValida(P.perfil.foto)) ? P.perfil.foto : meAv;
-function topo(k, h1){ return '<div class="top"><div style="min-width:0"><span class="k">'+k+'</span><h1 class="h1">'+h1+'</h1></div><button type="button" class="me" data-go="perfil" aria-label="Perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(P&&P.perfil&&P.perfil.apelido||meName)))+'</button></div>'; }
+function topo(k, h1){ return '<div class="top"><div class="mw0"><span class="k">'+k+'</span><h1 class="h1">'+h1+'</h1></div><button type="button" class="me" data-go="perfil" aria-label="Perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(P&&P.perfil&&P.perfil.apelido||meName)))+'</button></div>'; }
 function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click", ()=>{ const [t,s,a] = b.dataset.go.split("|"); ir(t, s||null, a==null?null:a); })); }
 function nivelAntes(){ return nivelXP().n; }
 function checarNivel(antes){ const n = nivelXP(); if (n.n > antes) telaSubiu(n); }
@@ -2237,6 +2260,7 @@ function recadoCoach(){
   if (/forte/.test(t.z||"")) return "Dia de qualidade. Aquece bem e faça os tiros no esforço pedido, não mais forte que isso.";
   return "Se não conseguir conversar correndo, diminua. Leve é leve.";
 }
+let secUser = {};   // seções de Hoje que a pessoa abriu ou fechou, para não voltarem ao padrão a cada render
 function telaHoje(o){
   const p = P.perfil, pl = planoAtual(), s = semanaDe(today), ts = treinosDe(today), k = key(today), c = LOG["ci_"+k], f = foguinho();
   const prova = parseD(p.dataProva), dd = prova ? Math.max(0, Math.round((prova-today)/DAY)) : null;
@@ -2256,57 +2280,57 @@ function telaHoje(o){
     if (x.tipo==="treino"){ const t = x.t, ok = feito(today,x.i), nf = LOG["nf_"+k+"_"+x.i], ft = LOG["ft_"+k+"_"+x.i]; return '<div class="ti big'+(ok?' done':'')+nx+'" style="--c:'+(nf?'#9aa3ad':(COLK[t.k]||"var(--go)"))+'"><time>'+esc(x.h)+'</time><span class="dot"></span><span class="tc"><button type="button" class="tlink" data-item="treino|'+k+'~'+x.i+'"><b>'+esc(t.t)+'</b><small>'+esc(nf ? "não fez · "+nf.motivo+(nf.txt?" · "+nf.txt:"")+(justificado(today,x.i)?" · não conta como falta":"") : detalhe(t).resumo+(ok?' · feito':' · toque para opções'))+'</small></button>'+(ft?'<img class="ph" alt="" src="'+esc(ft)+'">':'')+'<button type="button" class="ck" data-ckt="'+k+'~'+x.i+'" aria-pressed="'+!!ok+'" aria-label="Marcar '+esc(t.t)+' como feito">'+(ok?'✓':nf?'–':'')+'</button></span></div>'; }
     return '<button type="button" class="ti big'+(LOG["co_"+k]?' done':'')+nx+'" data-go="hoje|'+(LOG["co_"+k]?'nota':'checkout')+'" style="--c:var(--gym)"><time>21h</time><span class="dot"></span><span class="tc"><span><b>Fechar o dia</b><small>'+(LOG["co_"+k]?'nota '+num(LOG["co_"+k].nota||0,1)+' · ver feedback':'como foi, nota e feedback do coach')+'</small></span><span class="n">→</span></span></button>';
   }).join("");
-  const aj = LOG["aj_"+k];
-  const h = topo(esc(fmtLongo(today))+(s&&s.w>0&&pl?' · semana '+s.w+' de '+pl.semanas.length:''), s&&s.w>0 ? "Dia "+(Math.round((today-inicioPlano(today))/DAY)+1)+", "+esc(p.apelido) : "Oi, "+esc(p.apelido))+
-    '<div class="fire-hero'+(f.n?'':' off')+'" style="grid-template-columns:96px 1fr"><div class="flame" style="width:96px;height:108px">'+flameSVG(f.n>0)+'</div><div class="streak"><span class="k" style="color:var(--go-ink)">foguinho</span><b>'+f.n+'</b><span class="n" style="font-size:.95rem">'+(f.n===1?'dia seguido':'dias seguidos')+'</span><div class="row" style="margin-top:6px;gap:14px"><span><b class="n" style="font-size:1.3rem;display:block;line-height:1">'+(ts.length?feitos+"/"+ts.length:"—")+'</b><span class="k">feito hoje</span></span><span><b class="n" style="font-size:1.3rem;display:block;line-height:1">'+(dd!=null?dd:"Nv "+nivelXP().n)+'</b><span class="k">'+(dd!=null?"dias p/ prova":esc(nivelXP().faixa))+'</span></span></div></div>'+
-      '<div class="wkstrip">'+DIAS.map((dn,i)=>{ const dx = addDays(today,i-dow(today)), on = dx<=today && ativoNoDia(key(dx)); return '<span><i class="'+(on?'on':'')+(+dx===+today?' td':'')+'">'+(on?'✓':'')+'</i>'+dn[0]+'</span>'; }).join("")+'</div></div>'+
-    (f.estado==="risco" ? '<div class="flag">Seu foguinho de '+f.n+' dias está em risco. Faça o check-in ou marque um treino até 23h59.'+(f.protetorLivre?' (Protetor da semana disponível: perder 1 dia não apaga.)':'')+'</div>' : '')+
-    sugestaoHTML(sugestaoSemana())+'<div class="recado"><b>Recado do coach</b>'+esc(recadoCoach())+'</div>'+
-    (pausaAtiva() ? '<div class="flag"><b>Plano em pausa</b> desde '+esc(fmt(parseD(pausaAtiva().inicio)))+' · '+esc(NOMEPAUSA[pausaAtiva().tipo]||"pausa")+'<br><button type="button" class="btn go" id="pv" style="margin-top:8px">Voltar a treinar</button></div>' : '<button type="button" class="lk" id="pz">Doente ou machucado? Pausar o plano</button>')+
+  const aj = LOG["aj_"+k], pa = pausaAtiva();
+  const avisos = (f.estado==="risco" ? '<div class="flag">Seu foguinho de '+f.n+' dias está em risco. Faça o check-in ou marque um treino até 23h59.'+(f.protetorLivre?' (Protetor da semana disponível: perder 1 dia não apaga.)':'')+'</div>' : '')+
+    (pa ? '<div class="flag"><b>Plano em pausa</b> desde '+esc(fmt(parseD(pa.inicio)))+' · '+esc(NOMEPAUSA[pa.tipo]||"pausa")+'<br><button type="button" class="btn go mt8" id="pv">Voltar a treinar</button></div>' : '')+
     (suspenso() ? '<div class="flag red"><b>Plano pausado hoje.</b> Dor no peito, desmaio ou dor forte: procure atendimento médico. Se for agora, SAMU 192.</div>' : '')+
-    (aj && !pausaCobre(PAUSAS(), k) ? '<div class="flag">'+rotuloAj(aj)+': '+esc({pular:"treino de hoje cancelado",descanso:"hoje virou descanso",leve:"treino na versão leve"}[aj.acao]||"ajuste")+(aj.motivo?' · '+esc(aj.motivo):'')+' <button type="button" class="lk" id="undo" style="padding:0">desfazer</button></div>' : '')+
-    '<button type="button" class="ci'+(c?' done':'')+'" id="ci"><span><b>'+(c?'✓ Check-in feito · prontidão '+pr:'Check-in da manhã')+'</b><small>'+(c?esc(num(c.sono,1)+" h de sono · energia "+c.humor+"/5 · dor "+c.dor+"/10"):'sono, energia e dor · 10 segundos')+'</small></span><span class="n" style="font-size:1.3rem">'+(c?(pr>=75?"●":pr>=50?"◐":"○"):"→")+'</span></button>'+
-    (agora>=20 && !LOG["co_"+k] ? '<button type="button" class="ci hot" data-go="hoje|checkout"><span><b>Hora de fechar o dia</b><small>30 segundos: como foi, nota e feedback</small></span><span class="n">→</span></button>' : '')+
-    balancoHTML(today, true)+
-    '<div class="box"><div class="between"><span class="k">missões de hoje</span><span class="k" style="color:var(--go-ink)">'+ms.filter(m=>m.ok).length+'/3</span></div>'+ms.map(m=>'<div class="between" style="font-size:.88rem"><span>'+(m.ok?'✓ ':'○ ')+esc(m.t)+'</span><b class="n" style="color:'+(m.ok?'var(--done)':'var(--go)')+'">+'+m.xp+'</b></div>').join("")+
-      (ms.every(m=>m.ok) ? (bau ? '<div class="flag ok">Baú aberto: +'+bau.xp+' XP · '+esc(bau.selo||"")+'</div>' : '<button type="button" class="btn go" id="bau">Abrir o baú do dia</button>') : '<span class="s">Complete as 3 e abra o baú surpresa.</span>')+'</div>'+
-    '<span class="k">seu dia</span><div class="tline">'+tl+'</div>';
+    (aj && !pausaCobre(PAUSAS(), k) ? '<div class="flag">'+rotuloAj(aj)+': '+esc({pular:"treino de hoje cancelado",descanso:"hoje virou descanso",leve:"treino na versão leve"}[aj.acao]||"ajuste")+(aj.motivo?' · '+esc(aj.motivo):'')+' <button type="button" class="lk in" id="undo">desfazer</button></div>' : '')+
+    sugestaoHTML(sugestaoSemana());
+  const sec = (id, tit, corpo, aberta) => '<details class="dia-sec" data-sec="'+id+'"'+(aberta?' open':'')+'><summary>'+tit+'</summary><div class="dia-corpo">'+corpo+'</div></details>';
+  const h = topo(esc(fmtLongo(today))+(s&&s.w>0&&pl?' · semana '+s.w+' de '+pl.semanas.length:''), s&&s.w>0 ? "Dia "+(Math.round((today-inicioPlano(today))/DAY)+1)+", "+esc(p.apelido) : "Oi, "+esc(p.apelido))+
+    (avisos ? '<div class="avisos">'+avisos+'</div>' : '')+'<div id="prox"></div>'+
+    '<div class="fire-hero'+(f.n?'':' off')+'"><div class="flame">'+flameSVG(f.n>0)+'</div><div class="streak"><span class="k cor-go">foguinho</span><b>'+f.n+' <span class="n">'+(f.n===1?'dia seguido':'dias seguidos')+'</span></b><div class="row"><span><b class="n">'+(ts.length?feitos+"/"+ts.length:"—")+'</b> <span class="k">feito hoje</span></span><span><b class="n">'+(dd!=null?dd:"Nv "+nivelXP().n)+'</b> <span class="k">'+(dd!=null?"dias p/ prova":esc(nivelXP().faixa))+'</span></span></div></div>'+
+      '<div class="wkstrip">'+DIAS.map((dn,i)=>{ const dx = addDays(today,i-dow(today)), on = dx<=today && ativoNoDia(key(dx)); return '<span><i class="'+(on?'on':'')+(+dx===+today?' td':'')+'">'+(on?'✓':'')+'</i>'+dn[0]+'</span>'; }).join("")+'</div></div>'+
+    '<div class="recado"><b>Recado do coach</b>'+esc(recadoCoach())+'</div>'+
+    (pa ? '' : '<button type="button" class="lk" id="pz">Doente ou machucado? Pausar o plano</button>')+
+    sec("ci", "Check-in",
+      '<button type="button" class="ci'+(c?' done':'')+'" id="ci"><span><b>'+(c?'✓ Check-in feito · prontidão '+pr:'Check-in da manhã')+'</b><small>'+(c?esc(num(c.sono,1)+" h de sono · energia "+c.humor+"/5 · dor "+c.dor+"/10"):'sono, energia e dor · 10 segundos')+'</small></span><span class="n">'+(c?(pr>=75?"●":pr>=50?"◐":"○"):"→")+'</span></button>'+
+      (agora>=20 && !LOG["co_"+k] ? '<button type="button" class="ci hot" data-go="hoje|checkout"><span><b>Hora de fechar o dia</b><small>30 segundos: como foi, nota e feedback</small></span><span class="n">→</span></button>' : ''), !c)+
+    sec("miss", "Missões",
+      balancoHTML(today, true)+
+      '<div class="box"><div class="between"><span class="k">missões de hoje</span><span class="k cor-go">'+ms.filter(m=>m.ok).length+'/3</span></div>'+ms.map(m=>'<div class="between mi"><span>'+(m.ok?'✓ ':'○ ')+esc(m.t)+'</span><b class="n '+(m.ok?'cor-ok':'cor-go')+'">+'+m.xp+'</b></div>').join("")+
+        (ms.every(m=>m.ok) ? (bau ? '<div class="flag ok">Baú aberto: +'+bau.xp+' XP · '+esc(bau.selo||"")+'</div>' : '<button type="button" class="btn go" id="bau">Abrir o baú do dia</button>') : '<span class="s">Complete as 3 e abra o baú surpresa.</span>')+'</div>'+
+      missoesSemanaHTML()+janelaLinha(), secUser.miss)+
+    sec("dia", "Seu dia", '<div class="tline">'+tl+'</div>', secUser.dia!==false);
   const app = tela(h, o);
   umaAcao(app, prox, c, k);
   bindGo(app); bindChecks(app); bindItens(app);
   if (sample && !reanalisando){ const pend = []; [0,1].forEach(x=>{ const dk = key(addDays(today,-x)); Object.keys(LOG).filter(c=>c.startsWith("nf_"+dk+"_") && !LOG["an_"+c.slice(3)]).forEach(c=>pend.push(c.slice(3))); });
     if (pend.length){ reanalisando = true; (async ()=>{ for (const p of pend){ const [dk, ix] = [p.slice(0,10), +p.slice(11)]; const v = await analisarTreino(dk, ix); if (v){ const t = treinosDe(parseD(dk))[ix]; toast("O coach analisou: "+(t?t.t:"treino")+(v.status==="fora_do_plano"?" · fora do plano":v.status==="justificado"?" · justificado":"")); } } reanalisando = false; if (R.tab==="hoje" && !R.sub) render(true); })(); } }
-  $("ci").addEventListener("click", ()=>{ if (!c) sheetCheckin(); else sheetCheckin(true); });
+  app.querySelectorAll("#ci,[data-ci]").forEach(b=>b.addEventListener("click", ()=>sheetCheckin(!!c)));
+  app.querySelectorAll(".dia-sec>summary").forEach(sm=>sm.addEventListener("click", ()=>{ const d = sm.parentElement, abre = !d.open; if (d.dataset.sec!=="ci") secUser[d.dataset.sec] = abre; const cp = d.lastElementChild; cp.classList.remove("abre"); if (abre){ void cp.offsetWidth; cp.classList.add("abre"); } }));
   bindSugestao();
   const u = $("undo"); if (u) u.addEventListener("click", ()=>{ if (aj && aj.por==="teto") return manterPlanoOriginal(addDays(today, -dow(today))); if (aj && aj.por==="feedback") return manterOriginalFeedback(addDays(today, -dow(today))); return salvarLog("aj_"+k, null).then(()=>{ render(true); toast("Treino de hoje voltou ao plano."); }); });
   if ($("pz")) $("pz").addEventListener("click", sheetPausar);
   if ($("pv")) $("pv").addEventListener("click", sheetRetomar);
   const b = $("bau"); if (b) b.addEventListener("click", ()=>{ celebrar(); const antes = nivelAntes(); const xp = [40,60,80,100,150][Math.floor(Math.random()*5)]; const selos = ["XP em dobro amanhã? Não: XP extra hoje.","Selo 'Dia completo'","Selo 'Sem desculpa'","Selo 'Disciplina'"]; salvarLog("bau_"+k, {xp, selo:selos[Math.floor(Math.random()*selos.length)], at:new Date().toISOString()}).then(()=>{ render(true); toast("Baú: +"+xp+" XP"); checarNivel(antes); }); });
 }
-/* Hoje com uma ação só: a próxima coisa fica em destaque e o resto do dia abre sob demanda */
+/* cartão "Próximo": a próxima ação do dia (sem check-in, é o check-in) */
+function proxCard(prox, c, k){
+  const b = document.createElement("button"); b.type = "button"; b.className = "proxc";
+  const mk = (kk, t, sub, n) => '<span><span class="k">'+kk+'</span><b>'+t+'</b><small>'+sub+'</small></span><span class="n">'+n+'</span>';
+  if (!c){ b.dataset.ci = "1"; b.innerHTML = mk("Próximo", "Check-in da manhã", "sono, energia e dor · 10 segundos", "→"); }
+  else if (prox && prox.tipo==="treino"){ b.dataset.item = "treino|"+k+"~"+prox.i; b.innerHTML = mk("Próximo", esc(prox.t.t), esc(detalhe(prox.t).resumo), "→"); }
+  else if (prox && prox.tipo==="ref"){ b.dataset.item = "ref|"+prox.r.refeicao; b.innerHTML = mk("Próxima", esc(prox.r.refeicao), "foto, texto ou marcar como feita", "→"); }
+  else if (prox && prox.tipo==="fim"){ b.dataset.go = "hoje|checkout"; b.innerHTML = mk("Próximo", "Fechar o dia", "como foi, nota e feedback do coach", "→"); }
+  else { b.disabled = true; b.innerHTML = mk("Hoje", "Dia completo", "Bom trabalho. Descanse e volte amanhã.", "✓"); }
+  return b;
+}
 function umaAcao(app, prox, c, k){
-  const ci = app.querySelector("#ci"), tline = app.querySelector(".tline"); if (!ci || !tline) return;
-  const det = document.createElement("details"); det.className = "diatodo"; det.innerHTML = "<summary>Ver o dia todo</summary>";
-  const mover = []; let n = ci.nextElementSibling; while (n){ mover.push(n); if (n===tline) break; n = n.nextElementSibling; }
-  if (c) mover.unshift(ci);
-  const tl2 = tline.previousElementSibling; // rótulo "seu dia"
-  mover.forEach(x=>det.appendChild(x));
-  const ponto = c ? app.querySelector(".recado") : ci;
-  let alvo = ponto;
-  if (pausaAtiva()){ const f = document.createElement("div"); f.className = "flag"; f.innerHTML = 'Plano em pausa ('+esc(NOMEPAUSA[pausaAtiva().tipo]||"motivo pessoal")+') <button type="button" class="lk" id="pvolta">Voltar a treinar</button>'; alvo.after(f); alvo = f; }
-  if (c){
-    const b = document.createElement("button"); b.type = "button"; b.className = "ci hot";
-    if (prox && prox.tipo==="treino"){ b.dataset.item = "treino|"+k+"~"+prox.i; b.innerHTML = '<span><b>Próximo: '+esc(prox.t.t)+'</b><small>'+esc(detalhe(prox.t).resumo)+'</small></span><span class="n">→</span>'; }
-    else if (prox && prox.tipo==="ref"){ b.dataset.item = "ref|"+prox.r.refeicao; b.innerHTML = '<span><b>Próxima: '+esc(prox.r.refeicao)+'</b><small>foto, texto ou marcar como feita</small></span><span class="n">→</span>'; }
-    else if (prox && prox.tipo==="fim"){ b.dataset.go = "hoje|checkout"; b.innerHTML = '<span><b>Fechar o dia</b><small>como foi, nota e feedback do coach</small></span><span class="n">→</span>'; }
-    else { b.className = "flag ok"; b.disabled = true; b.innerHTML = "<b>Dia completo.</b> Bom trabalho. Descanse e volte amanhã."; }
-    alvo.after(b); alvo = b;
-  }
-  const mw = document.createElement("div"); mw.innerHTML = missoesSemanaHTML()+janelaLinha(); while (mw.firstChild) det.appendChild(mw.firstChild);
-  alvo.after(det);
+  const slot = app.querySelector("#prox"); if (!slot) return;
+  slot.replaceWith(proxCard(prox, c, k));
   const recado = app.querySelector(".recado"); if (recado){ let ex = recado; extrasHoje().forEach(e=>{ ex.after(e); ex = e; }); }
-  bindMissoesSemana(det); const tl = det.querySelector("#tjlinha"); if (tl) tl.addEventListener("click", sheetTropa);
-  const pv = app.querySelector("#pvolta"); if (pv) pv.addEventListener("click", sheetRetomar);
+  bindMissoesSemana(app); const tl = app.querySelector("#tjlinha"); if (tl) tl.addEventListener("click", sheetTropa);
 }
 /* menu de cada item do dia: fiz, não fiz (motivo), foto, ver como fazer */
 const MOT_T = ["Sem tempo","Cansaço","Dor","Doente","Clima","Não quis","Não estava no plano","Outro"], MOT_R = ["Sem fome","Sem tempo","Esqueci","Não quis","Outro"];
@@ -2487,8 +2511,8 @@ function sugestaoSemana(){
 }
 function sugestaoHTML(sug, pre){ pre = pre || "";
   if (!sug) return "";
-  if (sug.tipo === "aliviar") return '<div class="flag"><b>Quer aliviar a próxima semana?</b> '+esc(sug.motivo)+'. Posso passar '+sug.cortes.length+(sug.cortes.length===1?' dia':' dias')+' da próxima semana para a versão leve ('+sug.de+' para '+sug.para+' min). Nada muda sem o seu aceite.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="'+pre+'sgok">Aliviar a próxima semana</button><button type="button" class="btn sm ghost" id="'+pre+'sgno">Manter como está</button></div></div>';
-  return '<div class="flag ok"><b>'+esc(sug.motivo)+'.</b> Se quiser mais desafio, converse com o coach: o plano só sobe se você pedir.<div class="row" style="margin-top:8px;gap:8px"><button type="button" class="btn sm go" id="'+pre+'sgco">Falar com o coach</button><button type="button" class="btn sm ghost" id="'+pre+'sgnn">Agora não</button></div></div>';
+  if (sug.tipo === "aliviar") return '<div class="flag"><b>Quer aliviar a próxima semana?</b> '+esc(sug.motivo)+'. Posso passar '+sug.cortes.length+(sug.cortes.length===1?' dia':' dias')+' da próxima semana para a versão leve ('+sug.de+' para '+sug.para+' min). Nada muda sem o seu aceite.<div class="row mt8"><button type="button" class="btn sm go" id="'+pre+'sgok">Aliviar a próxima semana</button><button type="button" class="btn sm ghost" id="'+pre+'sgno">Manter como está</button></div></div>';
+  return '<div class="flag ok"><b>'+esc(sug.motivo)+'.</b> Se quiser mais desafio, converse com o coach: o plano só sobe se você pedir.<div class="row mt8"><button type="button" class="btn sm go" id="'+pre+'sgco">Falar com o coach</button><button type="button" class="btn sm ghost" id="'+pre+'sgnn">Agora não</button></div></div>';
 }
 async function aceitarSugestao(sug){
   const at = new Date().toISOString();
@@ -2520,9 +2544,9 @@ function telaSemana(o){
   const pl = planoAtual(); const base0 = addDays(today, -dow(today) + semOff*7); const s = semanaDe(base0);
   const fase = s && s.sem ? faseDaSemana(pl, s.w) : "";
   let h = topo(s && s.sem ? 'semana '+s.w+' de '+pl.semanas.length+' · '+fase : esc(pl.nome), semOff===0 ? "Sua semana" : semOff<0 ? "Semana passada" : "Próxima semana")+
-    (LOG["teto_"+key(base0)] ? (tt=>'<div class="flag"><b>Carga reduzida por segurança.</b> Esta semana passava de '+tt.de+' min e '+(tt.fonte==='fisio' ? 'o limite do seu fisioterapeuta é '+tt.teto+' min' : 'o limite é '+tt.teto+' min (+10% do que você vem fazendo)')+'. Passei '+tt.cortes+(tt.cortes===1?' dia':' dias')+' para a versão leve.'+(tt.excedeu?' Ainda ficou acima do limite: fale com o coach.':'')+(tt.fonte==='fisio' ? '' : ' <button type="button" class="lk" id="toff" style="padding:0">manter o plano original</button>')+'</div>')(LOG["teto_"+key(base0)]) : '')+
+    (LOG["teto_"+key(base0)] ? (tt=>'<div class="flag"><b>Carga reduzida por segurança.</b> Esta semana passava de '+tt.de+' min e '+(tt.fonte==='fisio' ? 'o limite do seu fisioterapeuta é '+tt.teto+' min' : 'o limite é '+tt.teto+' min (+10% do que você vem fazendo)')+'. Passei '+tt.cortes+(tt.cortes===1?' dia':' dias')+' para a versão leve.'+(tt.excedeu?' Ainda ficou acima do limite: fale com o coach.':'')+(tt.fonte==='fisio' ? '' : ' <button type="button" class="lk in" id="toff">manter o plano original</button>')+'</div>')(LOG["teto_"+key(base0)]) : '')+
     (semOff===0 ? sugestaoHTML(sugestaoSemana()) : '')+
-    (LOG["fb_"+key(base0)] && LOG["fb_"+key(base0)].estado==="aceito" ? '<div class="flag"><b>Semana aliviada pelo seu feedback.</b> Passei '+LOG["fb_"+key(base0)].cortes+(LOG["fb_"+key(base0)].cortes===1?' dia':' dias')+' para a versão leve ('+LOG["fb_"+key(base0)].de+' para '+LOG["fb_"+key(base0)].para+' min).'+(addDays(base0,6) < today ? '' : ' <button type="button" class="lk" id="fboff" style="padding:0">manter o plano original</button>')+'</div>' : '')+
+    (LOG["fb_"+key(base0)] && LOG["fb_"+key(base0)].estado==="aceito" ? '<div class="flag"><b>Semana aliviada pelo seu feedback.</b> Passei '+LOG["fb_"+key(base0)].cortes+(LOG["fb_"+key(base0)].cortes===1?' dia':' dias')+' para a versão leve ('+LOG["fb_"+key(base0)].de+' para '+LOG["fb_"+key(base0)].para+' min).'+(addDays(base0,6) < today ? '' : ' <button type="button" class="lk in" id="fboff">manter o plano original</button>')+'</div>' : '')+
     '<div class="phase">'+fasesDe(pl).map(f=>'<span style="flex:'+f[1]+';background:'+(f[0]===fase?f[2]:"#c9ced4")+'">'+esc(f[0])+'</span>').join("")+'</div>'+
     '<div class="between"><button type="button" class="btn sm ghost" id="wp">← anterior</button><span class="k">'+fmt(base0)+' – '+fmt(addDays(base0,6))+'</span><button type="button" class="btn sm ghost" id="wn">próxima →</button></div><div>';
   for (let i=0;i<7;i++){
@@ -3675,8 +3699,8 @@ function missoesSemana(ini){
 }
 function missoesSemanaHTML(){
   const w = missoesSemana();
-  return '<div class="box"><div class="between"><span class="k">missões da semana</span><span class="k" style="color:var(--go-ink)">'+w.ms.filter(m=>m.ok).length+'/3</span></div>'+
-    w.ms.map(m=>'<div class="between" style="font-size:.88rem;gap:8px"><span>'+(m.ok?'✓ ':'○ ')+esc(m.t)+'<br><span class="s">'+esc(m.extra)+'</span></span><b class="n" style="color:var(--go-ink)">'+Math.min(m.v,m.a)+'/'+m.a+'</b></div>').join("")+
+  return '<div class="box"><div class="between"><span class="k">missões da semana</span><span class="k cor-go">'+w.ms.filter(m=>m.ok).length+'/3</span></div>'+
+    w.ms.map(m=>'<div class="between mi"><span>'+(m.ok?'✓ ':'○ ')+esc(m.t)+'<br><span class="s">'+esc(m.extra)+'</span></span><b class="n cor-go">'+Math.min(m.v,m.a)+'/'+m.a+'</b></div>').join("")+
     (w.resgatada ? '<div class="flag ok">Bônus resgatado: +150 XP</div>' : w.todas ? '<button type="button" class="btn go" id="mwok">Resgatar +150 XP</button>' : '<span class="s">Complete as 3 até domingo para ganhar +150 XP.</span>')+'</div>';
 }
 function bindMissoesSemana(root){
