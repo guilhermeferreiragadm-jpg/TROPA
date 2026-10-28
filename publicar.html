@@ -3544,6 +3544,11 @@ async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Co
     ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpfx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpfx").onclick = ()=>{ fecharSheet(); }; } }
 
 /* ===================== COMIDA ===================== */
+function orientHTML(){   // planoAlim vem de uma proposta aceita da Nutri; só é exibido, não entra em metasDia
+  const pa = P && P.planoAlim, m = (pa && pa.metas) || {}, ks = Object.keys(METAROT).filter(k=>+m[k]>0), or = Array.isArray(pa && pa.orient) ? pa.orient.filter(r=>r && r.t) : [];
+  if (!ks.length && !or.length) return "";
+  return '<div class="box"><b>Orientações da sua nutri</b>'+(ks.length ? '<p class="s">Metas: '+ks.map(k=>esc(METAROT[k])+' '+num(+m[k], 0)+metaU(k)).join(" · ")+'</p>' : '')+or.map(r=>'<p><b>'+esc(r.ref||"Geral")+'</b> '+esc(String(r.t).slice(0, 300))+'</p>').join("")+'</div>';
+}
 function telaComida(o){
   const m = metasDia(today), k = key(today), cd = LOG["cardapio_"+k], refs = refeicoesHoje(), c = consumido(today);
   if (!m){ const app = tela(topo("comida","Comida")+'<p>Para as metas, coloque seu peso.</p><div class="fld"><label for="cpe">Peso (kg)</label><input class="inp" id="cpe" type="number" inputmode="decimal"></div><button class="btn go" type="button" id="cps">Salvar</button>', o); bindGo(app); $("cps").addEventListener("click", async ()=>{ const v = +$("cpe").value; if (v>30){ P.perfil.peso = v; await salvarPerfil(); render(); } }); return; }
@@ -3554,7 +3559,7 @@ function telaComida(o){
     faixaCaloriasHTML()+
     '<p class="s">Metas de hoje: proteína '+m.prot[0]+'–'+m.prot[1]+' g · carbo '+m.carb[0]+'–'+m.carb[1]+' g (pelo seu peso e o treino do dia). Os números somam o que você registra.</p>'+
     '<span class="k">refeições</span><div class="lst">'+refs.map((r,i)=>'<div class="meal">'+(r.thumb?'<img class="ph" alt="" src="'+esc(r.thumb)+'">':'<label class="cam" for="mf'+i+'">foto</label>')+'<input class="file" type="file" accept="image/*" id="mf'+i+'" data-ref="'+esc(r.refeicao)+'"><span><b>'+esc(r.refeicao)+(r.hora?' · '+esc(r.hora):'')+'</b><small>'+esc(r.comeu||r.planejado||"sem registro")+'</small>'+(r.estimativa?'<small>'+esc(r.estimativa)+'</small>':'')+(r.analise_foto?'<small>Nutri: '+esc(r.analise_foto)+'</small>':'')+'</span>'+(r.comeu?'<span class="ok">✓</span>':'<button type="button" class="btn sm ghost" data-txt="'+esc(r.refeicao)+'">escrever</button>'+(candidatasRepetir(regsOntem, favs, r.refeicao).length?'<button type="button" class="btn sm ghost" data-rep="'+esc(r.refeicao)+'">repetir</button>':''))+'</div>').join("")+'</div>'+
-    '<p class="msg" id="cmm"></p>'+
+    '<p class="msg" id="cmm"></p>'+orientHTML()+
     '<div class="box"><div class="between"><b>Cardápio do dia</b>'+(cd?'<button type="button" class="lk" id="cg2">refazer</button>':'')+'</div>'+(cd ? cd.refeicoes.map(r=>'<div><b>'+esc(r.hora||"")+' · '+esc(r.nome)+'</b><p class="s">'+esc((r.itens||[]).join(", "))+' · P ~'+esc(r.prot||"?")+' g</p></div>').join("") : '<p class="s">Opcional. A Nutri conta o que você come e dá dicas. Se você quiser, ela também monta um cardápio com comida brasileira, dentro das suas metas'+((P.perfil.restricoes||[]).length?' e restrições ('+esc(P.perfil.restricoes.join(", "))+')':'')+'.</p><button type="button" class="btn ghost" id="cg">Quero um cardápio para hoje</button>')+'</div>'+
     '<button type="button" class="btn ghost" id="cpl">Lista de compras da semana</button>'+
     '<p class="s tc">Guia de alimentação com base em consensos (ACSM, ISSN). Não substitui nutricionista.</p>';

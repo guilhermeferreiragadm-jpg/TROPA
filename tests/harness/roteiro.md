@@ -61,3 +61,15 @@ Com `?eu=<id>&nome=<nome>` o stub vira esse usuário (não dono, já com acesso 
 5. Nutri: P `await Pro.ativarPapel("nutri", true); __T.ev("setModo")("nutri")`, gerar convite pela UI. A aceita com `{comida:true, corpo:false}` e grava `ref_<data>`/`corpo`. P vê "última refeição há N dias" e o detalhe com Plano alimentar, Refeições recentes e Peso e medidas bloqueado.
 6. Modelos: aba Biblioteca (Personal) ou Planos (Nutri), `#mdn` Novo modelo, salvar sem nome mostra "Dê um nome ao modelo.", com nome grava em `__STUB.S["data/users/pedro/modelos"]`. Tocar no modelo edita; `#mdex` pede um segundo toque para excluir.
 7. Ao vivo: com o sheet de convite aberto em P, o aceite de A não rerenderiza; ao fechar o sheet a lista atualiza em até 2 s. Tema: `localStorage.setItem("tropa-tema","claro"|"escuro"); __T.ev("aplicarTema")()`.
+
+## Propostas e comentário no exercício
+
+`PORT=5174 node tests/harness/servir.js`; abas P `/?eu=pedro&nome=Pedro`, A `/?eu=ana&nome=Ana`, N `/?eu=clara&nome=Clara` (375 px, claro e escuro). Zerar antes: `localStorage.removeItem("tropa-stub-db")` e recarregar. Aba em segundo plano pausa timers: traga a aba à frente antes de rodar scripts com `await`.
+
+1. P: `Pro.ativarPapel("personal", true)`, `setModo("personal")`, `(await Pro.gerarConvite("personal")).cod`. A: `Pro.aceitarConvite(cod, {treino:true, perf:true})` e `Pro.publicarSnaps()`.
+2. P: `__T.ir("alunos","det","ana~personal")`, `#vpr` abre o editor (semana atual do plano). Editar por evento `input` em `[data-f="t|6|0|km"]` (distância do longão) e nos três campos de `.exr` (nome, séries e reps, carga). `#pdf` mostra o diff ao vivo ("Agachamento: sem carga → 45 kg"), `#pmsg` a mensagem, `#pse` envia. Remover (`[data-rm]`), mover (`select[data-mv]`) e adicionar (`[data-add]`) treinos também entram no diff.
+3. A: Perfil tem a linha `Propostas` (`#pps`) com contador; `__T.ir("perfil","props")` lista pendentes e histórico. Tocar na linha abre o sheet: mensagem, "O que muda", `#pa` Aceitar e `#pr` Recusar (abre `#pmt` e `#pr2`). Aceitar: `planoAtual()` muda, `P.planoProf` salvo e o snap `treino` republicado; P lê o novo plano.
+4. Segunda proposta recusada com motivo: P vê "Recusada" e "Motivo: ..." na lista e no sheet.
+5. Terceira desatualizada: em A, `P.planoProf` alterado e `salvarPerfil()`; ao abrir o sheet não há `#pa`, aparece o aviso e o estado cifrado vira `desatualizada`; em P o sheet mostra `#pre` Reenviar, que reabre o editor com o plano atual e a mensagem anterior.
+6. Comentário: A `__T.ir("treino","forca","<segunda>~0")`, `[data-cm="0"]` (Comentar, depois Editar comentário), `#cmt`, `#cmok`. `LOG.coment["AAAA-MM-DD|Agachamento"] = {t, at}`; P vê em "Comentários dos exercícios" e o sino ganha `comentario`.
+7. Nutri: N `Pro.ativarPapel("nutri", true)`, convite; A aceita com `{comida:true, corpo:false}`. N edita metas (`[data-f="m|kcal"]`) e orientações (`#ora`, `[data-f="o|0|ref"]`, `[data-f="o|0|t"]`) e envia. A aceita; `P.planoAlim` é gravado e a aba Comida mostra "Orientações da sua nutri".
