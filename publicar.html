@@ -2783,16 +2783,16 @@ function telaSubiu(n){
 /* card para o story do Instagram (PNG 1080×1920) */
 async function cardConquista(titulo, stats){
   const cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1920; const c = cv.getContext("2d");
-  try{ await document.fonts.load("900 120px 'Big Shoulders Display'"); await document.fonts.load("700 80px 'Barlow Condensed'"); }catch(e){}
+  const F = (getComputedStyle(document.documentElement).getPropertyValue("--f") || "system-ui,sans-serif").trim();   // mesma pilha do app: ctx.font não lê var()
   c.fillStyle = "#0B0D10"; c.fillRect(0,0,1080,1920);
   c.fillStyle = "#FF5A00"; c.save(); c.translate(90,150); c.transform(1,0,-0.25,1,0,0); c.fillRect(0,0,46,46); c.restore();
-  c.fillStyle = "#FFFFFF"; c.font = "900 64px 'Big Shoulders Display', Impact, sans-serif"; c.fillText(BRAND.toUpperCase(), 160, 192);
-  c.font = "900 150px 'Big Shoulders Display', Impact, sans-serif"; const pal = String(titulo).toUpperCase().split(" "); let y = 1000, linha = "", linhas = [];
+  c.fillStyle = "#FFFFFF"; c.font = "700 64px "+F; c.fillText(BRAND.toUpperCase(), 160, 192);
+  c.font = "700 150px "+F; const pal = String(titulo).toUpperCase().split(" "); let y = 1000, linha = "", linhas = [];
   pal.forEach(w=>{ const tt = linha ? linha+" "+w : w; if (c.measureText(tt).width > 900){ linhas.push(linha); linha = w; } else linha = tt; }); linhas.push(linha);
   y = 1150 - linhas.length*150; linhas.forEach(l=>{ c.fillText(l, 90, y); y += 150; });
   c.fillStyle = "#FF5A00"; c.fillRect(90, y-90, 160, 10);
-  let x = 90; y += 120; stats.forEach(s=>{ c.fillStyle = "#FFFFFF"; c.font = "700 120px 'Barlow Condensed', sans-serif"; c.fillText(s[0], x, y); c.fillStyle = "rgba(255,255,255,.6)"; c.font = "700 34px 'Barlow Condensed', sans-serif"; c.fillText(s[1].toUpperCase(), x, y+50); x += Math.max(260, c.measureText(s[0]).width+120); });
-  c.fillStyle = "rgba(255,255,255,.5)"; c.font = "600 34px Barlow, sans-serif"; c.fillText(fmt(today)+" · "+(P&&P.perfil&&P.perfil.apelido||""), 90, 1800);
+  let x = 90; y += 120; stats.forEach(s=>{ c.fillStyle = "#FFFFFF"; c.font = "700 120px "+F; c.fillText(s[0], x, y); const wn = c.measureText(s[0]).width; c.fillStyle = "rgba(255,255,255,.6)"; c.font = "700 34px "+F; c.fillText(s[1].toUpperCase(), x, y+50); x += Math.max(260, wn+120); });
+  c.fillStyle = "rgba(255,255,255,.5)"; c.font = "600 34px "+F; c.fillText(fmt(today)+" · "+(P&&P.perfil&&P.perfil.apelido||""), 90, 1800);
   const url = cv.toDataURL("image/png"); const bin = atob(url.split(",")[1]); const arr = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
   const ok = await baixar("conquista-"+key(today)+".png", new Blob([arr],{type:"image/png"}), "image/png");
   if (ok) toast("Imagem salva. Poste no story e marque o app.");
