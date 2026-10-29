@@ -2240,9 +2240,9 @@ function onb(i){
   proxTransicao = $("app").querySelector(".prog") ? (i > step ? "push" : i < step ? "pop" : "nenhuma") : "push";
   step = i; salvarRascunho();
   const prog = '<div class="prog">'+ETAPAS.map((_,j)=>'<i class="'+(j<i?'on':'')+'"></i>').join("")+'</div><span class="k">'+(i+1)+' de '+ETAPAS.length+' · '+ETAPAS[i]+'</span>';
-  const nav = (lbl) => '<button type="button" class="btn go" id="nx">'+(lbl||"Continuar")+'</button><p class="msg" id="nm"></p>'+(i>0?'<button type="button" class="lk" id="bk">Voltar</button>':'');
+  const nav = (lbl) => '<button type="button" class="btn go" id="nx">'+(lbl||"Continuar")+'</button><p class="msg" id="nm"></p>'+(i>0 && !(mudandoObjetivo && i===1)?'<button type="button" class="lk" id="bk">Voltar</button>':'');
   const forca = TPL[draft.objetivo] && TPL[draft.objetivo].forca, tri = ["tri","703"].includes(draft.objetivo), prova = PROVAS.some(x=>x[0]===draft.objetivo);
-  let h = prog;
+  let h = (mudandoObjetivo && i===1 ? '<button type="button" class="back" id="obv">← '+(R.tab==='perfil'?'Perfil':'Treino')+'</button>' : '')+prog;
   if (i===0){
     h += '<h1 class="h1">Bora começar</h1><p class="s">6 telas rápidas, uns 3 minutos. Dá para parar e voltar: salvamos tudo.</p>'+
       '<div class="fld"><label for="f-ap">Como podemos te chamar?</label><input class="inp" id="f-ap" data-f="apelido" maxlength="30" placeholder="ex.: Lucas"></div>'+
@@ -2296,6 +2296,7 @@ function onb(i){
   const db0 = $("docb"); if (db0) db0.addEventListener("click", ()=>sheetDocumento(true));
   const le = $("ler"); if (le) le.addEventListener("click", lerRelato);
   const bk = $("bk"); if (bk) bk.addEventListener("click", ()=>onb(i-1));
+  const obv = $("obv"); if (obv) obv.addEventListener("click", ()=>{ mudandoObjetivo = false; Object.assign(draft, P.perfil); ir(R.tab, R.sub, R.arg); });
   $("nx").addEventListener("click", ()=>avancar(i));
 }
 async function lerRelato(){
