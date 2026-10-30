@@ -644,6 +644,7 @@ body:has(.cdock) .fab{display:none}.dock-gap{height:72px}
 body.pro{--go:#2F5BFF;--go-fill:#2347D6;--go-press:#1B39B0;--go-ink:#2347D6;--go-soft:#EAF0FF}
 :root[data-tema="escuro"] body.pro{--go:#5B82FF;--go-fill:#3A5FE0;--go-press:#2F4FC4;--go-ink:#8AA4FF;--go-soft:#121A33}
 .lst>button.atn{box-shadow:inset 3px 0 0 var(--go)}
+.dia summary{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;cursor:pointer;list-style:none}.dia summary::-webkit-details-marker{display:none}.dia .det{padding:2px 0 12px;font-size:.875rem}.dia .det p{margin:4px 0}.dia .det ul{margin:4px 0 8px;padding-left:18px}.dia+.dia{border-top:1px solid var(--sep)}
 </style>
 <div class="wrap">
   <div id="ban"></div>
@@ -2987,11 +2988,24 @@ function htmlSnap(cat, s){
     const feitos = s.feitos||{}, segK = key(addDays(today, -dow(today))), nSem = Object.keys(feitos).filter(k=>/^ck_/.test(k) && k.slice(3,13)>=segK).length;
     let r = null; try{ r = s.plano && semanaEm(s.plano, [], key(today)); }catch(e){}
     const sem = r && r.sem, prev = sem ? sem.dias.reduce((n, d)=>n+((d && d.treinos)||[]).length, 0) : 0;
+    const N = x => Number.isFinite(+x) ? +x : null, T = (x, n) => String(x==null ? "" : x).slice(0, n||160);
+    const setsTxt = sets => (Array.isArray(sets) ? sets : []).slice(0, 12).map(z=>{ if (!z || typeof z!=="object") return ""; const kg = N(z.kg), rp = N(z.reps); return (kg ? num(kg, 1).replace(/,0$/, "")+" kg × " : "")+(rp!=null ? rp : "?")+(z.ok ? " ✓" : " ·"); }).filter(Boolean).join(", ");
+    const sessaoTxt = fs => (fs && Array.isArray(fs.ex) ? fs.ex.slice(0, 20) : []).map(e=>e && typeof e==="object" ? '<p><b>'+esc(T(e.nome, 60))+'</b> '+esc(setsTxt(e.sets))+'</p>' : "").join("");
+    const infoTxt = c => { if (!c || typeof c!=="object") return ""; const p = [], km = N(c.km), mi = N(c.min), rp = N(c.rpe), pr = N(c.prs); if (km) p.push(num(km, 1)+" km"); if (mi) p.push(mi+" min"); if (rp) p.push("esforço "+rp+"/10"); if (pr) p.push(pr+(pr===1 ? " recorde" : " recordes")); const nt = typeof c.nota==="string" ? c.nota : typeof c.txt==="string" ? c.txt : ""; return (p.length ? '<p class="s">'+esc(p.join(" · "))+'</p>' : "")+(nt ? '<p>“'+esc(T(nt, 280))+'”</p>' : ""); };
     const dias = sem ? sem.dias.map((d, i)=>{ const ts = (d && d.treinos)||[]; if (!ts.length) return ""; const dk = key(addDays(today, i-dow(today)));
-      return linhaPro('<b>'+esc(d.dia)+'</b> '+ts.map(t=>esc(t.t)).join(" + "), ts.every((t, j)=>feitos["ck_"+dk+"_"+j]) ? '<span class="pill ok">feito</span>' : ''); }).join("") : "";
+      return ts.map((t, j)=>{ const ck = feitos["ck_"+dk+"_"+j], fs = feitos["fs_"+dk+"_"+j], nf = feitos["nf_"+dk+"_"+j];
+        const presc = (Array.isArray(t.passos) ? t.passos : []).slice(0, 16).map(x=>'<li>'+esc(T(x, 200))+'</li>').join("");
+        return '<details class="dia"><summary><span>'+(j===0 ? '<b>'+esc(d.dia)+'</b> ' : '')+esc(T(t.t, 80))+'</span>'+(ck ? '<span class="pill ok">feito</span>' : nf ? '<span class="pill">não fez</span>' : '')+'</summary><div class="det">'+
+          (presc ? '<span class="k">planejado</span><ul>'+presc+'</ul>' : '')+
+          (fs ? '<span class="k">o que ele fez</span>'+sessaoTxt(fs) : '')+
+          (ck ? infoTxt(ck) : '')+
+          (nf && typeof nf==="object" ? '<p class="s">Não fez: '+esc(T(nf.motivo, 60))+(nf.txt ? ' · '+esc(T(nf.txt, 200)) : '')+'</p>' : '')+
+          (!ck && !nf && !fs ? '<p class="s">Ainda não feito.</p>' : '')+'</div></details>'; }).join(""); }).join("") : "";
+    const recentes = Object.keys(feitos).filter(k=>/^fs_\d{4}-\d\d-\d\d_\d+$/.test(k) && (feitos[k]||{}).ex).sort().reverse().filter(k=>k.slice(3, 13)<segK).slice(0, 6).map(k=>'<details class="dia"><summary><span><b>'+esc(fmt(parseD(k.slice(3, 13))))+'</b> Força</span></summary><div class="det">'+sessaoTxt(feitos[k])+'</div></details>').join("");
     const com = Object.entries(s.coment && typeof s.coment==="object" ? s.coment : {}).slice(-8).map(([k, v])=>{ const t = typeof v==="string" ? v : v && (v.t || v.txt), q = k.split("|"), rot = /^\d{4}-\d\d-\d\d$/.test(q[0]) && q.length>1 ? fmt(parseD(q[0]))+" · "+q.slice(1).join("|") : k.replace(/_/g, " "); return t ? '<p><b>'+esc(rot)+'</b> '+esc(String(t).slice(0, 280))+'</p>' : ""; }).join("");
     return '<div class="box"><b>Resumo da semana</b><p><span class="n">'+nSem+'</span> '+(prev ? 'de '+prev+' treinos feitos' : (nSem===1 ? 'treino feito' : 'treinos feitos'))+'</p></div>'+
-      '<div class="box"><div class="between"><b>Treino atual</b><span class="s">'+(r && sem ? 'Semana '+r.w+' de '+s.plano.semanas.length : '')+'</span></div>'+(dias || '<p class="s">Sem plano ativo nesta semana.</p>')+'</div>'+
+      '<div class="box"><div class="between"><b>Treino atual</b><span class="s">'+(r && sem ? 'Semana '+r.w+' de '+s.plano.semanas.length : '')+'</span></div>'+(dias || '<p class="s">Sem plano ativo nesta semana.</p>')+'<p class="s">Toque num dia para ver o planejado e o que foi feito.</p></div>'+
+      (recentes ? '<div class="box"><b>Força: sessões anteriores</b>'+recentes+'</div>' : '')+
       '<div class="box"><b>Comentários dos exercícios</b>'+(com || '<p class="s">Nenhum comentário ainda.</p>')+'</div>';
   }
   if (cat==="perf"){
@@ -4842,7 +4856,7 @@ const Pro = {
     const ks = Object.keys(LOG), lim = key(addDays(today, -90)), lim14 = key(addDays(today, -14));
     const dia = (k, ini) => k.slice(ini, ini+10);
     if (cat==="treino"){
-      const feitos = {}; ks.filter(k=>/^(ck|aj)_/.test(k) && dia(k, 3) >= lim).forEach(k=>{ feitos[k] = LOG[k]; });
+      const feitos = {}; ks.filter(k=>/^(ck|aj|fs|nf)_/.test(k) && dia(k, 3) >= lim).forEach(k=>{ feitos[k] = LOG[k]; });
       return {plano:planoAtual() || null, feitos, coment:LOG.coment || {}};
     }
     if (cat==="perf"){
