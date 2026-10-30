@@ -7,7 +7,7 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8");
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const pro = trecho("/* @pro:start */", "/* @pro:end */");
-const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, vincEfetivo, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel, idsParaMarcar};")();
+const F = new Function(pro + "\nreturn {CATEGORIAS, PAPEIS_PRO, CATS_POR_PAPEL, permissoesValidas, vincId, vincEfetivo, podeVer, conviteValido, novoConvite, conflitoVinculo, proximoEstadoProposta, criarPatch, aplicarPatch, hash32, propostaAtual, TIPOS_INBOX, itemInboxValido, gerarPar, derivarChave, cifrar, decifrar, diffTxt, exTxt, opsPermitidas, planoValido, avaliarProposta, tipoDe, hash32, corteAlim, textoAviso, quandoRel, idsParaMarcar, pesoAtencao, ordenarAtencao, papeisEscolhidos};")();
 
 test("permissoesValidas corta categorias fora do papel e força booleano", () => {
   assert.deepEqual(F.permissoesValidas("nutri", {comida: 1, treino: true, corpo: false}), {comida: true, corpo: false});
@@ -290,4 +290,23 @@ test("vincEfetivo: id precisa ser aluno~papel e o doc tem de ser meu", () => {
   assert.equal(F.vincEfetivo("ana~coach", Object.assign({}, doc, {papel:"coach"}), "paulo"), null);
   assert.equal(F.vincEfetivo("ana~personal", null, "paulo"), null);
   assert.equal(F.vincEfetivo("ana~personal", Object.assign({}, doc, {alunoId:1}), "paulo"), null);
+});
+
+test("ordenarAtencao põe proposta pendente antes de sem treinar e desempata por nome", () => {
+  const l = [{nome: "Zé", pend: 0, warn: false}, {nome: "Ana", pend: 0, warn: true}, {nome: "Bia", pend: 2, warn: false}, {nome: "Caio", pend: 0, warn: false}];
+  assert.deepEqual(F.ordenarAtencao(l).map(x => x.nome), ["Bia", "Ana", "Caio", "Zé"]);
+  assert.deepEqual(l.map(x => x.nome), ["Zé", "Ana", "Bia", "Caio"]);   // não altera a lista original
+});
+
+test("pesoAtencao: pendente pesa mais que alerta e limita o contador", () => {
+  assert.ok(F.pesoAtencao(1, false) > F.pesoAtencao(0, true));
+  assert.equal(F.pesoAtencao(50, false), F.pesoAtencao(9, false));
+  assert.equal(F.pesoAtencao(0, false), 0);
+});
+
+test("papeisEscolhidos exige ao menos um papel e ignora o que não é personal ou nutri", () => {
+  assert.equal(F.papeisEscolhidos({}), null);
+  assert.equal(F.papeisEscolhidos(null), null);
+  assert.deepEqual(F.papeisEscolhidos({nutri: 1, admin: true}), {personal: false, nutri: true});
+  assert.deepEqual(F.papeisEscolhidos({personal: true, nutri: true}), {personal: true, nutri: true});
 });

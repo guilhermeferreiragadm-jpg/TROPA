@@ -88,3 +88,9 @@ Abas P `/?eu=pedro&nome=Pedro`, A `/?eu=ana&nome=Ana`, N `/?eu=clara&nome=Clara`
 3. A: `responderProposta` recusar com motivo `Muito baixo <b>x</b>`, aceitar outra e `invalidar` a terceira. N com o sino aberto vê, sem recarregar, "recusou: Muito baixo <b>x</b>" (texto literal, sem negrito), "aceitou sua proposta" e "deixou sua proposta como desatualizada". Tocar no convite abre o detalhe do aluno.
 4. A: `salvarPerm("ana~personal",{treino:true,perf:false})` e `Pro.avisar("pedro","comentario","ana~personal")`: P com o sino aberto ganha "mudou o que você pode ver" e "comentou um exercício" ao vivo; tocar abre o detalhe da Ana.
 5. A: `Pro.encerrar("ana~personal")`: P vê "Ana encerrou o vínculo" e tocar leva à lista de Alunos. Estado vazio: aba nova sem avisos mostra "Nada por aqui ainda".
+
+## Conta profissional
+
+- Cadastro novo: abrir `/?eu=<id novo>&nome=<nome>&perfil=0` (limpe `localStorage["ar2-draft"]` antes se já testou outro perfil nesse endereço). Abertura, Começar, escolher "Trabalho como personal" e/ou "Trabalho como nutri", Continuar, Entrar. Cai em Atenção, com barra Atenção, Alunos, Propostas, Biblioteca (ou Planos) e o destaque azul.
+- Conta antiga: abrir `/?eu=<id>` (perfil de aluno de exemplo) e rodar `await (await __T.ev("Pro")).ativarPapel("personal", true)`. A conta vira profissional na hora e `tipo:"pro"` fica no perfil; os dados de aluno ficam guardados.
+- Volta: Perfil, Usar como aluno (dois toques). Encerra os vínculos, desliga os papéis e devolve o layout de aluno.

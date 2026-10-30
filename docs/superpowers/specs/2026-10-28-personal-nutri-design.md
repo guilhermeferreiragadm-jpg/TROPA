@@ -101,3 +101,7 @@ Diferenças entre o que a spec descreve e o que foi construído, aceitas:
 - Só foi testado no harness com chromium. Nenhum aparelho real, nem o artifact publicado.
 - O convite de profissional abre o beta fechado: quem recebe o código entra no app por ele. Decisão do dono pendente.
 - Convite sequestrável: como `convites` é listável e gravável, um terceiro pode trocar o `profId` de um código pendente e receber o vínculo se o aluno aceitar sem conferir o nome; a correção sugerida (hashes dos códigos no `papeis` do profissional) não fecha o buraco, porque o terceiro lê o código e põe o hash no próprio `papeis`, então fica aceito até haver ids de convite por hash.
+
+## Conta profissional (substitui o seletor de modo)
+
+Data: 2026-10-30. Decisões: a conta é aluno ou profissional, escolhida no cadastro (tela depois do acesso). Personal e Nutri podem ser marcados juntos. O cadastro do profissional pede só o nome. O profissional tem layout próprio (barra Atenção, Alunos, Propostas, Biblioteca ou Planos, destaque azul), sem questionário, plano nem revisão de aluno. O seletor Aluno | Personal | Nutri deixou de existir: com os dois papéis, o seletor só alterna Personal e Nutri dentro do painel. Contas que já tinham Personal ou Nutri ligado viram profissionais na primeira abertura (`perfil.tipo = "pro"`, dados de aluno intactos). "Usar como aluno" no Perfil desfaz.

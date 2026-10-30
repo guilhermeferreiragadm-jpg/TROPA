@@ -641,6 +641,9 @@ body:has(.cdock) .fab{display:none}.dock-gap{height:72px}
 .pf-big{font-weight:700;font-size:3.5rem;line-height:.9;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .pf-card svg circle[stroke-dasharray]{animation:ring .7s cubic-bezier(.32,.72,0,1) both}
 @keyframes ring{from{stroke-dasharray:.01 364.4}}
+body.pro{--go:#2F5BFF;--go-fill:#2347D6;--go-press:#1B39B0;--go-ink:#2347D6;--go-soft:#EAF0FF}
+:root[data-tema="escuro"] body.pro{--go:#5B82FF;--go-fill:#3A5FE0;--go-press:#2F4FC4;--go-ink:#8AA4FF;--go-soft:#121A33}
+.lst>button.atn{box-shadow:inset 3px 0 0 var(--go)}
 </style>
 <div class="wrap">
   <div id="ban"></div>
@@ -687,6 +690,8 @@ const dow = d => (d.getDay()+6)%7;
 /* ===================== ESTADO ===================== */
 let db = null, realDb = null, user = null, sample = null, me = null, meName = "", meAv = "", isOwner = false;
 let P = null, A = null, ACESSO = null, PEDIDO = null, LOG = {};
+const ehPro = () => !!(P && P.perfil && P.perfil.tipo==='pro');
+let tipoConta = null, papeisEsc = {personal:false, nutri:false};
 let LOCAL = false, CODIGO = "", CONTATO = "", DEMO = false;
 let PRECOS = {mensal:29.9, anual:299, teste:7};
 let CUPONS = [], AFIL = {};
@@ -1590,6 +1595,11 @@ async function derivarChave(privJwk, pubJwk, vincIdStr){
 }
 async function cifrar(chave, obj){ const iv = globalThis.crypto.getRandomValues(new Uint8Array(12)); const ct = new Uint8Array(await cripto().encrypt({name:"AES-GCM", iv}, chave, new TextEncoder().encode(JSON.stringify(obj)))); return {v:1, iv:paraB64(iv), ct:paraB64(ct)}; }
 async function decifrar(chave, env){ const pt = await cripto().decrypt({name:"AES-GCM", iv:deB64(env.iv)}, chave, deB64(env.ct)); return JSON.parse(new TextDecoder().decode(pt)); }
+/* fila de atenção do profissional: proposta pendente pesa mais que "sem treinar"; empate vai por nome */
+function pesoAtencao(pend, warn){ return (pend>0 ? 10+Math.min(pend, 9) : 0) + (warn ? 5 : 0); }
+function ordenarAtencao(lista){ return lista.slice().sort((a, b)=>pesoAtencao(b.pend, b.warn)-pesoAtencao(a.pend, a.warn) || String(a.nome||"").localeCompare(String(b.nome||""), "pt-BR")); }
+/* conta profissional: um cadastro escolhido na entrada; papéis válidos só personal e nutri */
+function papeisEscolhidos(esc){ const o = {personal:!!(esc && esc.personal), nutri:!!(esc && esc.nutri)}; return (o.personal || o.nutri) ? o : null; }
 /* @pro:end */
 
 /* ===================== MOVIMENTO (DOM) ===================== */
@@ -2444,7 +2454,8 @@ function obsHTML(v, k, i){
 /* ===================== TELA BASE ===================== */
 function tela(html, opts){
   opts = opts || {};
-  $("tabs").hidden = !opts.tabs; $("fab").hidden = !opts.fab || MODO!=="aluno";
+  $("tabs").hidden = !opts.tabs; $("fab").hidden = !opts.fab || MODO!=="aluno" || ehPro();
+  document.body.classList.toggle("pro", ehPro());
   const app = $("app"); app.className = opts.full ? "full" : ""; delete app.dataset.fechando; app.innerHTML = html;
   if (!opts.keepScroll) rolagem().scrollTop = 0;
   $("ban").innerHTML = DEMO ? '<div class="demo-ban"><b>Modo demonstração: você está vendo o app como um amigo. Nada é salvo.</b><button type="button" class="btn sm ink" id="demo-out">Sair da demonstração</button></div>' : "";
@@ -2755,13 +2766,19 @@ function ir(tab, sub, arg){
   render();
 }
 function render(keep){
-  try{ normalizarRefeicoes(); }catch(e){ registrarErro("refeicoes", e); }
-  try{ aplicarTeto(); }catch(e){ registrarErro("teto", e); }
-  abrirConvitePend();
+  if (!P || !P.perfil) return;   // ainda no cadastro: nenhuma tela de dentro do app existe sem perfil
+  const pro = ehPro();
+  if (pro && R.tab==="hoje"){ R.tab = "atencao"; R.sub = null; R.arg = null; }
+  if (!pro){
+    try{ normalizarRefeicoes(); }catch(e){ registrarErro("refeicoes", e); }
+    try{ aplicarTeto(); }catch(e){ registrarErro("teto", e); }
+    abrirConvitePend();
+  }
+  if (pro && !modosDisp().length && R.tab!=="perfil"){ R.tab = "perfil"; R.sub = null; R.arg = null; }
   if (restaurarModo()) R.tab = barraAbas(MODO)[0];
   MODO = modoValido(MODO); renderBarra();
   const bar = barraAbas(MODO);
-  if (!bar.includes(R.tab) && !["perfil","chat","painel","sino"].includes(R.tab)){ R.tab = bar[0]; R.sub = null; R.arg = null; }
+  if (!bar.includes(R.tab) && !(pro ? ["perfil","painel","sino"] : ["perfil","chat","painel","sino"]).includes(R.tab)){ R.tab = bar[0]; R.sub = null; R.arg = null; }
   if (R.tab!=="sino" && (sinoTimer || sinoMarcou)){ clearTimeout(sinoTimer); sinoTimer = null; sinoMarcou = false; }
   const t = R.tab, s = R.sub;
   document.querySelectorAll("#tabs .tabs-pill button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===t ? "page" : "false"));
@@ -2772,12 +2789,14 @@ function render(keep){
   if (t==="feed") return telaFeed(o);
   if (t==="comida") return telaComida(o);
   if (t==="perf"){ if (s==="nivel") return telaNivel(); if (s==="liga") return telaLiga(); if (s==="desafios") return telaDesafios(); if (s==="ngrupo") return telaNovoGrupo(); if (s==="grupo") return telaGrupo(R.arg); if (s==="dupla") return telaDupla(); if (s==="novo") return telaNovoDesafio(); if (s==="desafio") return telaDesafio(R.arg); if (s==="retro") return telaRetro(); if (s==="paineis") return telaPaineis(); if (s==="cal") return telaCal(); if (s==="dia") return telaDiaCompleto(R.arg); if (s==="medalhas") return telaMedalhas(); if (s==="recordes") return telaRecordes(); return telaPerf(o); }
+  if (t==="atencao") return telaAtencao(o);
   if (t==="alunos") return s==="det" ? telaProDetalhe(R.arg, o) : s==="propor" ? telaProPropor(R.arg) : telaProAlunos(o);
   if (t==="propostas") return telaPropostas(o);
   if (t==="biblioteca") return telaProBiblioteca(o);
   if (t==="planos") return telaProPlanos(o);
   if (t==="sino") return telaSino();
   if (t==="chat") return telaChat();
+  if (t==="perfil" && pro) return telaPerfilPro();
   if (t==="perfil"){ if (s==="extras") return telaExtras(); if (s==="props") return telaPropostas(o, true); if (s==="corpo") return telaCorpo(o); return telaPerfil(); }
   if (t==="painel") return telaPainel();
   telaHoje(o);
@@ -2785,17 +2804,17 @@ function render(keep){
 const fotoSrc = () => (P && P.perfil && fotoValida(P.perfil.foto)) ? P.perfil.foto : meAv;
 function topo(k, h1){ return '<div class="top"><div class="mw0"><span class="k">'+k+'</span><h1 class="h1">'+h1+'</h1></div><div class="acts">'+sinoHTML()+'<button type="button" class="me" data-go="perfil" aria-label="Perfil">'+(fotoSrc()?'<img alt="" src="'+esc(fotoSrc())+'">':esc(ini(P&&P.perfil&&P.perfil.apelido||meName)))+'</button></div></div>'+seletorModo(); }
 /* ===== modos: Aluno, Personal, Nutri (barra, sino e rotas de esqueleto; as telas vêm nas próximas tarefas) ===== */
-const ABAS_PRO = {personal:[["alunos","Alunos"],["propostas","Propostas"],["biblioteca","Biblioteca"]], nutri:[["alunos","Pacientes"],["propostas","Propostas"],["planos","Planos"]]};
+const ABAS_PRO = {personal:[["atencao","Atenção"],["alunos","Alunos"],["propostas","Propostas"],["biblioteca","Biblioteca"]], nutri:[["atencao","Atenção"],["alunos","Pacientes"],["propostas","Propostas"],["planos","Planos"]]};
 const NOMEMODO = {aluno:"Aluno", personal:"Personal", nutri:"Nutri"};
 const quem = (p, pl, cap) => { const w = (p==="nutri" ? "paciente" : "aluno")+(pl ? "s" : ""); return cap ? w[0].toUpperCase()+w.slice(1) : w; };   // quem a Nutri atende é paciente; o Personal, aluno
 const barraAbas = m => m==="aluno" ? ["hoje","treino","feed","comida","perf"] : ABAS_PRO[m].map(x=>x[0]);
-const modosDisp = () => ["aluno"].concat(["personal","nutri"].filter(m=>Pro.papeis[m]));
-const modoValido = m => modosDisp().includes(m) ? m : "aluno";
+const modosDisp = () => ehPro() ? ["personal","nutri"].filter(m=>Pro.papeis[m] || (P.perfil.papeis||{})[m]) : ["aluno"];   // conta profissional: só os papéis dela; conta de aluno: só o aluno
+const modoValido = m => modosDisp().includes(m) ? m : modosDisp()[0]||"aluno";
 let MODO = "aluno", barraDe = "aluno", BARRA_ALUNO = "", modoIni = false;
 function setModo(m){
   MODO = modoValido(m);
   try{ localStorage.setItem("tropa-modo", MODO); }catch(e){}
-  renderBarra(); ir(barraAbas(MODO)[0]);
+  renderBarra(); ir(ehPro() && R.tab!=="atencao" && barraAbas(MODO).includes(R.tab) ? R.tab : barraAbas(MODO)[0]);
 }
 function renderBarra(){
   const pill = document.querySelector(".tabs-pill"); if (!pill) return;
@@ -2809,23 +2828,28 @@ const iconeSino = () => ICONE.sino;
 function sinoHTML(){ const n = Pro.naoLidas(); return '<button type="button" class="me sino" data-go="sino" aria-label="Notificações'+(n?', '+n+' não lidas':'')+'">'+iconeSino()+'<b'+(n?'':' hidden')+'>'+(n>9?"9+":n)+'</b></button>'; }
 function atualizarSino(){ const n = Pro.naoLidas(); document.querySelectorAll(".sino b").forEach(b=>{ b.hidden = !n; b.textContent = n>9 ? "9+" : n; b.parentNode.setAttribute("aria-label", "Notificações"+(n?", "+n+" não lidas":"")); }); }
 function seletorModo(){
-  const ms = modosDisp(); if (ms.length<2 || (MODO==="aluno" && R.tab!=="hoje")) return "";
+  const ms = modosDisp(); if (ms.length<2 || (!ehPro() && MODO==="aluno" && R.tab!=="hoje")) return "";
   return '<div class="seg modo" style="--c:'+ms.length+'" role="group" aria-label="Modo">'+ms.map(m=>'<button type="button" data-m="'+m+'" aria-pressed="'+(m===MODO)+'">'+NOMEMODO[m]+'</button>').join("")+'</div>';
 }
 document.addEventListener("click", e=>{ const b = e.target.closest && e.target.closest(".modo button[data-m]"); if (b && b.dataset.m!==MODO) setModo(b.dataset.m); });
+function migrarParaPro(){   // quem já tinha Personal ou Nutri ligado vira conta profissional (os dados de aluno ficam guardados)
+  if (DEMO || !P || !P.perfil || P.perfil.tipo || !(Pro.papeis.personal || Pro.papeis.nutri)) return false;
+  P.perfil.tipo = "pro"; P.perfil.papeis = {personal:!!Pro.papeis.personal, nutri:!!Pro.papeis.nutri}; salvarPerfil(); return true;
+}
 function aoMudarPro(){
+  if (migrarParaPro()){ MODO = modoValido(MODO); barraDe = ""; R.tab = "atencao"; R.sub = null; R.arg = null; rotear(); return; }
   atualizarSino();
   const ant = MODO;
   if (!restaurarModo()) MODO = modoValido(MODO);
   renderBarra();
   if (!papelOcup) ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; });
-  if (MODO!==ant && P && P.perfil && !$("tabs").hidden && ((R.tab==="hoje" && !R.sub) || ["alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
+  if (MODO!==ant && P && P.perfil && !$("tabs").hidden && ((R.tab==="hoje" && !R.sub) || ["atencao","alunos","propostas","biblioteca","planos"].includes(R.tab))) ir(barraAbas(MODO)[0]);
   else{ proAoVivo(); propAoVivo(); sinoAoVivo(); }
 }
 let papelOcup = false;
 function restaurarModo(){   // só na Hoje sem subtela: barra e conteúdo nunca ficam em modos diferentes
-  if (modoIni || modosDisp().length<2 || R.tab!=="hoje" || R.sub) return false;
-  modoIni = true; let m = "aluno"; try{ m = localStorage.getItem("tropa-modo")||"aluno"; }catch(e){}
+  if (modoIni || modosDisp().length<2 || R.tab!==(ehPro() ? "atencao" : "hoje") || R.sub) return false;
+  modoIni = true; let m = modosDisp()[0]; try{ m = localStorage.getItem("tropa-modo")||m; }catch(e){}
   m = modoValido(m); if (m===MODO) return false; MODO = m; return true;
 }
 function telaPro(h1, msg, o){ const app = tela(topo(NOMEMODO[MODO],h1)+'<div class="box"><p class="s">'+msg+'</p></div>', {tabs:true, keepScroll:o&&o.keepScroll}); bindGo(app); return app; }
@@ -2855,13 +2879,14 @@ async function ativAluno(v){
   return q.n>=5 ? {t:"sem treinar há "+q.n+" dias", warn:true} : {t:"treinou "+q.t};
 }
 function proSig(){
+  if (R.tab==="atencao") return JSON.stringify(modosDisp().flatMap(m=>alunosDe(m)).map(v=>[v.id, v.nomeA, v.perm, propsPend(v.id)]));
   if (R.tab!=="alunos" || R.sub==="propor") return "";
   if (R.sub==="det"){ const v = Pro.vinc.get(R.arg); return JSON.stringify(v ? [v.estado, v.perm, v.nomeA] : null); }
   return JSON.stringify(alunosDe(MODO).map(v=>[v.id, v.nomeA, v.perm, propsPend(v.id)]));
 }
 let proSigVista = "", proTent = false;
 function proAoVivo(){
-  if (R.tab!=="alunos" || R.sub==="propor" || !P || $("tabs").hidden) return;
+  if ((R.tab!=="alunos" && R.tab!=="atencao") || R.sub==="propor" || !P || $("tabs").hidden) return;
   const sig = proSig(); if (sig===proSigVista) return;
   const ov = $("ov"), at = document.activeElement;
   if ((ov && ov.innerHTML) || (at && (at.tagName==="INPUT" || at.tagName==="TEXTAREA" || at.isContentEditable)) || document.querySelector('[data-armed="1"]')){
@@ -2884,6 +2909,63 @@ function telaProAlunos(o){
   vs.forEach(v=>{
     $("al_"+v.id).addEventListener("click", ()=>ir("alunos", "det", v.id));
     ativAluno(v).catch(()=>({t:"—"})).then(a=>{ const r = $("al_"+v.id), s = r && r.querySelector("small"); if (tk===listTk && s && app.contains(r)) s.innerHTML = a.warn ? '<span class="cor-warn">'+esc(a.t)+'</span>' : esc(a.t); });
+  });
+}
+function telaAtencao(o){
+  const ms = modosDisp(), vs = ms.flatMap(m=>alunosDe(m)), pend = vs.reduce((n, v)=>n+propsPend(v.id), 0), dois = ms.length>1;
+  proSigVista = proSig();
+  const rot = v => dois ? NOMEMODO[v.papel]+" · " : "";
+  const botoes = ms.map(m=>'<button type="button" class="btn'+(vs.length ? '' : ' go')+'" data-cv="'+m+'">Convidar '+quem(m)+'</button>').join("");
+  const linhas = ordenarAtencao(vs.map(v=>({v, nome:v.nomeA, pend:propsPend(v.id), warn:false})));
+  const app = tela(topo(ms.map(m=>NOMEMODO[m]).join(" e "), "Atenção")+
+    (vs.length
+      ? '<p class="s" id="ats">'+vs.length+(vs.length===1 ? " pessoa acompanhada" : " pessoas acompanhadas")+' · '+pend+(pend===1 ? " proposta pendente" : " propostas pendentes")+'</p><div class="lst" id="atl">'+linhas.map(x=>lr(esc("at_"+x.v.id), x.pend ? "atn" : "", esc(x.v.nomeA||quem(x.v.papel, 0, 1))+(x.pend ? ' <span class="pill">'+x.pend+'</span>' : ''), '…')).join("")+'</div>'
+      : '<div class="box"><b>Ninguém por aqui ainda</b><p class="s">Convide a primeira pessoa e mande o código. Ela escolhe o que você pode ver.</p></div>')+
+    '<div class="'+(ms.length>1 ? "grid2" : "")+'">'+botoes+'</div>', {tabs:true, keepScroll:o&&o.keepScroll});
+  bindGo(app);
+  app.querySelectorAll("[data-cv]").forEach(b=>b.addEventListener("click", ()=>sheetNovoConvite(b.dataset.cv)));
+  const tk = ++listTk, avisos = new Map();
+  vs.forEach(v=>{
+    const r = $("at_"+v.id); if (r) r.addEventListener("click", ()=>{ if (MODO!==v.papel){ MODO = v.papel; renderBarra(); } ir("alunos", "det", v.id); });
+  });
+  Promise.all(vs.map(v=>ativAluno(v).catch(()=>({t:"—"})).then(a=>{
+    avisos.set(v.id, !!a.warn);
+    const r = $("at_"+v.id), s = r && r.querySelector("small");
+    if (tk===listTk && s && app.contains(r)) s.innerHTML = a.warn ? '<span class="cor-warn">'+esc(rot(v)+a.t)+'</span>' : esc(rot(v)+a.t);
+  }))).then(()=>{
+    const l = $("atl"); if (tk!==listTk || !l || !app.contains(l)) return;
+    const ord = ordenarAtencao(vs.map(v=>({v, nome:v.nomeA, pend:propsPend(v.id), warn:!!avisos.get(v.id)})));
+    ord.forEach(x=>{ const r = $("at_"+x.v.id); if (!r) return; r.classList.toggle("atn", pesoAtencao(x.pend, x.warn)>0); l.appendChild(r); });
+    const n = ord.filter(x=>pesoAtencao(x.pend, x.warn)>0).length, e = $("ats");
+    if (e) e.textContent = vs.length+(vs.length===1 ? " pessoa acompanhada" : " pessoas acompanhadas")+' · '+(n ? n+(n===1 ? " precisa de atenção" : " precisam de atenção") : "ninguém precisa de atenção agora");
+  });
+}
+function telaPerfilPro(){
+  const p = P.perfil, ms = modosDisp();
+  const app = tela((ms.length ? '<button type="button" class="back" data-go="atencao">← Atenção</button>' : '')+
+    '<div class="prof"><span class="me">'+(fotoSrc() ? '<img alt="" src="'+esc(fotoSrc())+'">' : esc(ini(p.apelido)))+'</span><div><h1 class="h2">'+esc(p.apelido||meName||"")+'</h1><span class="s">'+(ms.length ? ms.map(m=>NOMEMODO[m]).join(" e ") : "Nenhum papel ligado")+'</span></div></div>'+
+    '<div class="lst">'+["personal","nutri"].map(m=>'<label class="lst-i"><span>Trabalho como '+NOMEMODO[m].toLowerCase()+'<small>'+(m==="personal" ? "treinos dos seus alunos" : "planos dos seus pacientes")+'</small></span><input type="checkbox" id="pp_'+m+'"'+(ms.includes(m) ? ' checked' : '')+'></label>').join("")+
+    lr("tema", "", 'Aparência', esc(NOME_TEMA[temaSalvo()]))+
+    lr("ua", "", 'Usar como aluno', 'sai do painel profissional e encerra seus vínculos')+'</div><p class="msg" id="ppm" role="alert"></p>', {});
+  bindGo(app);
+  ["personal","nutri"].forEach(m=>{ const c = $("pp_"+m); c.addEventListener("change", ()=>{
+    if (!c.checked && ms.length===1 && ms.includes(m)){ c.checked = true; return toast("Mantenha ao menos um papel. Para sair, use Usar como aluno."); }
+    mudarPapel(m, c);
+  }); });
+  $("tema").addEventListener("click", ()=>{ const t = trocarTema(); $("tema").querySelector("small").textContent = NOME_TEMA[t]; toast("Aparência: "+NOME_TEMA[t]); });
+  const ua = $("ua");
+  ua.addEventListener("click", async ()=>{
+    if (ua.dataset.armed!=="1"){ ua.dataset.armed = "1"; ua.querySelector("small").textContent = "Toque de novo para confirmar"; return; }
+    ua.disabled = true; papelOcup = true;
+    try{
+      for (const m of ["personal","nutri"]){
+        if (!Pro.papeis[m] && !(p.papeis||{})[m]) continue;
+        for (const v of [...Pro.vinc.values()].filter(v=>v.profId===me && v.papel===m && v.estado==="ativo")){ const r = await Pro.encerrar(v.id); if (r && r.erro) throw new Error("falha"); }
+        const r2 = await Pro.ativarPapel(m, false); if (r2 && r2.erro) throw new Error("falha");
+      }
+      if (!p.objetivo){ P = null; await db.collection(base()).doc("perfil").delete().catch(()=>{}); } else { p.tipo = "aluno"; delete p.papeis; await salvarPerfil(); }
+      tipoConta = "aluno"; MODO = "aluno"; barraDe = ""; renderBarra(); R.tab = "hoje"; R.sub = null; R.arg = null; papelOcup = false; rotear(true);
+    }catch(e){ papelOcup = false; ua.disabled = false; $("ppm").textContent = msgPro(e); }
   });
 }
 function sheetNovoConvite(papel){
@@ -3227,6 +3309,7 @@ async function aplicarPapel(m, lig, ativos){
     for (const v of ativos){ try{ const r = await Pro.encerrar(v.id); if (!(r && r.erro)) ok++; }catch(e){} }
     if (ok<ativos.length) return toast("Encerrei "+ok+" de "+ativos.length+" vínculos. Tente de novo.");
     const r = await Pro.ativarPapel(m, lig); if (r && r.erro) throw new Error("falha");
+    if (ehPro()){ P.perfil.papeis = Object.assign({}, P.perfil.papeis, {[m]:!!lig}); salvarPerfil(); if (R.tab==="perfil") render(true); }
     toast("Modo "+NOMEMODO[m]+(lig ? " ligado." : " desligado."));
   }catch(e){ toast(msgPro(e)); }
   finally{ papelOcup = false; const c = $("pp_"+m); if (c) c.checked = !!Pro.papeis[m]; }
@@ -5417,7 +5500,7 @@ function montarIcones(){
   const fab = $("fab"); if (fab && !fab.firstChild) fab.innerHTML = ICONE.coach;
 }
 montarIcones();
-ICONE.alunos = ICONE.feed; ICONE.planos = ICONE.comida;
+ICONE.alunos = ICONE.feed; ICONE.planos = ICONE.comida; ICONE.atencao = SV('<path d="M12 4 3.5 19h17z"/><path d="M12 10v4M12 16.8v.2"/>');
 BARRA_ALUNO = document.querySelector(".tabs-pill").innerHTML;
 
 /* animação de conquista: a marca da Tropa aparece, faíscas sobem e tudo some sozinho */
@@ -6863,11 +6946,53 @@ async function sincronizarGarmin(){
   for (const c of casadas) await registrarGarmin(c.data, c.j, c.a);
   render(true); toast("Garmin: "+casadas.length+(casadas.length===1?" treino marcado como feito.":" treinos marcados como feitos.")); checarNivel(antes);
 }
+function telaTipoConta(){
+  const cartao = (id, ic, t, sub) => '<button type="button" class="opt" data-tc="'+id+'" aria-pressed="false"><span class="ic">'+ic+'</span><span><b>'+t+'</b><small>'+sub+'</small></span></button>';
+  const app = tela('<button type="button" class="back" id="tcv">← Voltar</button><span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Como você vai usar o '+esc(BRAND)+'?</h1><p class="s">Quem trabalha como profissional usa um layout próprio, separado do de aluno. Dá para marcar personal e nutri juntos.</p>'+
+    cartao("aluno","RUN","Quero treinar e comer melhor","plano feito para você, ajustado todo dia")+
+    cartao("personal","PT","Trabalho como personal","acompanhe seus alunos e proponha treinos")+
+    cartao("nutri","NUT","Trabalho como nutri","acompanhe seus pacientes e proponha planos alimentares")+
+    '<button type="button" class="btn go" id="tcn" disabled>Continuar</button>', {});
+  const bt = app.querySelectorAll("[data-tc]"), nx = $("tcn");
+  const pinta = () => { bt.forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.tc==="aluno" ? tipoConta==="aluno" : tipoConta==="pro" && !!papeisEsc[b.dataset.tc]))); nx.disabled = !(tipoConta==="aluno" || (tipoConta==="pro" && papeisEscolhidos(papeisEsc))); };
+  bt.forEach(b=>b.addEventListener("click", ()=>{
+    const k = b.dataset.tc;
+    if (k==="aluno"){ tipoConta = "aluno"; papeisEsc = {personal:false, nutri:false}; }
+    else { if (tipoConta!=="pro"){ tipoConta = "pro"; papeisEsc = {personal:false, nutri:false}; } papeisEsc[k] = !papeisEsc[k]; if (!papeisEscolhidos(papeisEsc)) tipoConta = null; }
+    pinta();
+  }));
+  pinta();
+  $("tcv").addEventListener("click", ()=>telaAbertura());
+  nx.addEventListener("click", ()=>{ if (tipoConta==="pro") telaCadastroPro(); else rotear(true); });
+}
+function telaCadastroPro(){
+  const ps = papeisEscolhidos(papeisEsc); if (!ps){ telaTipoConta(); return; }
+  const sug = String(meName||"").trim().split(/\s+/)[0] || "";
+  const app = tela('<button type="button" class="back" id="cpv">← Voltar</button><span class="k">'+["personal","nutri"].filter(m=>ps[m]).map(m=>NOMEMODO[m]).join(" e ")+'</span><h1 class="h1">Seu cadastro</h1><p class="s">Só isso. Você não responde o questionário de saúde nem monta plano para você.</p>'+
+    '<div class="fld"><label for="cp-n">Como quer ser chamado?</label><input class="inp" id="cp-n" maxlength="30" autocomplete="off" value="'+esc(sug)+'"></div>'+
+    '<button type="button" class="btn go" id="cpk">Entrar</button><p class="msg" id="cpm" role="alert"></p>', {});
+  $("cpv").addEventListener("click", ()=>telaTipoConta());
+  const ok = $("cpk");
+  ok.addEventListener("click", async ()=>{
+    const nome = $("cp-n").value.trim(), m = $("cpm");
+    if (nome.length<2){ m.textContent = "Escreva como quer ser chamado."; return; }
+    if (!Pro.ok()){ m.textContent = "O cadastro de profissional só funciona no app oficial."; return; }
+    ok.disabled = true; ok.textContent = "Entrando…"; m.textContent = "";
+    try{
+      for (const r of ["personal","nutri"]) if (ps[r]){ const x = await Pro.ativarPapel(r, true); if (x && x.erro) throw new Error("falha"); }
+      P = {perfil:{apelido:nome, tipo:"pro", papeis:ps, enviadoAt:new Date().toISOString()}, pausas:[]};
+      await salvarPerfil();
+      tipoConta = null; R.tab = "atencao"; R.sub = null; R.arg = null;
+      rotear(true);
+    }catch(e){ ok.disabled = false; ok.textContent = "Entrar"; m.textContent = msgPro(e); }
+  });
+}
 function rotear(clique){
   if (clique) entrou = true;
   if (!me){ telaAbertura(); return; }
   if (!isOwner && !(ACESSO && ACESSO.status==="aceito")){ if (!entrou){ telaAbertura(); return; } if (ACESSO && ACESSO.status==="recusado"){ telaPedido(); return; } telaCodigo(); return; }
-  if (!P || !P.perfil){ if (!entrou && !step){ telaAbertura(); return; } onb(Math.min(step||0, 5)); return; }
+  if (ehPro()){ render(); return; }   // conta profissional: layout próprio, sem questionário, plano nem revisão de aluno
+  if (!P || !P.perfil){ if (!entrou && !step){ telaAbertura(); return; } if (!tipoConta && !step){ telaTipoConta(); return; } if (tipoConta==="pro"){ telaCadastroPro(); return; } onb(Math.min(step||0, 5)); return; }
   if (!P.perfil.compromisso){ telaPlanoPronto(); return; }
   if (!P.perfil.assinatura){ telaAssinatura(); return; }
   const red = P.perfil.flags && P.perfil.flags.red && P.perfil.flags.red.length;
@@ -6919,7 +7044,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
   try{ Pro.iniciar().catch(()=>{}); }catch(e){}
   entrou = !!(P && P.perfil);
   rotear();
-  if (entrou) setTimeout(()=>{ garminPend = sincronizarGarmin().catch(()=>{}).finally(()=>{ garminPend = null; }); }, 600);
+  if (entrou && !ehPro()) setTimeout(()=>{ garminPend = sincronizarGarmin().catch(()=>{}).finally(()=>{ garminPend = null; }); }, 600);
 })();
 
 })();
