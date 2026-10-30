@@ -693,6 +693,7 @@ let db = null, realDb = null, user = null, sample = null, me = null, meName = ""
 let P = null, A = null, ACESSO = null, PEDIDO = null, LOG = {};
 const ehPro = () => !!(P && P.perfil && P.perfil.tipo==='pro');
 let tipoConta = null, papeisEsc = {personal:false, nutri:false};
+const PREVIA = location.hash==='#previa';   // link .../artifact/<id>#previa: mostra a escolha de conta e o cadastro do profissional sem gravar nada
 let LOCAL = false, CODIGO = "", CONTATO = "", DEMO = false;
 let PRECOS = {mensal:29.9, anual:299, teste:7};
 let CUPONS = [], AFIL = {};
@@ -2459,7 +2460,7 @@ function tela(html, opts){
   document.body.classList.toggle("pro", ehPro());
   const app = $("app"); app.className = opts.full ? "full" : ""; delete app.dataset.fechando; app.innerHTML = html;
   if (!opts.keepScroll) rolagem().scrollTop = 0;
-  $("ban").innerHTML = DEMO ? '<div class="demo-ban"><b>Modo demonstração: você está vendo o app como um amigo. Nada é salvo.</b><button type="button" class="btn sm ink" id="demo-out">Sair da demonstração</button></div>' : "";
+  $("ban").innerHTML = DEMO ? '<div class="demo-ban"><b>Modo demonstração: você está vendo o app como um amigo. Nada é salvo.</b><button type="button" class="btn sm ink" id="demo-out">Sair da demonstração</button></div>' : PREVIA ? '<div class="demo-ban"><b>Prévia do cadastro. Nada é salvo. Para usar o app, abra o link sem #previa.</b></div>' : "";
   if (DEMO){ const o = $("demo-out"); if (o) o.addEventListener("click", ()=>location.reload()); }
   const tipo = proxTransicao; proxTransicao = "nenhuma";
   const cab = $("cab"); if (cab) cab.firstChild.textContent = (app.querySelector("h1.h1") || {}).textContent || "";
@@ -2767,7 +2768,7 @@ function ir(tab, sub, arg){
   render();
 }
 function render(keep){
-  if (!P || !P.perfil) return;   // ainda no cadastro: nenhuma tela de dentro do app existe sem perfil
+  if (PREVIA || !P || !P.perfil) return;   // prévia do cadastro não desenha o app de dentro   // ainda no cadastro: nenhuma tela de dentro do app existe sem perfil
   const pro = ehPro();
   if (pro && R.tab==="hoje"){ R.tab = "atencao"; R.sub = null; R.arg = null; }
   if (!pro){
@@ -6976,7 +6977,7 @@ function telaTipoConta(){
   }));
   pinta();
   $("tcv").addEventListener("click", ()=>telaAbertura());
-  nx.addEventListener("click", ()=>{ if (tipoConta==="pro") telaCadastroPro(); else rotear(true); });
+  nx.addEventListener("click", ()=>{ if (tipoConta==="pro") telaCadastroPro(); else if (PREVIA) toast("Prévia: aqui começa o questionário de aluno."); else rotear(true); });
 }
 function telaCadastroPro(){
   const ps = papeisEscolhidos(papeisEsc); if (!ps){ telaTipoConta(); return; }
@@ -6989,6 +6990,7 @@ function telaCadastroPro(){
   ok.addEventListener("click", async ()=>{
     const nome = $("cp-n").value.trim(), m = $("cpm");
     if (nome.length<2){ m.textContent = "Escreva como quer ser chamado."; return; }
+    if (PREVIA){ toast("Prévia: nada foi salvo."); telaTipoConta(); return; }
     if (!Pro.ok()){ m.textContent = "O cadastro de profissional só funciona no app oficial."; return; }
     ok.disabled = true; ok.textContent = "Entrando…"; m.textContent = "";
     try{
@@ -7001,6 +7003,7 @@ function telaCadastroPro(){
   });
 }
 function rotear(clique){
+  if (PREVIA){ if (clique || tipoConta) telaTipoConta(); else telaAbertura(); return; }
   if (clique) entrou = true;
   if (!me){ telaAbertura(); return; }
   if (!isOwner && !(ACESSO && ACESSO.status==="aceito")){ if (!entrou){ telaAbertura(); return; } if (ACESSO && ACESSO.status==="recusado"){ telaPedido(); return; } telaCodigo(); return; }
