@@ -6364,7 +6364,7 @@ function bindPerfilNovo(app, p){
     relogio: sheetRelogio,
     corpo: ()=>clicaAntigo("cor"),
     conta: ()=>sheetMenuPerfil("Conta", [{t:"Dados pessoais", sub:"nome, idade, peso, rotina", id:"edt"},{t:"Assinatura", sub:(p.assinatura&&p.assinatura.plano ? p.assinatura.plano+" · " : "")+"fase de teste grátis", id:"ass"},{t:"Foto de perfil", sub:"trocar ou remover", id:"foto"}]),
-    prof: ()=>sheetMenuPerfil("Profissionais", [{t:"Meus profissionais", sub:"Personal ou Nutri que acompanham você", id:"mpro"},{t:"Entrar com código de um profissional", sub:"cole o código que ele te mandou", id:"cvp"},{t:"Propostas", sub:"mudanças que seu Personal ou sua Nutri propuseram", id:"pps"},{t:"Sou Personal", sub:"treinos dos seus alunos", id:"pp_personal", toggle:true},{t:"Sou Nutri", sub:"planos dos seus pacientes", id:"pp_nutri", toggle:true}]),
+    prof: ()=>sheetMenuPerfil("Profissionais", [{t:"Meus profissionais", sub:"Personal ou Nutri que acompanham você", id:"mpro"},{t:"Entrar com código de um profissional", sub:"cole o código que ele te mandou", id:"cvp"},{t:"Propostas", sub:"mudanças que seu Personal ou sua Nutri propuseram", id:"pps"}]),
     priv: ()=>sheetMenuPerfil("Privacidade", [{t:"Mostrar meu progresso para amigos", sub:"foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.", id:"sh", toggle:true},{t:"Baixar meus dados", sub:"arquivo com tudo que o app guarda de você", id:"exp"},{t:"Apagar minha conta e meus dados", sub:"não dá para desfazer", id:"del", cls:"cor-ruim"}]),
     tema2: ()=>clicaAntigo("tema"), fb2: ()=>clicaAntigo("fb"), sair2: ()=>clicaAntigo("sair"), pn2: ()=>clicaAntigo("pn")
   };
@@ -6387,7 +6387,6 @@ function telaPerfil(){
       lr("foto", "", 'Foto de perfil', fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+
       lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
-      (Pro.ok() ? ["personal","nutri"].map(m=>'<label class="lst-i"><span>Sou '+NOMEMODO[m]+'<small>'+(m==="personal"?'treinos dos seus alunos':'planos dos seus pacientes')+'</small></span><input type="checkbox" id="pp_'+m+'"'+(Pro.papeis[m]?' checked':'')+'></label>').join("") : '')+
       (Pro.ok() ? lr("mpro", "", 'Meus profissionais', meusVinc().length ? meusVinc().length+' vínculo'+(meusVinc().length>1?'s':'')+' ativo'+(meusVinc().length>1?'s':'') : 'Personal ou Nutri que acompanham você')+lr("cvp", "", 'Entrar com código de um profissional', 'cole o código que ele te mandou')+lr("pps", "", 'Propostas'+(propsPendAluno() ? ' <span class="pill">'+propsPendAluno()+'</span>' : ''), 'mudanças que seu Personal ou sua Nutri propuseram') : '')+
       lr("fb", "", 'Mandar feedback para a equipe', 'o que travou, o que curtiu, se pagaria')+
       lr("exp", "", 'Baixar meus dados', 'arquivo com tudo que o app guarda de você')+
