@@ -19,13 +19,14 @@ function lerApi(texto) {
 
 const json = v => JSON.stringify(v).replace(/</g, "\\u003c");
 
-function montarIndex(fragmento, config, linkApp, apiUrl) {
+function montarIndex(fragmento, config, linkApp, apiUrl, versaoIcone) {
+  const v = versaoIcone ? "?v=" + versaoIcone : "";   // o iOS guarda o apple-touch-icon por endereço: trocar o ícone exige endereço novo
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
     '<meta name="theme-color" content="#F2F2F7">' +
     '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-title" content="Tropa"><meta name="apple-mobile-web-app-status-bar-style" content="default">' +
-    '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icone-180.png">' +
+    '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icone-180.png' + v + '">' +
     "<script>window.TROPA_FIREBASE=" + json(config) + ";window.TROPA_LINK=" + json(linkApp) + ";window.TROPA_API=" + json(apiUrl) + ";" +
     'if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)&&location.hostname!=="localhost"){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>' +
     '<script src="shim.js"></script></head><body>' + fragmento + "</body></html>";

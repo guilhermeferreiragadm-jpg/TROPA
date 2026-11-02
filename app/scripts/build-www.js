@@ -1,6 +1,7 @@
 // Uso: npm run build:www   (gera app/www/ pronto para o Firebase Hosting e para o Capacitor)
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const esbuild = require("esbuild");
 const { lerConfig, lerApi, montarIndex, versionarSw } = require("./montar.js");
 
@@ -26,7 +27,7 @@ esbuild.buildSync({
 });
 
 const fragmento = fs.readFileSync(path.join(raiz, "publicar.html"), "utf8");
-fs.writeFileSync(path.join(www, "index.html"), montarIndex(fragmento, config, link, apiUrl));
+fs.writeFileSync(path.join(www, "index.html"), montarIndex(fragmento, config, link, apiUrl, crypto.createHash("sha1").update(fs.readFileSync(path.join(app, "icone.png"))).digest("hex").slice(0, 8)));
 fs.writeFileSync(path.join(www, "sw.js"), versionarSw(fs.readFileSync(path.join(app, "sw.js"), "utf8"), String(Date.now())));
 fs.copyFileSync(path.join(app, "manifest.webmanifest"), path.join(www, "manifest.webmanifest"));
 for (const n of [180, 192, 512]) fs.copyFileSync(path.join(app, "icones", "icone-" + n + ".png"), path.join(www, "icone-" + n + ".png"));

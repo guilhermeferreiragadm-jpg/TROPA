@@ -57,3 +57,8 @@ test("lerApi aceita a URL do endpoint e recusa o resto com mensagem clara", () =
   assert.throws(() => lerApi(JSON.stringify({ url: "https://tropa.vercel.app/" })), /api-config\.json/);
   assert.throws(() => lerApi(JSON.stringify({})), /api-config\.json/);
 });
+
+test("montarIndex põe a versão do ícone no apple-touch-icon só quando ela é passada", () => {
+  assert.match(montarIndex("<p></p>", CFG, "https://x/", API, "ab12cd34"), /<link rel="apple-touch-icon" href="icone-180\.png\?v=ab12cd34">/);
+  assert.match(montarIndex("<p></p>", CFG, "https://x/", API), /<link rel="apple-touch-icon" href="icone-180\.png">/);
+});
