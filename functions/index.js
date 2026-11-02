@@ -9,7 +9,7 @@ admin.initializeApp();
 const CHAVE = defineSecret("ANTHROPIC_API_KEY");
 
 exports.sample = onCall(
-  { region: "southamerica-east1", secrets: [CHAVE], timeoutSeconds: 60, memory: "512MiB", maxInstances: 5 },
+  { region: "southamerica-east1", secrets: [CHAVE], timeoutSeconds: 180, memory: "512MiB", maxInstances: 5 },
   async req => {
     const fs = getFirestore();
     const deps = {
@@ -27,8 +27,18 @@ exports.sample = onCall(
       }),
       chamarClaude: async ({ system, content }) => {
         const cliente = new Anthropic({ apiKey: CHAVE.value() });
-        const r = await cliente.messages.create({ model: MODELO, max_tokens: 3000, system, messages: [{ role: "user", content }] });
+        const r = await cliente.messages.create({
+          model: MODELO, max_tokens: 16000, system, messages: [{ role: "user", content }], output_config: { effort: "medium" }
+        });
         return r.content.filter(b => b.type === "text").map(b => b.text).join("");
+      },
+      // Chat do Coach/Nutri: uma rodada só. O laço das ferramentas roda no navegador (app/shim/core.js).
+      chamarClaudeConversa: async ({ mensagens, ferramentas, esforco }) => {
+        const cliente = new Anthropic({ apiKey: CHAVE.value() });
+        const pedido = { model: MODELO, max_tokens: 16000, messages: mensagens, output_config: { effort: esforco } };
+        if (ferramentas && ferramentas.length) pedido.tools = ferramentas;
+        const r = await cliente.messages.create(pedido);
+        return { content: JSON.parse(JSON.stringify(r.content)), stopReason: r.stop_reason };
       }
     };
     try {

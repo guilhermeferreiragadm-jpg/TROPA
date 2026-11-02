@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { extrairJson, validarEntrada, chaveUso, montarConteudo, processar, ErroApp, LIMITE_DIARIO } = require("../functions/lib.js");
+const { extrairJson, validarEntrada, validarConversa, chaveUso, diaBrasilia, montarConteudo, processar, ErroApp, LIMITE_DIARIO, LIMITE_GLOBAL_DIARIO } = require("../functions/lib.js");
 
 test("extrairJson: JSON puro, com cerca de código e com texto em volta", () => {
   assert.deepEqual(extrairJson('{"a":1}'), { a: 1 });
@@ -83,7 +83,104 @@ test("processar: caminho feliz registra o uso e chama o modelo", async () => {
   const im = { tipo: "image/jpeg", base64: "QUJD" };
   const r = await processar({ uid: "u1", owner: false, data: { prompt: "oi", imagens: [im] }, agora }, deps);
   assert.deepEqual(r, { json: { ok: true } });
-  assert.deepEqual(reg.usos, [["u1_2026-11-02", LIMITE_DIARIO]]);
+  assert.deepEqual(reg.usos, [["u1_2026-11-02", LIMITE_DIARIO], ["global_2026-11-02", LIMITE_GLOBAL_DIARIO]]);
   assert.equal(reg.chamadas[0].content[0].type, "image");
   assert.match(reg.chamadas[0].system, /JSON/);
+});
+
+// ---------- dia de Brasília e teto global ----------
+
+test("diaBrasilia devolve AAAA-MM-DD em UTC-3 e chaveUso continua igual", () => {
+  assert.equal(diaBrasilia(new Date("2026-11-03T01:00:00Z")), "2026-11-02");
+  assert.equal(diaBrasilia(new Date("2026-11-03T12:00:00Z")), "2026-11-03");
+  assert.equal(chaveUso("u1", new Date("2026-11-03T02:59:00Z")), "u1_2026-11-02");
+});
+
+test("processar: depois do limite pessoal, conta no teto global do dia", async () => {
+  const { deps, reg } = depsFalsas();
+  await processar({ uid: "u1", owner: false, data: { prompt: "oi" }, agora }, deps);
+  assert.equal(LIMITE_GLOBAL_DIARIO, 400);
+  assert.deepEqual(reg.usos, [["u1_2026-11-02", LIMITE_DIARIO], ["global_2026-11-02", LIMITE_GLOBAL_DIARIO]]);
+});
+
+test("processar: teto global estourado bloqueia com mensagem própria", async () => {
+  const { deps, reg } = depsFalsas({ registrarUso: async chave => { reg.usos.push(chave); return !chave.startsWith("global_"); } });
+  await assert.rejects(
+    processar({ uid: "u1", owner: false, data: { prompt: "oi" }, agora }, deps),
+    e => e instanceof ErroApp && e.code === "resource-exhausted" && e.message === "O Tropa atingiu o limite de IA de hoje. Volte amanhã."
+  );
+  assert.equal(reg.chamadas.length, 0);
+});
+
+test("processar: limite pessoal estourado nem toca no global", async () => {
+  const { deps, reg } = depsFalsas({ registrarUso: async chave => { reg.usos.push(chave); return false; } });
+  await assert.rejects(processar({ uid: "u1", owner: false, data: { prompt: "oi" }, agora }, deps), e => e.code === "resource-exhausted");
+  assert.deepEqual(reg.usos, ["u1_2026-11-02"]);
+});
+
+// ---------- modo conversa (chat do Coach/Nutri) ----------
+
+const MSGS = [{ role: "user", content: "CONTEXTO" }, { role: "assistant", content: "Beleza." }, { role: "user", content: "oi" }];
+const FERR = [{ name: "ver_semana", description: "mostra a semana", input_schema: { type: "object", properties: {} } }];
+
+test("validarConversa aceita conversa com blocos e normaliza o esforço", () => {
+  assert.deepEqual(validarConversa({ mensagens: MSGS }), { mensagens: MSGS, ferramentas: [], esforco: "medium" });
+  const comBlocos = MSGS.concat([
+    { role: "assistant", content: [{ type: "thinking", thinking: "", signature: "s" }, { type: "text", text: "vou ver" }, { type: "tool_use", id: "t1", name: "ver_semana", input: {} }] },
+    { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "[]" }] }
+  ]);
+  const r = validarConversa({ mensagens: comBlocos, ferramentas: FERR, esforco: "high" });
+  assert.equal(r.mensagens.length, 5);
+  assert.deepEqual(r.ferramentas, FERR);
+  assert.equal(r.esforco, "high");
+});
+
+test("validarConversa recusa entrada ruim", () => {
+  const ruim = d => assert.throws(() => validarConversa(d), e => e instanceof ErroApp && e.code === "invalid-argument" && /[a-zà-ú]/.test(e.message));
+  ruim({ mensagens: [] });
+  ruim({ mensagens: "oi" });
+  ruim({ mensagens: Array(41).fill({ role: "user", content: "x" }) });
+  ruim({ mensagens: [{ role: "system", content: "x" }] });
+  ruim({ mensagens: [{ role: "user", content: "" }] });
+  ruim({ mensagens: [{ role: "user", content: "x".repeat(60001) }] });
+  ruim({ mensagens: [{ role: "user", content: [] }] });
+  ruim({ mensagens: [{ role: "user", content: [{ type: "image", source: {} }] }] });
+  ruim({ mensagens: [{ role: "user", content: Array(61).fill({ type: "text", text: "a" }) }] });
+  ruim({ mensagens: Array(10).fill({ role: "user", content: "x".repeat(50000) }) });
+  ruim({ mensagens: MSGS, ferramentas: Array(9).fill(FERR[0]) });
+  ruim({ mensagens: MSGS, ferramentas: [{ name: "com espaço", description: "", input_schema: {} }] });
+  ruim({ mensagens: MSGS, ferramentas: [{ name: "x", description: "d".repeat(6001), input_schema: {} }] });
+  ruim({ mensagens: MSGS, ferramentas: [{ name: "x", description: "d" }] });
+  ruim({ mensagens: MSGS, ferramentas: "x" });
+  ruim({ mensagens: MSGS, esforco: "max" });
+});
+
+function depsConversa(sobrescreve) {
+  const base = depsFalsas(Object.assign({
+    chamarClaude: async () => { throw new Error("modo json não devia rodar"); },
+    chamarClaudeConversa: async a => { base.reg.chamadas.push(a); return { content: [{ type: "text", text: "oi!" }], stopReason: "end_turn" }; }
+  }, sobrescreve));
+  return base;
+}
+
+test("processar modo conversa: devolve content e stopReason, sem prompt de JSON", async () => {
+  const { deps, reg } = depsConversa();
+  const r = await processar({ uid: "u1", owner: false, data: { mensagens: MSGS, ferramentas: FERR, esforco: "high" }, agora }, deps);
+  assert.deepEqual(r, { content: [{ type: "text", text: "oi!" }], stopReason: "end_turn" });
+  assert.deepEqual(reg.chamadas, [{ mensagens: MSGS, ferramentas: FERR, esforco: "high" }]);
+  assert.deepEqual(reg.usos, [["u1_2026-11-02", LIMITE_DIARIO], ["global_2026-11-02", LIMITE_GLOBAL_DIARIO]]);
+});
+
+test("processar modo conversa: mesmas travas de login, acesso e limite", async () => {
+  await assert.rejects(processar({ uid: null, owner: false, data: { mensagens: MSGS }, agora }, depsConversa().deps), e => e.code === "unauthenticated");
+  await assert.rejects(processar({ uid: "u1", owner: false, data: { mensagens: MSGS }, agora }, depsConversa({ temAcesso: async () => false }).deps), e => e.code === "permission-denied");
+  await assert.rejects(processar({ uid: "u1", owner: false, data: { mensagens: MSGS }, agora }, depsConversa({ registrarUso: async () => false }).deps), e => e.code === "resource-exhausted");
+  await assert.rejects(processar({ uid: "u1", owner: false, data: { mensagens: [] }, agora }, depsConversa().deps), e => e.code === "invalid-argument");
+});
+
+test("processar modo conversa: dono não toca em nenhum contador", async () => {
+  const { deps, reg } = depsConversa({ temAcesso: async () => { throw new Error("não devia chamar"); } });
+  const r = await processar({ uid: "gui", owner: true, data: { mensagens: MSGS }, agora }, deps);
+  assert.equal(r.stopReason, "end_turn");
+  assert.equal(reg.usos.length, 0);
 });
