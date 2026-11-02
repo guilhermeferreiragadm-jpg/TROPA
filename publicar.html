@@ -678,6 +678,7 @@ const BRAND = "Tropa";
 const TERMOS_VERSAO = "2026-10-21";
 const ARTIFACT_ID = "Su8kaFAaifinor4vQ4mZeq";
 const LINK_APP = (typeof window !== "undefined" && window.TROPA_LINK) || "https://claude.ai/artifact/"+ARTIFACT_ID;
+const FORA_DO_CLAUDE = typeof window !== "undefined" && !!window.TROPA_LINK;   // PWA/app iOS: login e IA vêm do Firebase
 const DAY = 864e5;
 const $ = id => document.getElementById(id);
 const rolagem = () => document.querySelector(".wrap");   // o contêiner que rola (o documento não rola)
@@ -2499,11 +2500,12 @@ function telaAbertura(){
   const app = tela('<section class="open"><div class="photo" aria-hidden="true"></div><span class="wm"><i></i>'+esc(BRAND)+'</span>'+
     '<div class="mani">Treino<br>não é<br><em>sorte.</em></div>'+
     '<p class="lead">Plano feito para o seu objetivo, ajustado todo dia por IA. Coach e nutri no bolso, seus amigos no feed. Você só precisa aparecer.</p>'+
-    (logado ? '<button type="button" class="btn go" id="go">Começar como '+esc((meName||"você").split(" ")[0])+'</button><p class="s tc">Você entra com a sua conta do Claude. Fica conectado neste celular.</p>'
-      : '<a class="btn go" id="cpa" href="https://claude.ai" target="_blank" rel="noopener">Criar conta grátis</a><p class="s">Toque no botão, crie sua conta do Claude (grátis, dá para usar o Google) ou entre. Quando terminar, toque de novo no link do app que te mandaram.</p><button type="button" class="btn" id="cp">Copiar o link do app</button><p class="msg" id="cpm"></p>')+
+    (logado ? '<button type="button" class="btn go" id="go">Começar como '+esc((meName||"você").split(" ")[0])+'</button><p class="s tc">'+(FORA_DO_CLAUDE ? 'Você fica conectado neste celular.' : 'Você entra com a sua conta do Claude. Fica conectado neste celular.')+'</p>'
+      : FORA_DO_CLAUDE ? '<button type="button" class="btn go" id="rl">Tentar de novo</button><p class="s">Não deu para entrar agora. Confira a internet e toque para tentar de novo.</p>' : '<a class="btn go" id="cpa" href="https://claude.ai" target="_blank" rel="noopener">Criar conta grátis</a><p class="s">Toque no botão, crie sua conta do Claude (grátis, dá para usar o Google) ou entre. Quando terminar, toque de novo no link do app que te mandaram.</p><button type="button" class="btn" id="cp">Copiar o link do app</button><p class="msg" id="cpm"></p>')+
     '</section>', {full:true});
   const g = $("go"); if (g) g.addEventListener("click", ()=>{ if (DEMO){ ACESSO = {status:"aceito", via:"demo"}; } rotear(true); });
-  const c = $("cp"); if (c) c.addEventListener("click", async ()=>{ const u = LINK_APP; try{ await navigator.clipboard.writeText(u); $("cpm").textContent = "Link copiado: "+u+" · cole no navegador onde você entrou no Claude."; }catch(e){ $("cpm").textContent = "Copie este link: "+u; } });
+  const rl = $("rl"); if (rl) rl.addEventListener("click", ()=>location.reload());
+  const c = $("cp"); if (c) c.addEventListener("click", async ()=>{ const u = LINK_APP; try{ await navigator.clipboard.writeText(u); $("cpm").textContent = "Link copiado: "+u+(FORA_DO_CLAUDE ? "" : " · cole no navegador onde você entrou no Claude."); }catch(e){ $("cpm").textContent = "Copie este link: "+u; } });
 }
 function telaCodigo(){
   const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo, ou o de um Personal ou Nutri.</p>'+
@@ -6113,7 +6115,7 @@ function telaChat(){
 async function enviarChat(){
   const inp = $("cin"), q = inp.value.trim(); if (!q) return;
   const L = CHAT[chatModo];
-  if (!sample){ L.push({role:"user",content:q},{role:"assistant",content:"O assistente não está disponível agora. Abra o app dentro do Claude (app ou claude.ai)."}); telaChat(); return; }
+  if (!sample){ L.push({role:"user",content:q},{role:"assistant",content:FORA_DO_CLAUDE ? "O assistente não está disponível agora. Tente de novo em instantes." : "O assistente não está disponível agora. Abra o app dentro do Claude (app ou claude.ai)."}); telaChat(); return; }
   L.push({role:"user", content:q}); L.push({role:"assistant", content:"…"}); telaChat();
   const turns = [{role:"user", content:"CONTEXTO (não responda a isto, só use):\n"+contexto(q)}, {role:"assistant", content:"Beleza."}].concat(L.filter(m=>!m.sys).slice(-9,-1).map(m=>({role:m.role, content:m.content})));
   try{
@@ -6406,7 +6408,7 @@ function telaPerfil(){
       lr("cor", "", ehMenor(p) ? 'Meu peso' : 'Peso, medidas e fotos', ((LOG.corpo||[]).length ? 'último peso: '+num((LOG.corpo[LOG.corpo.length-1]||{}).kg||0, 1)+' kg · toque para registrar' : (ehMenor(p) ? 'registre o peso para as metas de comida' : 'acompanhe o seu corpo ao longo do tempo')))+
       lr("obj", "", 'Meu plano e objetivo', 'mudar objetivo ou adicionar prova')+
       lr("doc", "", 'Laudo de fisioterapia', p.fisio&&p.fisio.lesao?esc(p.fisio.lesao)+' · toque para editar':'suba um documento para o plano respeitar sua lesão')+
-      lr("foto", "", 'Foto de perfil', fotoValida(p.foto)?'sua foto · toque para trocar ou remover':'trocar a foto da sua conta do Claude por outra')+
+      lr("foto", "", 'Foto de perfil', fotoValida(p.foto)?'sua foto · toque para trocar ou remover':(FORA_DO_CLAUDE ? 'trocar a foto da sua conta por outra' : 'trocar a foto da sua conta do Claude por outra'))+
       lr("edt", "", 'Minha conta', 'nome, idade, peso, rotina')+
       '<label class="lst-i"><span>Mostrar meu progresso para amigos<small>foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.</small></span><input type="checkbox" id="sh"'+(p.compartilha!==false?' checked':'')+'></label>'+
       (Pro.ok() ? lr("mpro", "", 'Meus profissionais', meusVinc().length ? meusVinc().length+' vínculo'+(meusVinc().length>1?'s':'')+' ativo'+(meusVinc().length>1?'s':'') : 'Personal ou Nutri que acompanham você')+lr("cvp", "", 'Entrar com código de um profissional', 'cole o código que ele te mandou')+lr("pps", "", 'Propostas'+(propsPendAluno() ? ' <span class="pill">'+propsPendAluno()+'</span>' : ''), 'mudanças que seu Personal ou sua Nutri propuseram') : '')+
@@ -6489,7 +6491,7 @@ function telaPainel(){
       '<div class="grid2"><input class="inp upper" id="cu-c" placeholder="CÓDIGO"><input class="inp" id="cu-p" type="number" placeholder="% de desconto"></div><input class="inp" id="cu-a" type="date" aria-label="Válido até"><button type="button" class="btn ink" id="cu-ok">Criar cupom</button></div>';
   } else {
     h += '<div class="box"><b>Código de convite</b><p class="s">Quem abre pelo link aberto precisa deste código. Se trocar, quem ainda não entrou precisa do novo.</p><div class="between"><span class="code">'+esc(CODIGO||"—")+'</span><button class="btn sm" type="button" id="cod">'+(CODIGO?"Gerar outro":"Gerar")+'</button></div></div>'+
-      '<div class="box"><b>Convidar</b><p class="s">1) Copie o convite e mande no WhatsApp. 2) Uma vez só: no Claude, em Compartilhar, libere "qualquer pessoa com o link".</p><button class="btn ink" type="button" id="inv">Copiar convite</button></div>'+
+      '<div class="box"><b>Convidar</b><p class="s">'+(FORA_DO_CLAUDE ? 'Copie o convite e mande no WhatsApp.' : '1) Copie o convite e mande no WhatsApp. 2) Uma vez só: no Claude, em Compartilhar, libere "qualquer pessoa com o link".')+'</p><button class="btn ink" type="button" id="inv">Copiar convite</button></div>'+
       '<div class="box"><b>Seu WhatsApp (aparece no feedback dos amigos)</b><input class="inp" id="wa" placeholder="https://wa.me/5511999999999" value="'+esc(CONTATO)+'"><button class="btn" type="button" id="waok">Salvar contato</button></div>'+
       '<div class="box"><b>Ver como um amigo vê</b><p class="s">Abre o app do zero, como um amigo novo. Nada é salvo.</p><button class="btn go" type="button" id="demo">Começar a demonstração</button></div>';
   }
@@ -6920,7 +6922,7 @@ const temPersonal = () => !!(P && P.planoProf);
 function sheetMontarSemana(){
   const ov = $("ov"), fecha = ()=>fecharSheet(); let prop = null;
   if (temPersonal()){ toast("Seu plano é do seu Personal. Peça a mudança para ele em Perfil → Meus profissionais."); return; }
-  if (!sample){ toast("O coach não está disponível agora. Abra o app dentro do Claude."); return; }
+  if (!sample){ toast(FORA_DO_CLAUDE ? "O coach não está disponível agora. Tente de novo em instantes." : "O coach não está disponível agora. Abra o app dentro do Claude."); return; }
   const carregando = () => { ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Montar semana"><span class="grab"></span><h2 class="h2" style="font-size:1.7rem">Montando sua semana</h2>'+
     '<p class="s">Lendo seu relógio (sono, FC de repouso, Body Battery, carga, zonas), seus check-ins, o plano da prova, suas metas e compromissos. Leva até 1 minuto.</p><div class="pbar"><i style="width:35%"></i></div></div>'; };
   const mostra = () => {
