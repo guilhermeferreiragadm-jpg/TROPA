@@ -12,3 +12,5 @@ functions/.secret.local
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+.vercel
+.env*
