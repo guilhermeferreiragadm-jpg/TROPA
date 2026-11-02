@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() { return request.auth != null; }
+    function dono() { return logado() && request.auth.token.owner == true; }
+    function eu(uid) { return logado() && request.auth.uid == uid; }
+    function temAcesso() {
+      return dono() || (logado()
+        && exists(/databases/$(database)/documents/acessos/$(request.auth.uid))
+        && get(/databases/$(database)/documents/acessos/$(request.auth.uid)).data.status == 'aceito');
+    }
+
+    // Dados pessoais: perfil, log, rascunho, social, chaves, modelos. Só o próprio uid.
+    match /data/users/{uid}/{resto=**} {
+      allow read, write: if eu(uid);
+    }
+
+    // Acesso e revisão: cada pessoa mexe no próprio documento, o dono em todos.
+    match /acessos/{id}  { allow read, write: if dono() || eu(id); }
+    match /pedidos/{id}  { allow read, write: if dono() || eu(id); }
+    match /revisao/{id}  { allow read, write: if dono() || eu(id); }
+    match /resumo/{id}   { allow read, write: if dono() || eu(id); }
+    match /aprovados/{id} {
+      allow read: if dono() || eu(id);
+      allow write: if dono();
+    }
+
+    // Grupos: só números da semana e apelido. Lê quem tem acesso, grava o próprio documento.
+    match /grupos/{id} {
+      allow read: if temAcesso();
+      allow write: if dono() || (temAcesso() && eu(id));
+    }
+
+    // Personal e Nutri. O conteúdo sensível é cifrado no navegador (ver README, "Limites da cifragem").
+    match /papeis/{id}   { allow read: if logado(); allow write: if dono() || eu(id); }
+    match /convites/{id} { allow read, write: if logado(); }
+    match /vinculos/{id} { allow read, write: if logado(); }
+    match /snap/{id}     { allow read, write: if logado(); }
+    match /prop/{id}     { allow read, write: if logado(); }
+    match /inbox/{uid}/n/{id} { allow read, write: if logado(); }
+
+    // Configuração do dono e posts públicos do dono.
+    match /config/{id} { allow read: if logado(); allow write: if dono(); }
+    match /posts/{id}  { allow read: if logado(); allow write: if dono(); }
+
+    // Nome e foto públicos, gravados pelo shim no login.
+    match /perfis/{id} { allow read: if logado(); allow write: if eu(id); }
+
+    // Contador diário da IA: só a Cloud Function (Admin SDK ignora as regras).
+    match /uso/{id} { allow read, write: if false; }
+  }
+}
