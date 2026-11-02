@@ -1,0 +1,12 @@
+app
+backups
+docs
+tests
+node_modules
+publicar.html
+index.html
+original-publicado.html
+*.md
+firestore.rules
+firestore.indexes.json
+firebase.json

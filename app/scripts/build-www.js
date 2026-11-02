@@ -2,13 +2,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const esbuild = require("esbuild");
-const { lerConfig, montarIndex, versionarSw } = require("./montar.js");
+const { lerConfig, lerApi, montarIndex, versionarSw } = require("./montar.js");
 
 const raiz = path.join(__dirname, "..", "..");
 const app = path.join(raiz, "app");
 const www = path.join(app, "www");
 
-const config = lerConfig(fs.readFileSync(path.join(app, "firebase-config.json"), "utf8"));
+function ler(nome) {
+  try { return fs.readFileSync(path.join(app, nome), "utf8"); }
+  catch (e) { console.error("Falta o arquivo app/" + nome + ". Veja o README, seção \"Rodar fora do claude.ai\"."); process.exit(1); }
+}
+const config = lerConfig(ler("firebase-config.json"));
+const apiUrl = lerApi(ler("api-config.json"));
 const link = "https://" + config.projectId + ".web.app/";
 
 fs.rmSync(www, { recursive: true, force: true });
@@ -21,7 +26,7 @@ esbuild.buildSync({
 });
 
 const fragmento = fs.readFileSync(path.join(raiz, "publicar.html"), "utf8");
-fs.writeFileSync(path.join(www, "index.html"), montarIndex(fragmento, config, link));
+fs.writeFileSync(path.join(www, "index.html"), montarIndex(fragmento, config, link, apiUrl));
 fs.writeFileSync(path.join(www, "sw.js"), versionarSw(fs.readFileSync(path.join(app, "sw.js"), "utf8"), String(Date.now())));
 fs.copyFileSync(path.join(app, "manifest.webmanifest"), path.join(www, "manifest.webmanifest"));
 for (const n of [180, 192, 512]) fs.copyFileSync(path.join(app, "icones", "icone-" + n + ".png"), path.join(www, "icone-" + n + ".png"));

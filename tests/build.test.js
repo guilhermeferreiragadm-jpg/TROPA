@@ -1,7 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { lerConfig, montarIndex, versionarSw } = require("../app/scripts/montar.js");
+const { lerConfig, lerApi, montarIndex, versionarSw } = require("../app/scripts/montar.js");
 
+const API = "https://tropa.vercel.app/api/sample";
 const CFG = { apiKey: "k", authDomain: "x.firebaseapp.com", projectId: "tropa-app", appId: "1:2:web:3" };
 
 test("lerConfig devolve o objeto quando está completo", () => {
@@ -14,7 +15,7 @@ test("lerConfig recusa config incompleta com mensagem clara", () => {
 });
 
 test("montarIndex envolve o fragmento com doctype, manifest, config e shim, nessa ordem", () => {
-  const html = montarIndex("<title>Tropa</title><div id=app></div>", CFG, "https://tropa-app.web.app/");
+  const html = montarIndex("<title>Tropa</title><div id=app></div>", CFG, "https://tropa-app.web.app/", API);
   assert.match(html, /^<!doctype html>/);
   assert.match(html, /<meta name="viewport"[^>]*viewport-fit=cover/);
   assert.match(html, /<link rel="manifest" href="manifest\.webmanifest">/);
@@ -24,16 +25,17 @@ test("montarIndex envolve o fragmento com doctype, manifest, config e shim, ness
   const iCorpo = html.indexOf("<div id=app>");
   assert.ok(iCfg > 0 && iShim > iCfg && iCorpo > iShim, "ordem: config, shim, corpo");
   assert.match(html, /window\.TROPA_LINK="https:\/\/tropa-app\.web\.app\/"/);
+  assert.match(html, /window\.TROPA_API="https:\/\/tropa\.vercel\.app\/api\/sample"/);
 });
 
 test("montarIndex escapa < no JSON para não fechar o script antes da hora", () => {
-  const html = montarIndex("<p></p>", { ...CFG, apiKey: "a</script>b" }, "https://x/");
+  const html = montarIndex("<p></p>", { ...CFG, apiKey: "a</script>b" }, "https://x/", API);
   assert.ok(!html.includes('a</script>b'));
   assert.match(html, /a\\u003c\/script>b/);
 });
 
 test("montarIndex registra o service worker só em https e fora do localhost", () => {
-  const html = montarIndex("<p></p>", CFG, "https://x/");
+  const html = montarIndex("<p></p>", CFG, "https://x/", API);
   assert.match(html, /serviceWorker\.register\("sw\.js"\)/);
   assert.match(html, /location\.hostname!=="localhost"/);
 });
@@ -46,4 +48,12 @@ test("firebase.json: index, sw.js, / e shim.js saem sem cache", () => {
   const cfg = JSON.parse(require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "firebase.json"), "utf8"));
   const semCache = cfg.hosting.headers.filter(h => h.headers.some(x => x.key === "Cache-Control" && x.value === "no-cache")).map(h => h.source);
   ["/", "/index.html", "/sw.js", "/shim.js"].forEach(s => assert.ok(semCache.includes(s), "falta no-cache em " + s));
+});
+
+test("lerApi aceita a URL do endpoint e recusa o resto com mensagem clara", () => {
+  assert.equal(lerApi(JSON.stringify({ url: API })), API);
+  assert.throws(() => lerApi("não é json"), /app\/api-config\.json/);
+  assert.throws(() => lerApi(JSON.stringify({ url: "http://tropa.vercel.app/api/sample" })), /https:\/\/SEU-PROJETO/);
+  assert.throws(() => lerApi(JSON.stringify({ url: "https://tropa.vercel.app/" })), /api-config\.json/);
+  assert.throws(() => lerApi(JSON.stringify({})), /api-config\.json/);
 });

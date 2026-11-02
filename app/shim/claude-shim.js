@@ -2,8 +2,7 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
-import "firebase/compat/functions";
-import { criarClaude, erroDaIA, traduzirErroAuth } from "./core.js";
+import { criarClaude, criarChamadorApi, traduzirErroAuth } from "./core.js";
 import { reduzirParaBase64 } from "./imagem.js";
 import { pedirLogin } from "./login-ui.js";
 
@@ -16,12 +15,10 @@ if (!window.claude) {
   const auth = firebase.auth();
   const db = firebase.firestore();
   db.settings({ ignoreUndefinedProperties: true });   // campo undefined no app não pode derrubar a gravação (antes de useEmulator/enablePersistence)
-  const fns = firebase.app().functions("southamerica-east1");
   const emulador = location.hostname === "localhost" && new URLSearchParams(location.search).get("emu") === "1";
   if (emulador) {
     auth.useEmulator("http://127.0.0.1:9099");
     db.useEmulator("127.0.0.1", 8080);
-    fns.useEmulator("127.0.0.1", 5001);
   } else {
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   }
@@ -64,17 +61,21 @@ if (!window.claude) {
     return { uid: u.uid, name: nome, avatarUrl: u.photoURL || "", isOwner: claims.owner === true };
   }
 
-  const callable = fns.httpsCallable("sample", { timeout: 180000 });
+  const chamarApi = criarChamadorApi({
+    url: window.TROPA_API,
+    obterToken: () => auth.currentUser.getIdToken(),
+    fetch: (u, o) => fetch(u, o),
+    timeoutMs: 180000
+  });
   async function chamarIA(arg) {
-    try { return (await callable(arg)).data.json; }
-    catch (e) { throw erroDaIA(e); }
+    return (await chamarApi(arg)).json;
   }
   // Uma rodada do chat (o laço das ferramentas fica no core.js).
   async function conversar({ mensagens, ferramentas, esforco }) {
     const pedido = { mensagens, esforco };
     if (ferramentas) pedido.ferramentas = ferramentas;
-    try { const d = (await callable(pedido)).data; return { content: d.content, stopReason: d.stopReason }; }
-    catch (e) { throw erroDaIA(e); }
+    const d = await chamarApi(pedido);
+    return { content: d.content, stopReason: d.stopReason };
   }
 
   const paraBase64Puro = blob => new Promise((ok, falha) => {

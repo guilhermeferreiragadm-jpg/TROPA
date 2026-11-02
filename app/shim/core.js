@@ -18,11 +18,40 @@ function traduzirErroAuth(codigo) {
   return Object.prototype.hasOwnProperty.call(ERROS_AUTH, codigo) ? ERROS_AUTH[codigo] : "Não consegui entrar. Tente de novo.";
 }
 
-// Erro da função `sample` para o app: o limite diário vira code "rate_limited" (o app mostra "limite de mensagens").
+// Erro do endpoint da IA para o app: o limite diário vira code "rate_limited" (o app mostra "limite de mensagens").
 function erroDaIA(e) {
   const erro = new Error((e && e.message) || "A IA não respondeu agora.");
-  if (e && (e.code === "functions/resource-exhausted" || e.code === "rate_limited")) erro.code = "rate_limited";
+  if (e && (e.code === "resource-exhausted" || e.code === "functions/resource-exhausted" || e.code === "rate_limited")) erro.code = "rate_limited";
   return erro;
+}
+
+// Chamador do endpoint /api/sample: manda o token do login e devolve o JSON da resposta ou lança o erro já traduzido.
+function criarChamadorApi({ url, obterToken, fetch, timeoutMs }) {
+  return async function chamar(corpo) {
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    const relogio = ctl ? setTimeout(() => ctl.abort(), timeoutMs || 180000) : null;
+    try {
+      let token;
+      try { token = await obterToken(); } catch (e) { throw erroDaIA({ message: "Entre na sua conta para usar a IA." }); }
+      let r;
+      try {
+        r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+          body: JSON.stringify(corpo),
+          signal: ctl ? ctl.signal : undefined
+        });
+      } catch (e) {
+        throw erroDaIA({ message: "Sem conexão com a IA agora. Tente de novo." });
+      }
+      let dados = null;
+      try { dados = await r.json(); } catch (e) { /* corpo vazio ou não JSON */ }
+      if (!r.ok) throw erroDaIA(dados && dados.error ? dados.error : { message: "A IA não respondeu agora." });
+      return dados;
+    } finally {
+      if (relogio) clearTimeout(relogio);
+    }
+  };
 }
 
 const MAX_RODADAS = 6;
@@ -109,4 +138,4 @@ function criarClaude(deps) {
   };
 }
 
-module.exports = { criarClaude, LIMITES, traduzirErroAuth, erroDaIA };
+module.exports = { criarClaude, LIMITES, traduzirErroAuth, erroDaIA, criarChamadorApi };

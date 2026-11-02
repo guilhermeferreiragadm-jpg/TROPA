@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { criarClaude, LIMITES, traduzirErroAuth, erroDaIA } = require("../app/shim/core.js");
+const { criarClaude, criarChamadorApi, LIMITES, traduzirErroAuth, erroDaIA } = require("../app/shim/core.js");
 const { dimensoes } = require("../app/shim/imagem.js");
 
 function montar(extra) {
@@ -305,11 +305,12 @@ test("claude-shim: gravar o perfil não segura o login (sem await)", () => {
   assert.ok(!/await db\.collection\("perfis"\)/.test(fonteShim));
 });
 
-test("claude-shim: callable com 180 s, conversar ligado e erros pelo erroDaIA", () => {
-  assert.match(fonteShim, /httpsCallable\("sample", \{ timeout: 180000 \}\)/);
+test("claude-shim: chama o endpoint com 180 s, conversar ligado e sem Cloud Functions", () => {
+  assert.match(fonteShim, /url: window\.TROPA_API/);
+  assert.match(fonteShim, /timeoutMs: 180000/);
   assert.match(fonteShim, /async function conversar\(/);
   assert.match(fonteShim, /^\s+conversar,$/m);
-  assert.equal((fonteShim.match(/throw erroDaIA\(e\)/g) || []).length, 2);
+  assert.ok(!/httpsCallable|compat\/functions/.test(fonteShim));
 });
 
 test("claude-shim: erro da volta do Google vai para a tela de login", () => {
@@ -334,4 +335,49 @@ test("reduzirParaBase64 pinta o fundo de branco antes de desenhar e libera o bit
   await reduzirParaBase64({});
   delete global.createImageBitmap;
   delete global.document;
+});
+
+// ---------- chamador do endpoint /api/sample ----------
+
+function respostaFalsa(status, corpo) {
+  return { ok: status >= 200 && status < 300, status, json: async () => { if (corpo === undefined) throw new Error("sem corpo"); return corpo; } };
+}
+
+test("criarChamadorApi manda POST com Bearer e o corpo em JSON", async () => {
+  let visto;
+  const chamar = criarChamadorApi({
+    url: "https://x/api/sample", obterToken: async () => "tok",
+    fetch: async (u, o) => { visto = { u, o }; return respostaFalsa(200, { json: { a: 1 } }); }
+  });
+  assert.deepEqual(await chamar({ prompt: "oi" }), { json: { a: 1 } });
+  assert.equal(visto.u, "https://x/api/sample");
+  assert.equal(visto.o.method, "POST");
+  assert.equal(visto.o.headers.Authorization, "Bearer tok");
+  assert.equal(visto.o.body, JSON.stringify({ prompt: "oi" }));
+});
+
+test("criarChamadorApi: 429 vira rate_limited com a mensagem do servidor", async () => {
+  const chamar = criarChamadorApi({
+    url: "u", obterToken: async () => "t",
+    fetch: async () => respostaFalsa(429, { error: { code: "resource-exhausted", message: "acabou o dia" } })
+  });
+  await assert.rejects(chamar({}), e => e.code === "rate_limited" && e.message === "acabou o dia");
+});
+
+test("criarChamadorApi: outros erros mantêm a mensagem e não viram rate_limited", async () => {
+  const chamar = criarChamadorApi({ url: "u", obterToken: async () => "t", fetch: async () => respostaFalsa(500, { error: { code: "internal", message: "falhou" } }) });
+  await assert.rejects(chamar({}), e => e.code !== "rate_limited" && e.message === "falhou");
+  const semCorpo = criarChamadorApi({ url: "u", obterToken: async () => "t", fetch: async () => respostaFalsa(502) });
+  await assert.rejects(semCorpo({}), e => e.message === "A IA não respondeu agora.");
+});
+
+test("criarChamadorApi: sem rede e sem login dão mensagens claras", async () => {
+  const semRede = criarChamadorApi({ url: "u", obterToken: async () => "t", fetch: async () => { throw new TypeError("Failed to fetch"); } });
+  await assert.rejects(semRede({}), e => /Sem conexão/.test(e.message));
+  const semLogin = criarChamadorApi({ url: "u", obterToken: async () => { throw new Error("x"); }, fetch: async () => { throw new Error("não devia chamar"); } });
+  await assert.rejects(semLogin({}), e => /Entre na sua conta/.test(e.message));
+});
+
+test("erroDaIA também entende o code resource-exhausted do endpoint", () => {
+  assert.equal(erroDaIA({ code: "resource-exhausted", message: "x" }).code, "rate_limited");
 });

@@ -8,16 +8,25 @@ function lerConfig(texto) {
   return cfg;
 }
 
+function lerApi(texto) {
+  let cfg;
+  try { cfg = JSON.parse(texto); } catch (e) { throw new Error("app/api-config.json não é um JSON válido."); }
+  if (!cfg || typeof cfg.url !== "string" || !/^https:\/\/\S+\/api\/sample$/.test(cfg.url)) {
+    throw new Error("app/api-config.json precisa de {\"url\": \"https://SEU-PROJETO.vercel.app/api/sample\"}.");
+  }
+  return cfg.url;
+}
+
 const json = v => JSON.stringify(v).replace(/</g, "\\u003c");
 
-function montarIndex(fragmento, config, linkApp) {
+function montarIndex(fragmento, config, linkApp, apiUrl) {
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
     '<meta name="theme-color" content="#F2F2F7">' +
     '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">' +
     '<meta name="apple-mobile-web-app-title" content="Tropa"><meta name="apple-mobile-web-app-status-bar-style" content="default">' +
     '<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icone-180.png">' +
-    "<script>window.TROPA_FIREBASE=" + json(config) + ";window.TROPA_LINK=" + json(linkApp) + ";" +
+    "<script>window.TROPA_FIREBASE=" + json(config) + ";window.TROPA_LINK=" + json(linkApp) + ";window.TROPA_API=" + json(apiUrl) + ";" +
     'if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)&&location.hostname!=="localhost"){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>' +
     '<script src="shim.js"></script></head><body>' + fragmento + "</body></html>";
 }
@@ -26,4 +35,4 @@ function versionarSw(texto, versao) {
   return texto.replace("__VERSAO__", versao);
 }
 
-module.exports = { lerConfig, montarIndex, versionarSw };
+module.exports = { lerConfig, lerApi, montarIndex, versionarSw };

@@ -6,7 +6,7 @@ Data: 2026-11-02. Aprovado em conversa. Arquivo alvo: `publicar.html` (continua 
 Tirar o Tropa de dentro do claude.ai para que o dono e alguns amigos usem como app. Este documento cobre **só a fase de testes**. App Store, compra dentro do app, Sign in with Apple, exclusão de conta e política de privacidade ficam para uma fase 2, com spec própria.
 
 Decisões já tomadas:
-- Backend: **Firebase** (Auth, Firestore, Hosting, Cloud Functions).
+- Backend: **Firebase** no plano gratuito Spark (Auth, Firestore, Hosting) e um endpoint de IA na **Vercel Hobby**. Decisão posterior: o dono não quer pôr cartão na Google, e Cloud Functions exige o plano Blaze.
 - Amigos usam uma **PWA** publicada no Firebase Hosting (Adicionar à Tela de Início).
 - O dono usa a versão nativa via **Capacitor** e Xcode, no próprio iPhone.
 - Os dados começam do zero. Não há migração do claude.ai.
@@ -32,7 +32,7 @@ Um arquivo novo, `app/shim/claude-shim.js`, implementa `window.claude.use("db" |
 | `user.me()` | Firebase Auth. `id` é o uid, `name` e `avatarUrl` vêm do Google, `isOwner` vem de um custom claim |
 | `user.can("data.write")` | Verdadeiro para qualquer pessoa logada e com acesso. O Firestore Rules é quem decide de fato |
 | `user.profiles(ids)` | Leitura de `perfis/{uid}` (nome e avatar públicos, gravados no login) |
-| `sample.json`, `sample.limits` | Cloud Function chamável `sample`, que chama a API do Claude. `limits()` devolve `{images:{maxInputBytes, maxCount, mediaTypes}}`; as imagens são reduzidas no navegador (JPEG, 1280 px) antes do envio |
+| `sample.json`, `sample.limits` | Endpoint `POST /api/sample` na Vercel, que chama a API do Claude. `limits()` devolve `{images:{maxInputBytes, maxCount, mediaTypes}}`; as imagens são reduzidas no navegador (JPEG, 1280 px) antes do envio |
 | `downloads.save` | Plugins Filesystem e Share do Capacitor no app nativo, `<a download>` na PWA |
 
 Pontos de troca no `publicar.html`:
@@ -45,14 +45,14 @@ Pontos de troca no `publicar.html`:
 - `app/shim/claude-shim.js` : a camada de compatibilidade.
 - `app/scripts/build-www.js` : copia `publicar.html` para `app/www/index.html`, injeta o shim e a config do Firebase, gera manifest e service worker.
 - `app/www/` : saída do build, não versionada.
-- `functions/` : Cloud Function `sample`.
+- `api/sample.js`, `functions/lib.js`, `functions/http.js`, `vercel.json` : endpoint `sample` na Vercel (adaptador, lógica pura e camada HTTP).
 - `firestore.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`.
 - `tests/` : testes novos do shim e das regras.
 
 ## Login e papéis
 - Entrada com Google (redirect no navegador, plugin nativo no Capacitor) e e-mail com senha como alternativa. A tela de login é do shim.
 - No primeiro login o shim grava `perfis/{uid}` com `{name, avatarUrl}` do próprio usuário.
-- O dono recebe o custom claim `owner: true` por um script de linha de comando (`functions/scripts/definir-dono.js <uid>`), executado com credencial de administrador. O claim nunca é definido pelo cliente.
+- O dono recebe o custom claim `owner: true` por um script de linha de comando (`functions/scripts/definir-dono.js <e-mail>`), executado com credencial de administrador. O claim nunca é definido pelo cliente.
 - O fluxo atual de convite por código, aprovação (`aprovados`) e papéis Personal/Nutri (`papeis`) continua igual, porque os dados e os caminhos são os mesmos.
 
 ## Regras do Firestore
@@ -66,14 +66,16 @@ Reproduzem a tabela do README:
 - `convites`, `vinculos`, `snap`, `prop`, `inbox/{uid}/n`: quem está logado lê e grava.
 - Qualquer outro caminho: negado.
 
-## IA do coach (Cloud Function `sample`)
-- Função chamável (HTTPS callable), região `southamerica-east1`.
+## IA do coach (endpoint `/api/sample` na Vercel)
+- `POST` com `Authorization: Bearer <ID token do Firebase>`, região `gru1`, duração máxima 170 s. O token é conferido com o `firebase-admin`; o Firestore é lido e gravado com uma conta de serviço guardada em variável de ambiente da Vercel.
+- CORS liberado só para o Hosting do projeto, `capacitor://localhost` e o que vier em `TROPA_ORIGENS`.
+- Erros: `{error:{code,message}}` com status 400, 401, 403, 429 ou 500.
 - Exige usuário autenticado e com `acessos/{uid}`.
-- Limite diário por pessoa (valor inicial: 60 chamadas por dia, contador em `uso/{uid}/{AAAA-MM-DD}`), com erro claro ao estourar. O dono não tem limite.
-- Entrada: `{prompt, imagens?}`. Imagens chegam em base64, com no máximo 3 itens e 1,5 MB cada.
-- Chama a API do Claude com a chave guardada no **Secret Manager** (`ANTHROPIC_API_KEY`). A chave nunca vai para o app.
+- Limite diário por pessoa (valor inicial: 60 chamadas por dia por pessoa e 400 no total, contador em `uso/{uid}_{AAAA-MM-DD}`), com erro claro ao estourar. O dono não tem limite.
+- Entrada: `{prompt, imagens?}`. Imagens chegam em base64, com no máximo 3 itens e `MAX_BASE64` (2 MB) cada. O corpo todo precisa caber nos 4,5 MB da Vercel; as fotos reduzidas no navegador ficam em centenas de KB.
+- Chama a API do Claude com a chave guardada como variável de ambiente da Vercel (`ANTHROPIC_API_KEY`). A chave nunca vai para o app.
 - Saída: o JSON já interpretado, no mesmo formato que `sample.json` devolve hoje. O shim reutiliza a validação de resposta atual do app.
-- `limits()` devolve `{images: true}` sem chamar a rede.
+- `limits()` devolve os limites de imagem sem chamar a rede.
 - Falha ou timeout: o shim rejeita com `Error`, e as telas continuam usando o `comTempo` e as mensagens que já existem.
 
 ## Instalação e uso
@@ -82,7 +84,7 @@ Reproduzem a tabela do README:
 - Fotos de comida usam o seletor de arquivos/câmera do navegador na PWA e o do WebView no Capacitor, como hoje.
 
 ## Custos e pré-requisitos
-- Firebase no plano **Blaze** (exige cartão; para poucos usuários o gasto tende a ser próximo de zero). Cloud Functions não roda no plano gratuito.
+- Firebase no plano **Spark** e Vercel **Hobby**: nenhum pede cartão. O Hobby da Vercel só vale para uso pessoal e não comercial; na fase 2, se houver cobrança, troque para Pro ou outro host.
 - Chave e créditos da **API da Anthropic** da conta do dono. Hoje a IA é paga por cada pessoa através do claude.ai, então isso muda.
 - Node 20 ou mais novo, Xcode instalado, `firebase-tools` e CLI do Capacitor.
 
