@@ -41,3 +41,9 @@ test("montarIndex registra o service worker só em https e fora do localhost", (
 test("versionarSw troca o marcador", () => {
   assert.equal(versionarSw('const V = "__VERSAO__";', "123"), 'const V = "123";');
 });
+
+test("firebase.json: index, sw.js, / e shim.js saem sem cache", () => {
+  const cfg = JSON.parse(require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "firebase.json"), "utf8"));
+  const semCache = cfg.hosting.headers.filter(h => h.headers.some(x => x.key === "Cache-Control" && x.value === "no-cache")).map(h => h.source);
+  ["/", "/index.html", "/sw.js", "/shim.js"].forEach(s => assert.ok(semCache.includes(s), "falta no-cache em " + s));
+});
