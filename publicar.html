@@ -677,6 +677,7 @@ body.pro{--go:#2F5BFF;--go-fill:#2347D6;--go-press:#1B39B0;--go-ink:#2347D6;--go
 const BRAND = "Tropa";
 const TERMOS_VERSAO = "2026-10-21";
 const ARTIFACT_ID = "Su8kaFAaifinor4vQ4mZeq";
+const LINK_APP = (typeof window !== "undefined" && window.TROPA_LINK) || "https://claude.ai/artifact/"+ARTIFACT_ID;
 const DAY = 864e5;
 const $ = id => document.getElementById(id);
 const rolagem = () => document.querySelector(".wrap");   // o contêiner que rola (o documento não rola)
@@ -2502,7 +2503,7 @@ function telaAbertura(){
       : '<a class="btn go" id="cpa" href="https://claude.ai" target="_blank" rel="noopener">Criar conta grátis</a><p class="s">Toque no botão, crie sua conta do Claude (grátis, dá para usar o Google) ou entre. Quando terminar, toque de novo no link do app que te mandaram.</p><button type="button" class="btn" id="cp">Copiar o link do app</button><p class="msg" id="cpm"></p>')+
     '</section>', {full:true});
   const g = $("go"); if (g) g.addEventListener("click", ()=>{ if (DEMO){ ACESSO = {status:"aceito", via:"demo"}; } rotear(true); });
-  const c = $("cp"); if (c) c.addEventListener("click", async ()=>{ const u = "https://claude.ai/artifact/"+ARTIFACT_ID; try{ await navigator.clipboard.writeText(u); $("cpm").textContent = "Link copiado: "+u+" · cole no navegador onde você entrou no Claude."; }catch(e){ $("cpm").textContent = "Copie este link: "+u; } });
+  const c = $("cp"); if (c) c.addEventListener("click", async ()=>{ const u = LINK_APP; try{ await navigator.clipboard.writeText(u); $("cpm").textContent = "Link copiado: "+u+" · cole no navegador onde você entrou no Claude."; }catch(e){ $("cpm").textContent = "Copie este link: "+u; } });
 }
 function telaCodigo(){
   const app = tela('<span class="wm"><i></i>'+esc(BRAND)+'</span><h1 class="h1">Seu código de convite</h1><p class="s">O app está em teste fechado. Digite o código que veio com o convite do seu amigo, ou o de um Personal ou Nutri.</p>'+
@@ -2996,7 +2997,7 @@ function sheetNovoConvite(papel){
   Pro.gerarConvite(papel).then(r=>{
     if (!corpo.isConnected) return;
     if (!r || !r.cod) throw new Error("falha");
-    const cod = r.cod.slice(0,4)+"-"+r.cod.slice(4), txt = "Entra no "+BRAND+": https://claude.ai/artifact/"+ARTIFACT_ID+". Código: "+cod+". Vale por 7 dias.";
+    const cod = r.cod.slice(0,4)+"-"+r.cod.slice(4), txt = "Entra no "+BRAND+": "+LINK_APP+". Código: "+cod+". Vale por 7 dias.";
     corpo.innerHTML = '<h2 class="h2 lg">Convidar '+quem(papel)+'</h2><p class="s">Mande este código. O '+quem(papel)+' digita em Perfil, Entrar com código de um profissional.</p><div class="box tc"><span class="code" id="cvcod">'+esc(cod)+'</span></div><p class="s" id="cvtx">'+esc(txt)+'</p><a class="btn go" id="cvwa" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(txt)+'">Enviar pelo WhatsApp</a><button type="button" class="btn" id="cvcp">Copiar</button><button type="button" class="lk" id="cvfe">Fechar</button>';
     $("cvcp").addEventListener("click", ()=>copiar(txt)); $("cvfe").addEventListener("click", ()=>fecharSheet());
   }).catch(e=>{ if (!corpo.isConnected) return; corpo.innerHTML = '<h2 class="h2 lg">Convidar '+quem(papel)+'</h2><p class="msg err" role="alert">'+esc(msgPro(e))+'</p><button type="button" class="lk" id="cvfe">Fechar</button>'; $("cvfe").addEventListener("click", ()=>fecharSheet()); });
@@ -4323,7 +4324,7 @@ function bindFeed(app){
     salvarSocial(); feedView = "feed"; render(); toast("Postado. Foguinho aceso.");
   });
 }
-function convite(){ const c = meuCodigo(); return "Bora treinar junto? Tô usando o "+BRAND+", app de treino com IA que monta o plano pro seu objetivo. Entra pelo link com sua conta do Claude (é grátis)"+(c?" e usa meu código "+c:"")+": https://claude.ai/artifact/"+ARTIFACT_ID; }
+function convite(){ const c = meuCodigo(); return "Bora treinar junto? Tô usando o "+BRAND+", app de treino com IA que monta o plano pro seu objetivo. Entra pelo link e cria sua conta (é grátis)"+(c?" e usa meu código "+c:"")+": "+LINK_APP; }
 async function copiar(t){ try{ await navigator.clipboard.writeText(t); toast("Copiado. Cole no WhatsApp."); }catch(e){ const ov = $("ov"), aberta = ov.querySelector(".sheet");
     if (aberta){ let ta = aberta.querySelector("#cpt"); if (!ta){ const w = document.createElement("div"); w.innerHTML = '<b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5"></textarea>'; aberta.appendChild(w); ta = w.querySelector("textarea"); } ta.value = t; ta.select(); toast("Não consegui copiar sozinho. Copie o texto abaixo."); return; }   // já tem uma sheet aberta (ex.: lista de compras): não substitui nem fecha
     ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet"><span class="grab"></span><b>Copie o texto abaixo</b><textarea class="inp" id="cpt" rows="5">'+esc(t)+'</textarea><button type="button" class="btn" id="cpfx">Fechar</button></div>'; $("cpt").select(); $("dim").onclick = $("cpfx").onclick = ()=>{ fecharSheet(); }; } }
@@ -6159,7 +6160,7 @@ function sheetFoto(){
 function sheetSair(){
   const ov = $("ov");
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="Sair"><span class="grab"></span><h2 class="h2 lg">Sair do '+esc(BRAND)+'?</h2>'+
-    '<p class="s">Seus dados continuam salvos. Neste teste você entra com a sua conta do Claude, então ao voltar o app reconhece você. Quando o '+esc(BRAND)+' estiver no ar com login próprio, este botão encerra a sessão de verdade.</p>'+
+    '<p class="s">Seus dados continuam salvos na sua conta. Ao voltar, é só entrar de novo.</p>'+
     '<button type="button" class="btn go" id="sok">Sair</button><button type="button" class="lk" id="sno">Cancelar</button></div>';
   $("dim").addEventListener("click", ()=>{ fecharSheet(); }); $("sno").addEventListener("click", ()=>{ fecharSheet(); });
   $("sok").addEventListener("click", sair);
@@ -6258,7 +6259,7 @@ function sheetProfissionais(vid){
   if (vid) det(vid); else lista();
 }
 // Hoje volta para a abertura sem apagar nada. Com login próprio, o corpo desta função passa a encerrar a sessão.
-function sair(){ fecharSheet(); R.tab = "hoje"; R.sub = null; R.arg = null; semOff = 0; telaAbertura(); }
+function sair(){ if (window.claude && typeof window.claude.signOut === "function"){ window.claude.signOut().catch(()=>{}).then(()=>{ location.reload(); }); return; } fecharSheet(); R.tab = "hoje"; R.sub = null; R.arg = null; semOff = 0; telaAbertura(); }
 /* ===================== CORPO: peso, medidas, tendência ===================== */
 const ROTULO_MEDIDA = {cin:"Cintura", qua:"Quadril", pei:"Peito", bra:"Braço", cox:"Coxa"};
 const ehMenor = p => !!(p && (p.menor || (+p.idade > 0 && +p.idade < 18)));
