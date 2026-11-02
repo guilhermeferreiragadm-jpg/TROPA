@@ -18,6 +18,47 @@ function traduzirErroAuth(codigo) {
   return Object.prototype.hasOwnProperty.call(ERROS_AUTH, codigo) ? ERROS_AUTH[codigo] : "Não consegui entrar. Tente de novo.";
 }
 
+// Erro da função `sample` para o app: o limite diário vira code "rate_limited" (o app mostra "limite de mensagens").
+function erroDaIA(e) {
+  const erro = new Error((e && e.message) || "A IA não respondeu agora.");
+  if (e && (e.code === "functions/resource-exhausted" || e.code === "rate_limited")) erro.code = "rate_limited";
+  return erro;
+}
+
+const MAX_RODADAS = 6;
+const textoDe = content => (content || []).filter(b => b && b.type === "text").map(b => b.text).join("");
+const paraTexto = r => (typeof r === "string" ? r : r === undefined ? "ok" : JSON.stringify(r));
+
+// Chat do Coach/Nutri: a IA roda na função, as ferramentas rodam aqui (elas mexem no calendário do app).
+async function conversarComFerramentas(deps, turns, opts) {
+  opts = opts || {};
+  const tools = Array.isArray(opts.tools) ? opts.tools : [];
+  const pedido = { esforco: opts.modelTier === "complex" ? "high" : "medium" };
+  if (tools.length) pedido.ferramentas = tools.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }));
+  const mensagens = (turns || []).map(m => (typeof m.content === "string" && !m.content.trim() ? { role: m.role, content: "…" } : m));
+  let ultimo = "";
+  for (let rodada = 1; rodada <= MAX_RODADAS; rodada++) {
+    let r;
+    try { r = await deps.conversar(Object.assign({ mensagens }, pedido)); }
+    catch (e) { throw erroDaIA(e); }
+    const content = (r && r.content) || [];
+    mensagens.push({ role: "assistant", content });
+    const texto = textoDe(content);
+    if (texto) { ultimo = texto; if (typeof opts.onText === "function") opts.onText({ text: texto }); }
+    if (!r || r.stopReason !== "tool_use" || rodada === MAX_RODADAS) break;
+    const resultados = [];
+    for (const b of content.filter(x => x && x.type === "tool_use")) {
+      const tool = tools.find(t => t.name === b.name);
+      if (!tool) { resultados.push({ type: "tool_result", tool_use_id: b.id, content: "ferramenta desconhecida", is_error: true }); continue; }
+      try { resultados.push({ type: "tool_result", tool_use_id: b.id, content: paraTexto(await tool.execute(b.input || {})) }); }
+      catch (e) { resultados.push({ type: "tool_result", tool_use_id: b.id, content: "erro: " + ((e && e.message) || String(e)), is_error: true }); }
+    }
+    if (!resultados.length) break;
+    mensagens.push({ role: "user", content: resultados });
+  }
+  return { text: ultimo };
+}
+
 function criarClaude(deps) {
   let sessao = null;
   const entrar = () => {
@@ -45,15 +86,17 @@ function criarClaude(deps) {
         return out;
       }
     }),
-    sample: async () => ({
-      limits: async () => ({ images: { maxInputBytes: LIMITES.maxInputBytes, maxCount: LIMITES.maxCount, mediaTypes: LIMITES.mediaTypes.slice() } }),
-      json: async (prompt, opcoes) => {
+    sample: async () => {
+      const sample = (turns, opts) => conversarComFerramentas(deps, turns, opts);
+      sample.limits = async () => ({ images: { maxInputBytes: LIMITES.maxInputBytes, maxCount: LIMITES.maxCount, mediaTypes: LIMITES.mediaTypes.slice() } });
+      sample.json = async (prompt, opcoes) => {
         const fotos = (opcoes && opcoes.images) || [];
         if (fotos.length > LIMITES.maxCount) throw new Error("A IA aceita no máximo " + LIMITES.maxCount + " imagens por vez.");
         const imagens = await Promise.all(fotos.map(f => deps.paraBase64(f)));
         return deps.chamarIA({ prompt, imagens });
-      }
-    }),
+      };
+      return sample;
+    },
     downloads: async () => ({ save: ({ filename, data }) => deps.baixar({ filename, data }) })
   };
 
@@ -66,4 +109,4 @@ function criarClaude(deps) {
   };
 }
 
-module.exports = { criarClaude, LIMITES, traduzirErroAuth };
+module.exports = { criarClaude, LIMITES, traduzirErroAuth, erroDaIA };

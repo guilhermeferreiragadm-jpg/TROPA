@@ -1,5 +1,5 @@
 // Tela de login em tela cheia, desenhada fora do app (o app só começa depois que a pessoa entra).
-// acoes = {google(): Promise, entrar(email, senha): Promise, criar(nome, email, senha): Promise}
+// acoes = {google(): Promise, entrar(email, senha): Promise, criar(nome, email, senha): Promise, erroInicial?: string}
 const { traduzirErroAuth } = require("./core.js");
 
 function pedirLogin(acoes) {
@@ -28,6 +28,7 @@ function pedirLogin(acoes) {
     let criando = false;
     const botoes = [$("tl-g"), $("tl-ok"), $("tl-t")];
     const mostrar = t => { $("tl-erro").textContent = t || ""; };
+    mostrar(acoes.erroInicial);   // ex.: a volta do login com Google falhou
 
     $("tl-t").addEventListener("click", () => {
       criando = !criando;

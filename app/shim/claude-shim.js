@@ -3,7 +3,7 @@ import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 import "firebase/compat/functions";
-import { criarClaude } from "./core.js";
+import { criarClaude, erroDaIA, traduzirErroAuth } from "./core.js";
 import { reduzirParaBase64 } from "./imagem.js";
 import { pedirLogin } from "./login-ui.js";
 
@@ -15,6 +15,7 @@ if (!window.claude) {
 
   const auth = firebase.auth();
   const db = firebase.firestore();
+  db.settings({ ignoreUndefinedProperties: true });   // campo undefined no app não pode derrubar a gravação (antes de useEmulator/enablePersistence)
   const fns = firebase.app().functions("southamerica-east1");
   const emulador = location.hostname === "localhost" && new URLSearchParams(location.search).get("emu") === "1";
   if (emulador) {
@@ -46,23 +47,34 @@ if (!window.claude) {
   }
 
   async function autenticar() {
-    try { await auth.getRedirectResult(); } catch (e) { /* o erro aparece na tela de login ao tentar de novo */ }
+    let erroInicial = "";
+    try { await auth.getRedirectResult(); } catch (e) { erroInicial = traduzirErroAuth(e && e.code); }   // a volta do Google falhou: mostra na tela de login
     let u = await new Promise(res => { const off = auth.onAuthStateChanged(x => { off(); res(x); }); });
     if (!u) {
-      await pedirLogin({ google: entrarGoogle, entrar: entrarEmail, criar: criarConta });
+      const acoes = { google: entrarGoogle, entrar: entrarEmail, criar: criarConta };
+      if (erroInicial) acoes.erroInicial = erroInicial;
+      await pedirLogin(acoes);
       u = auth.currentUser;
     }
     let claims = {};
     try { claims = (await u.getIdTokenResult(true)).claims; } catch (e) { try { claims = (await u.getIdTokenResult()).claims; } catch (e2) { /* sem rede: segue como não dono */ } }
     const nome = u.displayName || (u.email || "").split("@")[0] || "Atleta";
-    await db.collection("perfis").doc(u.uid).set({ name: nome, avatarUrl: u.photoURL || "" }, { merge: true }).catch(() => {});
+    // sem await: offline, com persistência ligada, o set() só resolve quando a rede volta e o app ficaria travado
+    db.collection("perfis").doc(u.uid).set({ name: nome, avatarUrl: u.photoURL || "" }, { merge: true }).catch(() => {});
     return { uid: u.uid, name: nome, avatarUrl: u.photoURL || "", isOwner: claims.owner === true };
   }
 
-  const callable = fns.httpsCallable("sample", { timeout: 60000 });
+  const callable = fns.httpsCallable("sample", { timeout: 180000 });
   async function chamarIA(arg) {
     try { return (await callable(arg)).data.json; }
-    catch (e) { throw new Error((e && e.message) || "A IA não respondeu agora."); }
+    catch (e) { throw erroDaIA(e); }
+  }
+  // Uma rodada do chat (o laço das ferramentas fica no core.js).
+  async function conversar({ mensagens, ferramentas, esforco }) {
+    const pedido = { mensagens, esforco };
+    if (ferramentas) pedido.ferramentas = ferramentas;
+    try { const d = (await callable(pedido)).data; return { content: d.content, stopReason: d.stopReason }; }
+    catch (e) { throw erroDaIA(e); }
   }
 
   const paraBase64Puro = blob => new Promise((ok, falha) => {
@@ -96,6 +108,7 @@ if (!window.claude) {
     autenticar,
     sair: () => auth.signOut(),
     chamarIA,
+    conversar,
     baixar,
     paraBase64: reduzirParaBase64
   });

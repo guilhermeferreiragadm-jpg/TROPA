@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { criarClaude, LIMITES, traduzirErroAuth } = require("../app/shim/core.js");
+const { criarClaude, LIMITES, traduzirErroAuth, erroDaIA } = require("../app/shim/core.js");
 const { dimensoes } = require("../app/shim/imagem.js");
 
 function montar(extra) {
@@ -125,8 +125,194 @@ test("traduzirErroAuth", () => {
   assert.equal(traduzirErroAuth("qualquer/coisa"), "Não consegui entrar. Tente de novo.");
 });
 
+// ---------- chat: sample(turns, opts) com laço de ferramentas no navegador ----------
+
+function rodadas(respostas) {
+  const pedidos = [];
+  const conversar = async p => {
+    pedidos.push(JSON.parse(JSON.stringify(p)));
+    const r = respostas[Math.min(pedidos.length - 1, respostas.length - 1)];
+    if (r instanceof Error) throw r;
+    return r;
+  };
+  return { conversar, pedidos };
+}
+const txt = t => ({ type: "text", text: t });
+const usa = (id, name, input) => ({ type: "tool_use", id, name, input });
+const TURNOS = [{ role: "user", content: "CONTEXTO" }, { role: "assistant", content: "Beleza." }, { role: "user", content: "oi" }];
+
+test("use('sample') é função e ainda tem json e limits", async () => {
+  const { claude } = montar();
+  const s = await claude.use("sample");
+  assert.equal(typeof s, "function");
+  assert.equal(typeof s.json, "function");
+  assert.equal(typeof s.limits, "function");
+});
+
+test("sample(turns) sem ferramentas: uma rodada, devolve o texto e chama onText", async () => {
+  const { conversar, pedidos } = rodadas([{ content: [txt("Olá, "), txt("tudo certo.")], stopReason: "end_turn" }]);
+  const { claude } = montar({ conversar });
+  const vistos = [];
+  const r = await (await claude.use("sample"))(TURNOS, { cache: false, onText: ({ text }) => vistos.push(text) });
+  assert.deepEqual(r, { text: "Olá, tudo certo." });
+  assert.equal(pedidos.length, 1);
+  assert.deepEqual(pedidos[0].mensagens, TURNOS);
+  assert.equal("ferramentas" in pedidos[0], false);
+  assert.equal(pedidos[0].esforco, "medium");
+  assert.deepEqual(vistos, ["Olá, tudo certo."]);
+});
+
+test("sample: modelTier complex pede esforço high e as ferramentas vão no formato da API", async () => {
+  const { conversar, pedidos } = rodadas([{ content: [txt("ok")], stopReason: "end_turn" }]);
+  const { claude } = montar({ conversar });
+  const schema = { type: "object", properties: { dias: { type: "integer" } } };
+  await (await claude.use("sample"))(TURNOS, { modelTier: "complex", tools: [{ name: "ver_semana", description: "mostra", inputSchema: schema, execute: () => "x" }] });
+  assert.equal(pedidos[0].esforco, "high");
+  assert.deepEqual(pedidos[0].ferramentas, [{ name: "ver_semana", description: "mostra", input_schema: schema }]);
+});
+
+test("sample: roda a ferramenta, devolve tool_result num só turno e termina com o texto final", async () => {
+  const { conversar, pedidos } = rodadas([
+    { content: [txt("Vou ver."), usa("t1", "ver_semana", { dias: 3 }), usa("t2", "ajustar", { data: "2026-11-03" })], stopReason: "tool_use" },
+    { content: [txt("Pronto, mudei.")], stopReason: "end_turn" }
+  ]);
+  const { claude } = montar({ conversar });
+  const exec = [];
+  const tools = [
+    { name: "ver_semana", description: "", inputSchema: {}, execute: inp => { exec.push(["ver", inp]); return [{ data: "2026-11-02" }]; } },
+    { name: "ajustar", description: "", inputSchema: {}, execute: async inp => { exec.push(["aj", inp]); return "ok: calendário atualizado"; } }
+  ];
+  const vistos = [];
+  const r = await (await claude.use("sample"))(TURNOS, { tools, onText: ({ text }) => vistos.push(text) });
+  assert.deepEqual(r, { text: "Pronto, mudei." });
+  assert.deepEqual(exec, [["ver", { dias: 3 }], ["aj", { data: "2026-11-03" }]]);
+  assert.equal(pedidos.length, 2);
+  const m = pedidos[1].mensagens;
+  assert.equal(m.length, TURNOS.length + 2);
+  assert.deepEqual(m[3], { role: "assistant", content: [txt("Vou ver."), usa("t1", "ver_semana", { dias: 3 }), usa("t2", "ajustar", { data: "2026-11-03" })] });
+  assert.deepEqual(m[4], { role: "user", content: [
+    { type: "tool_result", tool_use_id: "t1", content: JSON.stringify([{ data: "2026-11-02" }]) },
+    { type: "tool_result", tool_use_id: "t2", content: "ok: calendário atualizado" }
+  ] });
+  assert.deepEqual(vistos, ["Vou ver.", "Pronto, mudei."]);
+  assert.equal(vistos[vistos.length - 1], r.text);
+});
+
+test("sample: erro da ferramenta vira 'erro: ...' e ferramenta desconhecida avisa", async () => {
+  const { conversar, pedidos } = rodadas([
+    { content: [usa("a", "quebra", {}), usa("b", "sumiu", {})], stopReason: "tool_use" },
+    { content: [txt("fim")], stopReason: "end_turn" }
+  ]);
+  const { claude } = montar({ conversar });
+  const tools = [{ name: "quebra", description: "", inputSchema: {}, execute: async () => { throw new Error("data inválida"); } }];
+  await (await claude.use("sample"))(TURNOS, { tools });
+  const res = pedidos[1].mensagens[pedidos[1].mensagens.length - 1].content;
+  assert.deepEqual(res, [
+    { type: "tool_result", tool_use_id: "a", content: "erro: data inválida", is_error: true },
+    { type: "tool_result", tool_use_id: "b", content: "ferramenta desconhecida", is_error: true }
+  ]);
+});
+
+test("sample: para em 6 rodadas e devolve o texto que tiver", async () => {
+  const { conversar, pedidos } = rodadas([{ content: [txt("pensando"), usa("x", "ver_semana", {})], stopReason: "tool_use" }]);
+  const { claude } = montar({ conversar });
+  let n = 0;
+  const tools = [{ name: "ver_semana", description: "", inputSchema: {}, execute: () => { n++; return "ok"; } }];
+  const r = await (await claude.use("sample"))(TURNOS, { tools });
+  assert.equal(pedidos.length, 6);
+  assert.equal(n, 5, "na última rodada não roda ferramenta que o modelo não vai ver");
+  assert.deepEqual(r, { text: "pensando" });
+});
+
+test("sample: rodada final sem texto devolve o último texto que apareceu", async () => {
+  const { conversar } = rodadas([
+    { content: [txt("Trocando o treino."), usa("t", "ver_semana", {})], stopReason: "tool_use" },
+    { content: [], stopReason: "end_turn" }
+  ]);
+  const { claude } = montar({ conversar });
+  const vistos = [];
+  const r = await (await claude.use("sample"))(TURNOS, { tools: [{ name: "ver_semana", description: "", inputSchema: {}, execute: () => "ok" }], onText: ({ text }) => vistos.push(text) });
+  assert.deepEqual(r, { text: "Trocando o treino." });
+  assert.equal(vistos[vistos.length - 1], r.text);
+});
+
+test("sample: limite diário vira code rate_limited, outros erros mantêm a mensagem", async () => {
+  const lim = Object.assign(new Error("Você usou todas as consultas de IA de hoje. Volte amanhã."), { code: "functions/resource-exhausted" });
+  const a = montar({ conversar: rodadas([lim]).conversar });
+  await assert.rejects((await a.claude.use("sample"))(TURNOS, {}), e => e.code === "rate_limited" && /consultas de IA de hoje/.test(e.message));
+  const b = montar({ conversar: rodadas([Object.assign(new Error("A IA não respondeu agora."), { code: "functions/internal" })]).conversar });
+  await assert.rejects((await b.claude.use("sample"))(TURNOS, {}), e => e.code !== "rate_limited" && e.message === "A IA não respondeu agora.");
+});
+
+test("sample: turno antigo com texto vazio não derruba a conversa (a função recusa vazio)", async () => {
+  const { conversar, pedidos } = rodadas([{ content: [txt("ok")], stopReason: "end_turn" }]);
+  const { claude } = montar({ conversar });
+  await (await claude.use("sample"))([{ role: "user", content: "a" }, { role: "assistant", content: "" }, { role: "user", content: "b" }], {});
+  assert.equal(pedidos[0].mensagens[1].content, "…");
+});
+
+test("erroDaIA mapeia resource-exhausted para rate_limited e preserva a mensagem", () => {
+  const a = erroDaIA({ code: "functions/resource-exhausted", message: "acabou" });
+  assert.ok(a instanceof Error);
+  assert.equal(a.code, "rate_limited");
+  assert.equal(a.message, "acabou");
+  const b = erroDaIA({ code: "functions/internal", message: "falhou" });
+  assert.equal(b.code, undefined);
+  assert.equal(b.message, "falhou");
+  assert.equal(erroDaIA(null).message, "A IA não respondeu agora.");
+  assert.equal(erroDaIA({ code: "rate_limited", message: "x" }).code, "rate_limited");
+});
+
 test("dimensoes reduz pelo lado maior e não amplia", () => {
   assert.deepEqual(dimensoes(4000, 3000, 1280), { w: 1280, h: 960 });
   assert.deepEqual(dimensoes(3000, 4000, 1280), { w: 960, h: 1280 });
   assert.deepEqual(dimensoes(800, 600, 1280), { w: 800, h: 600 });
+});
+
+// ---------- tela de login: erro inicial ----------
+
+function domFalso() {
+  const els = {};
+  const el = id => (els[id] = els[id] || { id, textContent: "", style: {}, disabled: false, value: "", addEventListener() {} });
+  const ov = { style: {}, innerHTML: "", querySelector: sel => el(sel.slice(1)), remove() {} };
+  global.document = { createElement: () => ov, body: { appendChild() {} } };
+  return els;
+}
+
+test("pedirLogin mostra acoes.erroInicial na linha de erro ao abrir", () => {
+  const els = domFalso();
+  const { pedirLogin } = require("../app/shim/login-ui.js");
+  pedirLogin({ google() {}, entrar() {}, criar() {}, erroInicial: "Sem internet. Tente de novo." });
+  assert.equal(els["tl-erro"].textContent, "Sem internet. Tente de novo.");
+  const els2 = domFalso();
+  pedirLogin({ google() {}, entrar() {}, criar() {} });
+  assert.equal(els2["tl-erro"].textContent, "");
+  delete global.document;
+});
+
+// ---------- entrada do navegador (claude-shim.js): checagens no texto ----------
+
+const fonteShim = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "app", "shim", "claude-shim.js"), "utf8");
+
+test("claude-shim: ignoreUndefinedProperties antes de useEmulator e enablePersistence", () => {
+  const i = fonteShim.indexOf("db.settings({ ignoreUndefinedProperties: true })");
+  assert.ok(i > 0, "falta db.settings");
+  assert.ok(i < fonteShim.indexOf("db.useEmulator(") && i < fonteShim.indexOf("db.enablePersistence("));
+});
+
+test("claude-shim: gravar o perfil não segura o login (sem await)", () => {
+  assert.match(fonteShim, /db\.collection\("perfis"\)\.doc\(u\.uid\)\.set\([^\n]*\.catch\(\(\) => \{\}\)/);
+  assert.ok(!/await db\.collection\("perfis"\)/.test(fonteShim));
+});
+
+test("claude-shim: callable com 180 s, conversar ligado e erros pelo erroDaIA", () => {
+  assert.match(fonteShim, /httpsCallable\("sample", \{ timeout: 180000 \}\)/);
+  assert.match(fonteShim, /async function conversar\(/);
+  assert.match(fonteShim, /^\s+conversar,$/m);
+  assert.equal((fonteShim.match(/throw erroDaIA\(e\)/g) || []).length, 2);
+});
+
+test("claude-shim: erro da volta do Google vai para a tela de login", () => {
+  assert.match(fonteShim, /catch \(e\) \{ erroInicial = traduzirErroAuth\(e && e\.code\); \}/);
+  assert.match(fonteShim, /if \(erroInicial\) acoes\.erroInicial = erroInicial;/);
 });
