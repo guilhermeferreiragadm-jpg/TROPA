@@ -1,0 +1,19 @@
+{
+  "name": "tropa",
+  "private": true,
+  "description": "Ferramentas do Tropa fora do claude.ai (build da PWA, shim, testes das regras)",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test tests/rules/*.test.js\"",
+    "build:www": "node app/scripts/build-www.js",
+    "icones": "node app/scripts/gerar-icones.js"
+  },
+  "dependencies": {
+    "firebase": "^10.14.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "esbuild": "^0.24.0",
+    "sharp": "^0.33.5"
+  }
+}
