@@ -12,7 +12,11 @@ async function reduzirParaBase64(blob, max = 1280, qualidade = 0.8) {
   const cv = document.createElement("canvas");
   cv.width = w;
   cv.height = h;
-  cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#fff";   // PNG com transparência vira fundo branco no JPEG, não preto
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bmp, 0, 0, w, h);
+  if (bmp.close) bmp.close();   // libera a memória da foto original (celular)
   const url = cv.toDataURL("image/jpeg", qualidade);
   return { tipo: "image/jpeg", base64: url.slice(url.indexOf(",") + 1) };
 }

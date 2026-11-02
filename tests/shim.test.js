@@ -316,3 +316,22 @@ test("claude-shim: erro da volta do Google vai para a tela de login", () => {
   assert.match(fonteShim, /catch \(e\) \{ erroInicial = traduzirErroAuth\(e && e\.code\); \}/);
   assert.match(fonteShim, /if \(erroInicial\) acoes\.erroInicial = erroInicial;/);
 });
+
+test("reduzirParaBase64 pinta o fundo de branco antes de desenhar e libera o bitmap", async () => {
+  const passos = [];
+  const ctx = {
+    set fillStyle(v) { passos.push("fillStyle " + v); },
+    fillRect: (...a) => passos.push("fillRect " + a.join(",")),
+    drawImage: (_b, ...a) => passos.push("drawImage " + a.join(","))
+  };
+  global.createImageBitmap = async () => ({ width: 2560, height: 1280, close: () => passos.push("close") });
+  global.document = { createElement: () => ({ getContext: () => ctx, toDataURL: () => "data:image/jpeg;base64,QUJD" }) };
+  const { reduzirParaBase64 } = require("../app/shim/imagem.js");
+  const r = await reduzirParaBase64({});
+  assert.deepEqual(r, { tipo: "image/jpeg", base64: "QUJD" });
+  assert.deepEqual(passos, ["fillStyle #fff", "fillRect 0,0,1280,640", "drawImage 0,0,1280,640", "close"]);
+  global.createImageBitmap = async () => ({ width: 10, height: 10 });   // sem close (navegador antigo): não quebra
+  await reduzirParaBase64({});
+  delete global.createImageBitmap;
+  delete global.document;
+});
