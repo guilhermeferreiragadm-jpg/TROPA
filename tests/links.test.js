@@ -26,3 +26,9 @@ test("o texto do Sair não promete mais a conta do Claude", () => {
   const bloco = html.slice(i, i + 900);
   assert.ok(!/conta do Claude/.test(bloco));
 });
+
+test("com o shim do Firebase o app não cai no modo LOCAL pelo ping de 6 s", () => {
+  const linha = html.split("\n").find(l => /LOCAL = true; db = hybrid\(realDb\)/.test(l));
+  assert.ok(linha, "não achei o fallback do ping");
+  assert.match(linha, /^\s*if \(!isOwner && !window\.TROPA_FIREBASE\)\{ let ok = false;/);
+});

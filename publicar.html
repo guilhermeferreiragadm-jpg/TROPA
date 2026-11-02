@@ -7050,7 +7050,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
   if (user && typeof user.can === "function"){ try{ PODE_ESCREVER = await comTempo(user.can("data.write"), 4000); }catch(e){} }
   if (!db || !me){ telaAbertura(); return; }
   realDb = db;
-  if (!isOwner){ let ok = false; try{ await Promise.race([db.collection(base()).doc("ping").set({at:new Date().toISOString()}), new Promise((_,rej)=>setTimeout(()=>rej({code:"timeout"}), 6000))]); ok = true; }catch(e){} if (!ok){ LOCAL = true; db = hybrid(realDb); } }
+  if (!isOwner && !window.TROPA_FIREBASE){ let ok = false; try{ await Promise.race([db.collection(base()).doc("ping").set({at:new Date().toISOString()}), new Promise((_,rej)=>setTimeout(()=>rej({code:"timeout"}), 6000))]); ok = true; }catch(e){} if (!ok){ LOCAL = true; db = hybrid(realDb); } }
   const cfg = (doc, f) => { try{ realDb.collection("config").doc(doc).onSnapshot(s=>{ f(s.exists ? (s.data()||{}) : {}); }, ()=>{}); }catch(e){} };
   cfg("convite", d=>{ CODIGO = String(d.codigo||""); if (!CODIGO && isOwner){ const c = novoCodigo(); CODIGO = c; realDb.collection("config").doc("convite").set({codigo:c, at:new Date().toISOString()}).catch(()=>{}); } });
   cfg("contato", d=>{ CONTATO = d.wa||""; });
