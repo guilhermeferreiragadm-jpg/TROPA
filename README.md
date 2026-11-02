@@ -56,6 +56,21 @@ O que isso significa, sem rodeio:
 - Convite sequestrável: como `convites` é listável e gravável, um terceiro pode trocar o `profId` de um código pendente e receber o vínculo se o aluno aceitar sem conferir o nome; a correção sugerida (hashes dos códigos no `papeis` do profissional) não fecha o buraco, porque o terceiro lê o código e põe o hash no próprio `papeis`, então fica aceito até haver ids de convite por hash.
 - A proteção só vale se essas regras forem reais no artifact publicado. Sem elas, o app não funciona ou fica aberto demais.
 
+## Rodar fora do claude.ai (PWA e app iOS)
+O `publicar.html` também roda como PWA e como app iOS, com banco, login e IA no Firebase. O arquivo-fonte não muda: `npm run build:www` o envolve num `index.html` com um shim que reimplementa `window.claude`. Spec: `docs/superpowers/specs/2026-11-02-app-fase1-firebase-capacitor-design.md`. Plano: `docs/superpowers/plans/2026-11-02-app-fase1-firebase-capacitor.md`.
+
+- `app/shim/`: o shim (`core.js` é a lógica testável; `claude-shim.js` liga ao Firebase).
+- `functions/`: a função `sample` (IA). Precisa de Node 22 (o `firebase-admin` 14 exige 22 ou mais novo; está em `engines` do `functions/package.json`). A chave da Anthropic fica no Secret Manager (`firebase functions:secrets:set ANTHROPIC_API_KEY`). Limite de 60 chamadas por pessoa por dia, o dono não tem limite.
+- `firestore.rules`: as regras do banco. Teste com `npm run test:rules` (precisa de Java e do Firebase CLI; esses testes ainda não foram rodados neste repositório).
+- Scripts do projeto raiz: `npm test`, `npm run build:www` (gera `app/www/`), `npm run icones` (gera os ícones da PWA) e `npm run test:rules`.
+- `app/firebase-config.json`: crie este arquivo com a config web do app, copiada do console do Firebase (Configurações do projeto, Seus apps). Essa config é pública, então pode ir para o git. Sem ele o `build:www` falha.
+- Publicar: `npm run build:www` e depois `firebase deploy --only firestore:rules,functions,hosting`. Isso ainda não foi feito (emulador e deploy são as Tasks 7 e 8 do plano).
+- Dono: entre no app uma vez e rode `GOOGLE_APPLICATION_CREDENTIALS=<chave> node functions/scripts/definir-dono.js <seu e-mail>`.
+- iOS (Capacitor): ainda não configurado, ver Task 9 do plano.
+- Teste local sem tocar na produção: `firebase emulators:start --only auth,firestore,functions,hosting` e abra `http://localhost:5000/?emu=1` (ainda não verificado, Task 7 do plano).
+- Custos: Firebase no plano Blaze (cartão, gasto próximo de zero para poucos amigos) e créditos da API da Anthropic.
+- Limitação aceita: `convites`, `vinculos`, `snap`, `prop` e `inbox` são legíveis e graváveis por qualquer pessoa logada (como no claude.ai); o conteúdo sensível é cifrado no navegador. Quem sabe o código de convite do app consegue criar o próprio `acessos`.
+
 ## Personal e Nutri
 Qualquer usuário pode ser Personal e/ou Nutri, convida alunos por código (link do app + código de 8 caracteres), e o aluno escolhe o que libera. Mudanças de plano vão por proposta que o aluno aceita ou recusa. O sino mostra os avisos. Spec: `docs/superpowers/specs/2026-10-28-personal-nutri-design.md`.
 

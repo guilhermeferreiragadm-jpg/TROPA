@@ -32,7 +32,7 @@ Um arquivo novo, `app/shim/claude-shim.js`, implementa `window.claude.use("db" |
 | `user.me()` | Firebase Auth. `id` é o uid, `name` e `avatarUrl` vêm do Google, `isOwner` vem de um custom claim |
 | `user.can("data.write")` | Verdadeiro para qualquer pessoa logada e com acesso. O Firestore Rules é quem decide de fato |
 | `user.profiles(ids)` | Leitura de `perfis/{uid}` (nome e avatar públicos, gravados no login) |
-| `sample.json`, `sample.limits` | Cloud Function chamável `sample`, que chama a API do Claude |
+| `sample.json`, `sample.limits` | Cloud Function chamável `sample`, que chama a API do Claude. `limits()` devolve `{images:{maxInputBytes, maxCount, mediaTypes}}`; as imagens são reduzidas no navegador (JPEG, 1280 px) antes do envio |
 | `downloads.save` | Plugins Filesystem e Share do Capacitor no app nativo, `<a download>` na PWA |
 
 Pontos de troca no `publicar.html`:
@@ -41,7 +41,7 @@ Pontos de troca no `publicar.html`:
 - Um bloco `<script>` do shim é injetado no build, antes do script principal.
 
 ## Estrutura de pastas nova
-- `app/` : projeto Capacitor (`capacitor.config.ts`, `package.json`, pasta `ios/`).
+- `capacitor.config.ts` e `ios/` na raiz: projeto Capacitor; `app/` : shim, scripts de build, ícones e a saída `app/www/`.
 - `app/shim/claude-shim.js` : a camada de compatibilidade.
 - `app/scripts/build-www.js` : copia `publicar.html` para `app/www/index.html`, injeta o shim e a config do Firebase, gera manifest e service worker.
 - `app/www/` : saída do build, não versionada.
@@ -50,7 +50,7 @@ Pontos de troca no `publicar.html`:
 - `tests/` : testes novos do shim e das regras.
 
 ## Login e papéis
-- Entrada com Google. No navegador/PWA usa `signInWithRedirect`. No Capacitor usa o plugin `@capacitor-firebase/authentication`.
+- Entrada com Google (redirect no navegador, plugin nativo no Capacitor) e e-mail com senha como alternativa. A tela de login é do shim.
 - No primeiro login o shim grava `perfis/{uid}` com `{name, avatarUrl}` do próprio usuário.
 - O dono recebe o custom claim `owner: true` por um script de linha de comando (`functions/scripts/definir-dono.js <uid>`), executado com credencial de administrador. O claim nunca é definido pelo cliente.
 - O fluxo atual de convite por código, aprovação (`aprovados`) e papéis Personal/Nutri (`papeis`) continua igual, porque os dados e os caminhos são os mesmos.
@@ -62,6 +62,8 @@ Reproduzem a tabela do README:
 - `grupos`: leitura para quem tem acesso (`acessos/{uid}` existe), escrita só no próprio `grupos/{uid}`.
 - `papeis`: leitura para quem está logado, escrita só do dono.
 - `perfis/{uid}`: leitura para quem está logado, escrita só do próprio uid.
+- `config`, `posts`: quem está logado lê, só o dono grava.
+- `convites`, `vinculos`, `snap`, `prop`, `inbox/{uid}/n`: quem está logado lê e grava.
 - Qualquer outro caminho: negado.
 
 ## IA do coach (Cloud Function `sample`)
