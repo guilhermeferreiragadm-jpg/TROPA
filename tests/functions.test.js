@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { extrairJson, validarEntrada, validarConversa, chaveUso, diaBrasilia, montarConteudo, processar, ErroApp, LIMITE_DIARIO, LIMITE_GLOBAL_DIARIO } = require("../functions/lib.js");
+const { extrairJson, validarEntrada, validarConversa, chaveUso, diaBrasilia, montarConteudo, processar, ErroApp, LIMITE_DIARIO, LIMITE_GLOBAL_DIARIO, MAX_FERRAMENTAS } = require("../functions/lib.js");
 
 test("extrairJson: JSON puro, com cerca de código e com texto em volta", () => {
   assert.deepEqual(extrairJson('{"a":1}'), { a: 1 });
@@ -147,12 +147,38 @@ test("validarConversa recusa entrada ruim", () => {
   ruim({ mensagens: [{ role: "user", content: [{ type: "image", source: {} }] }] });
   ruim({ mensagens: [{ role: "user", content: Array(61).fill({ type: "text", text: "a" }) }] });
   ruim({ mensagens: Array(10).fill({ role: "user", content: "x".repeat(50000) }) });
-  ruim({ mensagens: MSGS, ferramentas: Array(9).fill(FERR[0]) });
+  ruim({ mensagens: MSGS, ferramentas: Array(MAX_FERRAMENTAS + 1).fill(FERR[0]) });
   ruim({ mensagens: MSGS, ferramentas: [{ name: "com espaço", description: "", input_schema: {} }] });
   ruim({ mensagens: MSGS, ferramentas: [{ name: "x", description: "d".repeat(6001), input_schema: {} }] });
   ruim({ mensagens: MSGS, ferramentas: [{ name: "x", description: "d" }] });
   ruim({ mensagens: MSGS, ferramentas: "x" });
   ruim({ mensagens: MSGS, esforco: "max" });
+});
+
+test("validarConversa aceita 10 ferramentas (o Coach manda 10) e recusa 17", () => {
+  const dez = Array.from({ length: 10 }, (_, i) => ({ name: "f" + i, description: "d", input_schema: { type: "object", properties: {} } }));
+  assert.equal(validarConversa({ mensagens: MSGS, ferramentas: dez }).ferramentas.length, 10);
+  const dezessete = dez.concat(Array.from({ length: 7 }, (_, i) => ({ name: "g" + i, description: "d", input_schema: {} })));
+  assert.equal(dezessete.length, 17);
+  assert.throws(() => validarConversa({ mensagens: MSGS, ferramentas: dezessete }), e => e instanceof ErroApp && e.code === "invalid-argument");
+  assert.equal(MAX_FERRAMENTAS, 16);
+});
+
+test("o chat do app manda no máximo MAX_FERRAMENTAS ferramentas (Coach e Nutri)", () => {
+  const html = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "publicar.html"), "utf8");
+  const ini = html.indexOf("function ferramentas(){");
+  assert.ok(ini >= 0, "function ferramentas(){ não encontrada");
+  const resto = html.slice(ini + 5);
+  const fim = resto.search(/\nfunction /);
+  const fonte = fim < 0 ? resto : resto.slice(0, fim);
+  const corte = fonte.indexOf("\n  return [");
+  assert.ok(corte > 0, "segundo return [ (nutri) não encontrado");
+  const coach = fonte.slice(0, corte), nutri = fonte.slice(corte);
+  const conta = t => (t.match(/\{name:"/g) || []).length;
+  for (const [nome, ramo] of [["coach", coach], ["nutri", nutri]]) {
+    const n = conta(ramo);
+    assert.ok(n >= 1 && n <= MAX_FERRAMENTAS, nome + " manda " + n + " ferramentas (teto " + MAX_FERRAMENTAS + ")");
+  }
 });
 
 function depsConversa(sobrescreve) {

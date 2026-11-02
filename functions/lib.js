@@ -9,7 +9,7 @@ const TIPOS = ["image/jpeg", "image/png", "image/webp"];
 const MAX_MENSAGENS = 40;
 const MAX_BLOCOS = 60;
 const MAX_CONVERSA = 400000;
-const MAX_FERRAMENTAS = 8;
+const MAX_FERRAMENTAS = 16;
 const MAX_DESCRICAO = 6000;
 const ESFORCOS = ["low", "medium", "high"];
 // thinking volta junto: o modelo pensa por padrão e, no meio de um laço de ferramentas, a API quer esses blocos de volta.
@@ -113,4 +113,4 @@ async function processar({ uid, owner, data, agora }, deps) {
   return { json: extrairJson(texto) };
 }
 
-module.exports = { MODELO, LIMITE_DIARIO, LIMITE_GLOBAL_DIARIO, ErroApp, extrairJson, validarEntrada, validarConversa, diaBrasilia, chaveUso, montarConteudo, processar };
+module.exports = { MODELO, LIMITE_DIARIO, LIMITE_GLOBAL_DIARIO, ErroApp, extrairJson, validarEntrada, validarConversa, diaBrasilia, chaveUso, montarConteudo, processar, MAX_FERRAMENTAS };
