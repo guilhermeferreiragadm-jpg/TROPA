@@ -7,6 +7,8 @@ const raiz = path.join(__dirname, "..", "..");
 const EXPOR = "window.__T = {ir, R, toast, celebrar, telaAbertura, telaCodigo, telaPlanoPronto, telaAssinatura, telaMatch, telaSubiu, nivelXP, onb, sheetCheckin, sheetPausar, sheetCompras, sheetPostar, sheetRetomar, sheetDocumento, Mov, fecharSheet, ev:s=>eval(s)};\n";
 
 http.createServer((req, res) => {
+  const foto = /^\/ex\/([\w-]+)\/([01])\.jpg$/.exec(req.url);
+  if (foto){ const arq = path.join(raiz, "app", "exercicios", foto[1], foto[2]+".jpg"); if (!fs.existsSync(arq)){ res.writeHead(404); return res.end(); } res.writeHead(200, {"content-type":"image/jpeg"}); return res.end(fs.readFileSync(arq)); }
   if (!/^\/(\?.*)?$/.test(req.url)){ res.writeHead(404); return res.end("so /"); }
   const stub = fs.readFileSync(path.join(__dirname, "stub.js"), "utf8");
   let html = fs.readFileSync(path.join(raiz, "publicar.html"), "utf8");

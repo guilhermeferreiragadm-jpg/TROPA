@@ -30,6 +30,7 @@ const fragmento = fs.readFileSync(path.join(raiz, "publicar.html"), "utf8");
 fs.writeFileSync(path.join(www, "index.html"), montarIndex(fragmento, config, link, apiUrl, crypto.createHash("sha1").update(fs.readFileSync(path.join(app, "icone.png"))).digest("hex").slice(0, 8)));
 fs.writeFileSync(path.join(www, "sw.js"), versionarSw(fs.readFileSync(path.join(app, "sw.js"), "utf8"), String(Date.now())));
 fs.copyFileSync(path.join(app, "manifest.webmanifest"), path.join(www, "manifest.webmanifest"));
+fs.cpSync(path.join(app, "exercicios"), path.join(www, "ex"), { recursive: true });   // fotos dos exercícios (free-exercise-db, domínio público)
 for (const n of [180, 192, 512]) fs.copyFileSync(path.join(app, "icones", "icone-" + n + ".png"), path.join(www, "icone-" + n + ".png"));
 
 console.log("app/www pronto (" + fs.readdirSync(www).join(", ") + ")");

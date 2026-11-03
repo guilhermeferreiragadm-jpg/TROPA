@@ -150,3 +150,14 @@ test("aplicarEdicaoNoPlano muda só o treino de mesmo nome no mesmo dia da seman
   const outros = gerado.semanas[0].dias.filter((_, j) => j !== iB).flatMap(d => d.treinos);
   assert.ok(outros.every(t => !t.edit), "outros dias não mudam");
 });
+
+test("fotos dos exercícios: todo nome mapeado existe na base e todo arquivo existe", () => {
+  const mapa = JSON.parse(/const MIDIA_EX = (\{.*?\});\n/s.exec(html)[1]), mus = JSON.parse(/const MUS_EX = (\{.*?\});\n/s.exec(html)[1]);
+  const nomes = new Set(F.EXERCICIOS.map(e => e.n)), ids = new Set(Object.values(mapa));
+  Object.keys(mapa).forEach(n => assert.ok(nomes.has(n), "nome fora da base: " + n));
+  ids.forEach(id => {
+    ["0", "1"].forEach(i => assert.ok(fs.existsSync(path.join(__dirname, "..", "app", "exercicios", id, i + ".jpg")), "falta foto " + id + "/" + i));
+    assert.ok(mus[id], "falta músculo de " + id);
+  });
+  assert.ok(Object.keys(mapa).length > 120);
+});
