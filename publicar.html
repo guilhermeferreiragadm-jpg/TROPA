@@ -854,12 +854,13 @@ const NOMEF = {F0:"recuperação",F1:"base",F2:"festas",F3:"meia",F4:"transiçã
 /* cores das fases: texto branco por cima, mínimo 4,5:1 nos dois temas (tests/contraste.test.js) */
 const CORF = {F0:"#667080",F1:"#46525D",F2:"#667080",F3:"var(--go-fill)",F4:"#667080",F5:"#2E5E8E",F6:"#2E5E8E",F7:"var(--go-fill)",F8:"#0F7A3E"};
 function fasesDe(pl){
+  if (pl.custom) return [];
   if (pl.fases){ const out = []; pl.semanas.forEach(s=>{ const l = out[out.length-1]; if (l && l[3]===s.fase) l[1]++; else out.push([NOMEF[s.fase]||s.fase, 1, CORF[s.fase]||"#46525D", s.fase]); }); return out; }
   const n = pl.semanas.length; if (pl.semProva) return [["base",Math.ceil(n/3),"#46525D"],["construção",Math.ceil(n/3),"#2E5E8E"],["específico",n-2*Math.ceil(n/3),"var(--go-fill)"]].filter(x=>x[1]>0);
   const pol = 2, esp = Math.max(1, Math.round((n-pol)*0.3)), con = Math.max(1, Math.round((n-pol)*0.35)), bas = Math.max(1, n-pol-esp-con);
   return [["base",bas,"#46525D"],["construção",con,"#2E5E8E"],["específico",esp,"var(--go-fill)"],["polimento",pol,"#0F7A3E"]];
 }
-function faseDaSemana(pl, w){ if (pl.fases && pl.semanas[w-1]) return NOMEF[pl.semanas[w-1].fase] || ""; let acc = 0; for (const f of fasesDe(pl)){ acc += f[1]; if (w<=acc) return f[0]; } return "polimento"; }
+function faseDaSemana(pl, w){ if (pl.custom) return ""; if (pl.fases && pl.semanas[w-1]) return NOMEF[pl.semanas[w-1].fase] || ""; let acc = 0; for (const f of fasesDe(pl)){ acc += f[1]; if (w<=acc) return f[0]; } return "polimento"; }
 
 /* ===================== ARMAZENAMENTO ===================== */
 function localStore(){
@@ -2604,7 +2605,7 @@ function onb(i){
       '<p class="s">Orienta e não substitui médico, profissional de educação física ou nutricionista.</p></div>'+nav();
   } else if (i===1){
     h += '<h1 class="h1">O que você quer conquistar?</h1><p class="s">Dá para mudar depois, inclusive adicionar uma prova.</p>'+
-      [["prova","RUN","Uma prova","5 km, 10 km, meia, maratona, triathlon, Hyrox"],["massa","GYM","Força e físico","ganhar massa, ficar forte"],["emagrecer","−KG","Emagrecer com saúde","perder gordura sem passar fome"],["forma","FIT","Ficar em forma","constância, saúde, disposição"],["correr","0→5","Começar a correr","do zero aos primeiros 5 km"]].map(o=>'<button type="button" class="opt" data-ob="'+o[0]+'" aria-pressed="'+(o[0]==="prova"?prova:draft.objetivo===o[0])+'"><span class="ic">'+o[1]+'</span><span><b>'+o[2]+'</b><small>'+o[3]+'</small></span></button>').join("")+
+      [["prova","RUN","Uma prova","5 km, 10 km, meia, maratona, triathlon, Hyrox"],["massa","GYM","Força e físico","ganhar massa, ficar forte"],["emagrecer","−KG","Emagrecer com saúde","perder gordura sem passar fome"],["forma","FIT","Ficar em forma","constância, saúde, disposição"],["correr","0→5","Começar a correr","do zero aos primeiros 5 km"],["meu","MEU","Montar meu treino","coloque os seus exercícios e a sua semana"]].map(o=>'<button type="button" class="opt" data-ob="'+o[0]+'" aria-pressed="'+(o[0]==="prova"?prova:draft.objetivo===o[0])+'"><span class="ic">'+o[1]+'</span><span><b>'+o[2]+'</b><small>'+o[3]+'</small></span></button>').join("")+
       (prova||draft.temProva==="sim" ? '<div class="fld"><span class="lbl">Qual prova?</span>'+seg("objetivo",PROVAS.map(p=>[p[0],p[1].replace("Meia maratona","Meia").replace("Triathlon sprint/olímpico","Tri").replace("Meio Ironman 70.3","70.3")]),4)+'</div>'+
         '<div class="fld"><label for="f-dp">Quando? (pode ser aproximado)</label><input class="inp" id="f-dp" data-f="dataProva" type="date" min="'+key(addDays(today,21))+'"></div>'+
         (draft.dataProva && parseD(draft.dataProva) ? '<div class="hint"><b>'+Math.floor((parseD(draft.dataProva)-today)/DAY/7)+' semanas</b> até a prova.</div>':'') : '')+
@@ -2666,11 +2667,11 @@ async function lerRelato(){
   if (txt.length < 10){ m.textContent = "Conte um pouco mais."; return; }
   if (!sample){ m.textContent = "A IA não está disponível agora. Siga respondendo nas próximas telas."; return; }
   m.textContent = "Lendo o que você contou…";
-  const ops = Object.entries(TPL).map(([k,v])=>k+" = "+v.nome).join("; ");
+  const ops = Object.entries(TPL).filter(([k,v])=>!v.custom).map(([k,v])=>k+" = "+v.nome).join("; ");
   try{
     const r = await sample.json("Extraia dados de um praticante de exercício a partir do relato. Hoje é "+key(today)+". Se ele não citou prova, escolha o objetivo mais adequado entre: "+ops+". Responda só JSON com as chaves que conseguir inferir: {\"objetivo\":chave,\"dataProva\":\"AAAA-MM-DD\",\"naoCorre\":true se disser que não corre,\"corridasSem\":n,\"kmSemana\":n,\"maiorLongao\":n,\"melhorTempo\":\"texto\",\"academiaMeses\":n,\"diasSem\":n,\"horasDia\":n,\"melhorHorario\":\"cedo|almoco|tarde|noite\",\"sono\":n,\"meta\":\"texto curto\",\"resumo\":[\"até 5 fatos curtos, ex.: academia 3x\"]}. Relato: <<<"+txt.slice(0,2000)+">>>");
     if (r && typeof r === "object"){
-      let n = 0; ["objetivo","dataProva","corridasSem","kmSemana","maiorLongao","melhorTempo","academiaMeses","diasSem","horasDia","melhorHorario","sono","meta"].forEach(k=>{ const v = r[k]; if (v!=null && v!=="" && !(k==="objetivo" && !TPL[v])){ draft[k] = typeof v==="number" ? String(v) : v; n++; } });
+      let n = 0; ["objetivo","dataProva","corridasSem","kmSemana","maiorLongao","melhorTempo","academiaMeses","diasSem","horasDia","melhorHorario","sono","meta"].forEach(k=>{ const v = r[k]; if (v!=null && v!=="" && !(k==="objetivo" && (!TPL[v] || TPL[v].custom))){ draft[k] = typeof v==="number" ? String(v) : v; n++; } });
       if (r.naoCorre===true){ draft.naoCorre = true; draft.corridasSem = 0; draft.kmSemana = 0; draft.maiorLongao = 0; draft.melhorTempo = ""; n++; }
       if (draft.objetivo) draft.temProva = PROVAS.some(x=>x[0]===draft.objetivo) ? "sim" : "nao";
       draft.lido = Array.isArray(r.resumo) ? r.resumo.slice(0,5).map(String) : [];
@@ -2702,14 +2703,15 @@ function avancar(i){
   if (i===2 && !draft.objetivo){ if (!need(false, draft.relato ? "Toque em Preencher pelo que eu contei, ou volte e escolha um objetivo." : "Conte o que você busca ou volte e escolha um objetivo.")) return; }
   if (i===3 && !need(draft.corridasSem!=null && draft.corridasSem!=="", "Quantas corridas por semana você faz hoje? (pode ser 0)")) return;
   if (i===4 && !need(draft.diasSem && draft.horasDia && draft.melhorHorario, "Escolha dias, tempo e horário.")) return;
-  if (i===5){ const f = PARQ.concat(EXTRA).filter(([k])=>!draft[k]); if (!need(!f.length, "Responda todas as perguntas de saúde.")) return; enviarPerfil(); return; }
+  if (i===5){ const f = PARQ.concat(EXTRA).filter(([k])=>!draft[k]); if (!need(!f.length, "Responda todas as perguntas de saúde.")) return; if (draft.naoCorre && !["massa","meu"].includes(draft.objetivo)){ telaEscolhaSemCorrida(); return; } enviarPerfil(); return; }
   if (mudandoObjetivo && i===1 && P){ mudandoObjetivo = false; enviarPerfil(); return; }
   onb(i+1);
 }
 let mudandoObjetivo = false;
 async function enviarPerfil(){
   const p = Object.assign({}, draft); delete p.lido;
-  const fl = flagsDe(p), plano = TPL[p.objetivo] ? gerarPlano(p) : null, viol = plano ? validar(plano, p) : [];
+  const meu = p.objetivo==="meu", mantem = meu && P && P.plano && P.plano.custom ? P.plano : null;
+  const fl = flagsDe(p), plano = mantem || (TPL[p.objetivo] && !meu ? gerarPlano(p) : null), viol = plano ? validar(plano, p) : [];
   if (plano && !plano.semProva){ const pk = Math.max(...plano.semanas.map(s=>s.longao)), t = TPL[p.objetivo]; if (pk < t.pico*0.75) fl.amarelo.push("Pelo ponto de partida, o longão chega a "+pk+" km até a prova (ideal ~"+t.pico+" km)"); }
   const ant = P && P.perfil || {};
   p.flags = fl; p.enviadoAt = new Date().toISOString();
@@ -2724,6 +2726,7 @@ async function enviarPerfil(){
       plano: plano ? {nome:plano.nome, nivel:plano.nivel, inicio:plano.inicio, semanas:plano.semanas.length, longoes:plano.semanas.map(s=>s.longao)} : null, at:p.enviadoAt};
     if (db && me && !DEMO) await db.collection("revisao").doc(me).set(resumo).catch(()=>{});
   }catch(e){}
+  if (meu && !plano){ telaMeuTreino({primeira:true}); return; }
   telaMatch();
 }
 function telaMatch(){
@@ -2760,8 +2763,8 @@ function telaPlanoPronto(){
   const s1 = pl.semanas[0], pj = projecao(p), m = metasDia(today);
   const app = tela('<span class="k">seu plano · '+esc(pl.nome)+'</span><h1 class="h1">Está pronto</h1>'+
     (pj ? '<div class="proj"><span class="k">projeção na prova</span><b>'+esc(pj)+'</b><span class="s">se cumprir 80% dos treinos · atualiza toda semana</span></div>' :
-      '<div class="proj"><span class="k">'+(pl.semProva?'bloco de':'até a prova')+'</span><b>'+pl.semanas.length+' semanas</b><span class="s">nível '+esc(pl.nivel)+' · semana leve a cada 4</span></div>')+
-    '<div class="phase">'+fasesDe(pl).map(f=>'<span style="flex:'+f[1]+';background:'+f[2]+'">'+esc(f[0])+'</span>').join("")+'</div>'+
+      (pl.custom ? '<div class="proj"><span class="k">seu treino</span><b>Sua semana, toda semana</b><span class="s">você muda quando quiser em Treino</span></div>' : '<div class="proj"><span class="k">'+(pl.semProva?'bloco de':'até a prova')+'</span><b>'+pl.semanas.length+' semanas</b><span class="s">nível '+esc(pl.nivel)+' · semana leve a cada 4</span></div>'))+
+    (pl.custom ? '' : '<div class="phase">'+fasesDe(pl).map(f=>'<span style="flex:'+f[1]+';background:'+f[2]+'">'+esc(f[0])+'</span>').join("")+'</div>')+
     '<span class="k">semana 1</span><div class="wk">'+s1.dias.map(d=>'<div class="'+(d.treinos.length?'':'r')+'">'+d.dia+'<b>'+(d.treinos.length?esc(d.treinos.map(t=>t.km?t.km+" km":t.t.split(" ")[0]).join(" + ")):"—")+'</b></div>').join("")+'</div>'+
     (!pl.semProva ? '<span class="k">longão por semana (km)</span><div class="bars">'+pl.semanas.map(x=>'<i class="'+(x.deload?'dl':'')+'" style="height:'+Math.max(4,100*x.longao/Math.max(...pl.semanas.map(y=>y.longao)))+'%"></i>').join("")+'</div>':'')+
     (m ? '<div class="hint">Proteína do dia: <b>'+m.prot[0]+'–'+m.prot[1]+' g</b>. A Nutri monta o cardápio quando você quiser.</div>' : '')+
@@ -2769,6 +2772,94 @@ function telaPlanoPronto(){
     '<button type="button" class="btn go" id="ok">É isso. Bora.</button><button type="button" class="lk" id="aj">Ajustar respostas</button>');
   $("ok").addEventListener("click", telaCompromisso);
   $("aj").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); onb(4); });
+}
+/* ===================== MEU TREINO: a pessoa monta a própria semana ===================== */
+function telaEscolhaSemCorrida(){
+  const app = tela('<h1 class="h1">Como você quer treinar?</h1><p class="s">Sem corrida, você escolhe: o app monta um plano de força ou você coloca os seus exercícios.</p>'+
+    [["massa","FOR","Gerar plano de força","o app monta a semana, sem corrida"],["meu","MEU","Montar meu treino","você coloca a sua semana e os seus exercícios"]].map(o=>'<button type="button" class="opt" data-esc="'+o[0]+'"><span class="ic">'+o[1]+'</span><span><b>'+o[2]+'</b><small>'+o[3]+'</small></span></button>').join("")+
+    '<button type="button" class="lk" id="bk">Voltar</button>');
+  app.querySelectorAll("[data-esc]").forEach(b=>b.addEventListener("click", ()=>{ draft.objetivo = b.dataset.esc; draft.temProva = "nao"; draft.dataProva = ""; salvarRascunho(); enviarPerfil(); }));
+  $("bk").addEventListener("click", ()=>onb(5));
+}
+let MT = null;
+const NOVO_MT = {
+  run:{k:"run", t:"Corrida", min:30, z:"fácil", ef:"3/10", passos:[]},
+  gym:{k:"gym", t:"Treino de força", min:50, ef:"RIR 2", passos:["Agachamento 3×10"]},
+  bike:{k:"bike", t:"Bike", min:60, ef:"3–4/10", passos:["Pedal em ritmo de conversa"]},
+  swim:{k:"swim", t:"Natação", min:40, ef:"4/10", passos:[]},
+  outro:{k:"gym", t:"Outro esporte", min:60, ef:"5/10", passos:[]}
+};
+function mtHTML(){
+  const inp = (rot, f, v, num, st) => '<label class="fld"><span class="k">'+rot+'</span><input class="inp" data-mt="'+f+'"'+(num ? ' type="number" inputmode="decimal" step="'+st+'" min="0"' : ' maxlength="40"')+' value="'+esc(v==null ? "" : v)+'"></label>';
+  return MT.modelo.dias.map((d, i)=>'<div class="box"><b>'+PROPDIA[i]+'</b>'+(d.treinos.length ? "" : '<p class="s">Descanso</p>')+
+    d.treinos.map((t, j)=>{ const id = i+"|"+j;
+      return '<div class="ped">'+inp("Treino", id+"|t", t.t)+'<div class="grid2">'+
+        (t.k==="run" ? inp("Distância (km)", id+"|km", t.km, 1, "0.5") : "")+inp("Duração (min)", id+"|min", t.min, 1, "5")+'</div>'+
+        inp("Esforço (ex.: 3/10 ou RIR 2)", id+"|ef", t.ef)+
+        (t.k==="gym" ? (t.passos||[]).map((x, n)=>{ const e = exTxt(x);
+          return e ? '<div class="exr"><input class="inp" data-mt="'+id+'|'+n+'|n" maxlength="40" aria-label="Exercício" placeholder="Exercício" value="'+esc(e.n)+'"><div class="grid2"><input class="inp" data-mt="'+id+'|'+n+'|s" type="number" inputmode="numeric" min="1" aria-label="Séries" placeholder="Séries" value="'+esc(e.sr.split("×")[0])+'"><input class="inp" data-mt="'+id+'|'+n+'|r" type="number" inputmode="numeric" min="1" aria-label="Repetições" placeholder="Reps" value="'+esc(e.sr.split("×")[1].replace(/\D/g, ""))+'"></div><input class="inp" data-mt="'+id+'|'+n+'|kg" type="number" inputmode="decimal" min="0" step="0.5" aria-label="Carga em kg" placeholder="Carga (kg, opcional)" value="'+esc(e.kg)+'"><button type="button" class="lk in" data-mtxe="'+id+'|'+n+'">remover exercício</button></div>'
+            : '<p class="s">'+esc(x)+' <button type="button" class="lk in" data-mtxe="'+id+'|'+n+'">remover</button></p>'; }).join("")+((t.passos||[]).length<40 ? '<button type="button" class="lk" data-mtae="'+id+'">Adicionar exercício</button>' : "") : "")+
+        '<div class="grid2"><label class="fld"><span class="k">Mover para</span><select class="inp" data-mtmv="'+id+'"><option value="">Escolher dia</option>'+PROPDIA.map((n, y)=>y===i ? "" : '<option value="'+y+'">'+n+'</option>').join("")+'</select></label><button type="button" class="btn ghost cor-ruim" data-mtrm="'+id+'">Remover treino</button></div></div>'; }).join("")+
+    (d.treinos.length<3 ? '<div class="between">'+[["run","Corrida"],["gym","Força"],["bike","Bike"],["swim","Natação"],["outro","Outro esporte"]].map(([k, n])=>'<button type="button" class="lk" data-mtadd="'+i+'|'+k+'">+ '+n+'</button>').join("")+'</div>' : "")+'</div>').join("");
+}
+function telaMeuTreino(op){
+  op = op || {};
+  const antigo = P && P.plano && P.plano.custom ? P.plano : null;
+  MT = {modelo:copiaMeu(antigo && antigo.modelo ? antigo.modelo : modeloVazio()), primeira:!!op.primeira, err:new Set()};
+  const monta = () => { MT.err = new Set(); $("mtc").innerHTML = mtHTML(); };
+  const topoMT = op.primeira ? "" : '<button type="button" class="back" id="mtb">← Treino</button>';
+  const app = tela(topoMT+'<h1 class="h1">Meu treino</h1><p class="s">Monte a sua semana. Ela se repete toda semana, e você pode mudar quando quiser. Dias sem treino são descanso.</p><div id="mtc"></div>'+
+    '<p class="msg" id="mtm"></p><button type="button" class="btn go" id="mts">Salvar meu treino</button>', op.primeira ? undefined : {tabs:true});
+  monta();
+  if (!op.primeira) $("mtb").addEventListener("click", ()=>ir("treino"));
+  const trs = (i, j) => MT.modelo.dias[i].treinos[j];
+  const idx = x => x.split("|").map(Number);
+  const marca = (el, txt) => {
+    let m = el.nextElementSibling; m = m && m.classList.contains("err") ? m : null;
+    if (txt && !m){ m = document.createElement("span"); m.className = "msg err"; m.setAttribute("role", "alert"); el.after(m); }
+    if (m) m.textContent = txt || "";
+    if (txt){ MT.err.add(el); el.setAttribute("aria-invalid", "true"); } else { MT.err.delete(el); el.removeAttribute("aria-invalid"); }
+  };
+  const numero = (el, max, inteiro, vazioOk) => {
+    const v = String(el.value).trim(); if (!v){ marca(el, vazioOk ? "" : "Informe um número."); return vazioOk ? {n:null} : null; }
+    const n = parseFloat(v.replace(",", ".")), ok = Number.isFinite(n) && n>0 && n<=max && (!inteiro || Number.isInteger(n));
+    marca(el, ok ? "" : "Use um número maior que 0 e até "+max+(inteiro ? ", inteiro" : "")+"."); return ok ? {n} : null;
+  };
+  const edita = el => {
+    const a = el.dataset.mt.split("|"), t = trs(+a[0], +a[1]); if (!t) return;
+    if (a[2]==="t"){ const v = el.value.trim(); marca(el, v ? "" : "Dê um nome ao treino."); if (v) t.t = v.slice(0, 40); }
+    else if (a[2]==="ef") t.ef = el.value.slice(0, 20);
+    else if (a[2]==="km" || a[2]==="min"){ const r = numero(el, a[2]==="km" ? LIM_MEU.km : LIM_MEU.min, false, true); if (r){ if (r.n==null) delete t[a[2]]; else t[a[2]] = r.n; } }
+    else {
+      const row = el.closest(".exr"), n = +a[3]; if (!row) return;
+      const [ne, se, re, ke] = [...row.querySelectorAll("input")], nm = ne.value.trim(); marca(ne, nm ? "" : "Dê um nome ao exercício.");
+      const sr = numero(se, LIM_MEU.ser, true, false), rp = numero(re, LIM_MEU.rep, true, false), kg = numero(ke, LIM_MEU.kg, false, true);
+      if (nm && sr && rp && kg) t.passos[n] = nm.slice(0, 40)+" "+sr.n+"×"+rp.n+(kg.n ? " · "+kg.n+" kg" : "");
+    }
+  };
+  const c = $("mtc");
+  c.addEventListener("input", e=>{ const el = e.target; if (el.tagName==="INPUT" && el.dataset.mt) edita(el); });
+  c.addEventListener("change", e=>{ const el = e.target; if (el.tagName!=="SELECT" || !el.dataset.mtmv || el.value==="") return;
+    const [i, j] = idx(el.dataset.mtmv), ds = MT.modelo.dias; if (ds[+el.value].treinos.length>=3){ toast("Esse dia já tem 3 treinos."); el.value = ""; return; }
+    const [x] = ds[i].treinos.splice(j, 1); ds[+el.value].treinos.push(x); monta(); });
+  c.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if (!b) return; const d = b.dataset;
+    if (d.mtrm){ const [i, j] = idx(d.mtrm); MT.modelo.dias[i].treinos.splice(j, 1); }
+    else if (d.mtadd){ const [i, k] = d.mtadd.split("|"); const ds = MT.modelo.dias[+i]; if (ds.treinos.length>=3) return; ds.treinos.push(copiaMeu(NOVO_MT[k])); }
+    else if (d.mtae){ const [i, j] = idx(d.mtae); trs(i, j).passos.push("Novo exercício 3×10"); }
+    else if (d.mtxe){ const [i, j, n] = idx(d.mtxe); trs(i, j).passos.splice(n, 1); }
+    else return;
+    monta();
+  });
+  $("mts").addEventListener("click", async ()=>{
+    const m = $("mtm"), erros = modeloValido(MT.modelo);
+    if (MT.err.size || erros.length){ m.className = "msg err"; m.textContent = MT.err.size ? "Corrija os campos marcados." : erros[0]; return; }
+    const b = $("mts"); b.disabled = true;
+    P.plano = planoMeu(MT.modelo, antigo ? antigo.inicio : key(addDays(today, -dow(today))), antigo, key(today));
+    P.viol = []; P.perfil.objetivo = "meu"; P.perfil.temProva = "nao"; P.perfil.dataProva = "";
+    await salvarPerfil();
+    if (MT.primeira) telaPlanoPronto(); else { semOff = 0; toast("Meu treino salvo."); ir("treino"); }
+  });
 }
 function telaCompromisso(){
   const p = P.perfil, pl = P.plano;
@@ -3849,6 +3940,7 @@ function telaSemana(o){
     '<button type="button" class="btn soft" id="todas">Ver todas as '+tot+' semanas</button>'+coach+
     (semOff===0 ? temporadaHTML() : '')+
     (semOff===0 && !temPersonal() ? (sc=>sc ? '<div class="flag ok"><b>Semana montada pelo coach.</b> '+esc(sc.v.foco||'')+' <button type="button" class="lk" id="scoff" style="padding:0">voltar ao plano original</button></div><button type="button" class="btn" id="scmont">Refazer a semana com o coach</button>' : '<button type="button" class="btn go" id="scmont">Montar minha semana com o coach</button>')(semanaCoachAtiva()) : '')+
+    (!temPersonal() ? '<button type="button" class="btn ghost" id="mmt">'+(pl.custom ? 'Editar meu treino' : 'Montar meu treino próprio')+'</button>' : '')+
     '<button type="button" class="btn ghost" id="mob">Mudar objetivo ou adicionar prova</button>';
   const app = tela(h, o); bindGo(app); bindChecks(app);
   app.querySelectorAll("[data-dia]").forEach(b=>b.addEventListener("click", ()=>sheetDia(b.dataset.dia)));
@@ -3856,7 +3948,8 @@ function telaSemana(o){
   $("todas").addEventListener("click", sheetTodasSemanas);
   const cc = app.querySelector(".coach"); if (cc) cc.addEventListener("click", irChatDoDia);
   $("wp").addEventListener("click", ()=>{ semOff--; render(); }); $("wn").addEventListener("click", ()=>{ semOff++; render(); });
-  $("mob").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
+  if ($("mmt")) $("mmt").addEventListener("click", ()=>{ if (!pl.custom && !confirm("Isso substitui o seu plano atual pelo treino que você montar. Continuar?")) return; telaMeuTreino(); });
+  $("mob").addEventListener("click", ()=>{ if (pl.custom && !confirm("Trocar o objetivo substitui o treino que você montou. Continuar?")) return; Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
   if ($("toff")) $("toff").addEventListener("click", ()=>manterPlanoOriginal(base0));
   if ($("fboff")) $("fboff").addEventListener("click", ()=>manterOriginalFeedback(base0));
   if (semOff===0) bindSugestao();
