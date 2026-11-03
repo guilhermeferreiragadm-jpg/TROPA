@@ -8,7 +8,8 @@ const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8"
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;");
 const gerador = trecho("/* ===================== GERADOR DE PLANO (regras fixas)", "const NOMEF").replace(/const NOMEF$/, "");
-const F = new Function(ajudas + "\n" + gerador + "\nreturn {TPL, gerarPlano, validar, nivel, modeloVazio, modeloValido, planoMeu};")();
+const F = new Function(ajudas + "\n" + gerador + "\nreturn {TPL, gerarPlano, validar, nivel, modeloVazio, modeloValido, planoMeu, sugerirExercicio, EXERCICIOS};")();
+const G = F;
 
 const todos = pl => pl.semanas.flatMap(s => s.dias.flatMap(d => d.treinos));
 
@@ -105,4 +106,28 @@ test("planoMeu a partir de um plano gerado preserva os dias até hoje", () => {
   const pl = F.planoMeu(modelo({0: [trino({t: "Novo"})]}), gerado.inicio, gerado, hoje);
   assert.deepEqual(pl.semanas[0].dias[0].treinos.map(t => t.t), feito[0]);
   assert.equal(pl.semanas[0].dias[1].treinos[0] && pl.semanas[0].dias[1].treinos[0].t, undefined);
+});
+
+test("sugestão de exercício: 'sup' completa com os supinos, começando pelo reto", () => {
+  const r = G.sugerirExercicio("sup", 6);
+  assert.equal(r[0], "Supino reto");
+  assert.ok(r.includes("Supino inclinado") && r.includes("Supino declinado"));
+  assert.ok(r.every(n => /supino/i.test(n)));
+});
+
+test("sugestão de exercício: sem acento, várias palavras, apelido e limite", () => {
+  assert.ok(G.sugerirExercicio("agach").includes("Agachamento livre"));
+  assert.ok(G.sugerirExercicio("triceps").some(n => /^Tríceps/.test(n)));
+  assert.ok(G.sugerirExercicio("sup incl").every(n => /Supino inclinado/.test(n)));
+  assert.ok(G.sugerirExercicio("rdl").includes("Levantamento terra romeno"));
+  assert.equal(G.sugerirExercicio("s", 6).length, 0, "uma letra só não sugere");
+  assert.ok(G.sugerirExercicio("rosca", 3).length === 3);
+  assert.deepEqual(G.sugerirExercicio("xyzxyz"), []);
+});
+
+test("base de exercícios: nomes únicos e preenchidos", () => {
+  const nomes = G.EXERCICIOS.map(e => e.n);
+  assert.ok(nomes.length > 150);
+  assert.equal(new Set(nomes).size, nomes.length);
+  assert.ok(nomes.every(n => n.trim() === n && n.length >= 3 && n.length <= 40));
 });

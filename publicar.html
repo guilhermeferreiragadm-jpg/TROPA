@@ -67,7 +67,7 @@ p{margin:0}
 .btn.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--sep)}
 .btn.sm{min-height:38px;font-size:.9375rem;width:auto;border-radius:999px;padding:0 14px}
 .btn:disabled{opacity:.4;cursor:default;transform:none}
-.ped,.exr{display:flex;flex-direction:column;gap:10px}.ped{padding-top:12px;border-top:1px solid var(--surface-2)}.ped>.lk,.exr>.lk{align-self:flex-start}select.inp{appearance:auto}
+.ped,.exr{display:flex;flex-direction:column;gap:10px}.ped{padding-top:12px;border-top:1px solid var(--surface-2)}.ped>.lk,.exr>.lk{align-self:flex-start}select.inp{appearance:auto}.exr{position:relative}.sug{position:absolute;left:0;right:0;z-index:5;margin:2px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--sep);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:260px;overflow-y:auto}.sug li{padding:12px;border-radius:8px;color:var(--tx);font-size:16px;cursor:pointer;min-height:44px;display:flex;align-items:center}.sug li:hover,.sug li[aria-selected=true]{background:var(--surface-2)}.sug b{font-weight:700}
 .lk{border:0;background:none;font-weight:600;font-size:.9375rem;padding:10px;align-self:center;color:var(--go-ink)}
 .back{border:0;background:none;font-weight:600;font-size:1.0625rem;padding:10px 10px 10px 0;margin-left:-4px;align-self:flex-start;display:inline-flex;gap:4px;align-items:center;color:var(--go-ink);min-height:44px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -814,6 +814,30 @@ function validar(plano, p){
 /* ===== Meu treino: o plano que a pessoa monta (mesmo formato do gerado, marcado custom) ===== */
 const LIM_MEU = {km:500, min:1000, ser:99, rep:999, kg:1000};
 const KS_MEU = ["run","gym","bike","swim"];
+/* base de exercícios de academia para sugerir enquanto a pessoa digita ("Nome=apelidos separados por espaço"); a ordem é a da sugestão */
+const EXERCICIOS = ("Supino reto|Supino inclinado|Supino declinado|Supino reto com halteres|Supino inclinado com halteres|Supino declinado com halteres|Supino na máquina|Supino articulado|Supino no Smith=smith|Supino inclinado no Smith=smith|Supino com pegada fechada=fechado|Crucifixo reto|Crucifixo inclinado|Crucifixo na máquina=voador peck deck|Crossover=cross polia|Crossover polia alta|Crossover polia baixa|Peck deck=voador|Flexão de braço=apoio|Flexão de braço inclinada|Flexão de braço declinada|Mergulho nas paralelas=paralela dip|Pullover com halter|Pullover na polia|"+
+"Puxada frontal=pulley puxador|Puxada atrás da nuca|Puxada com triângulo|Puxada supinada|Puxada articulada|Barra fixa=pull-up pullup|Barra fixa supinada=chin-up|Barra fixa assistida|Remada curvada=remo curvado|Remada curvada supinada|Remada unilateral com halter=serrote|Remada baixa=remo sentado|Remada baixa com triângulo|Remada na máquina|Remada cavalinho=remo t|Remada alta|Remada articulada|Pulldown com corda=pull down|Levantamento terra=deadlift|Levantamento terra romeno=rdl stiff romeno|Levantamento terra sumô|Stiff com halteres=romeno|Hiperextensão=banco lombar extensão lombar|Encolhimento com barra=trapézio|Encolhimento com halteres=trapézio|Face pull=facepull|"+
+"Desenvolvimento com barra=militar|Desenvolvimento com halteres|Desenvolvimento Arnold=arnold|Desenvolvimento na máquina|Desenvolvimento no Smith=smith|Elevação lateral|Elevação lateral na polia|Elevação lateral na máquina|Elevação frontal|Elevação frontal com anilha|Crucifixo inverso|Crucifixo inverso na máquina=voador invertido|Remada alta com barra|Rotação externa com halter=manguito|"+
+"Rosca direta|Rosca direta com barra W=barra w|Rosca alternada|Rosca martelo|Rosca martelo na corda|Rosca concentrada|Rosca Scott=banco scott|Rosca inversa|Rosca na polia|Rosca 21|Rosca inclinada|Rosca spider|"+
+"Tríceps testa|Tríceps testa com halteres|Tríceps corda=pulley polia|Tríceps pulley com barra reta|Tríceps francês|Tríceps francês unilateral|Tríceps coice|Tríceps banco=mergulho banco|Tríceps na máquina|Tríceps supinado na polia|Extensão de tríceps acima da cabeça|"+
+"Agachamento livre|Agachamento com barra|Agachamento frontal|Agachamento no Smith=smith|Agachamento hack=hack|Agachamento sumô|Agachamento búlgaro=bulgaro|Agachamento goblet|Agachamento com salto=jump|Agachamento na máquina|Agachamento com halteres|Leg press 45=leg press 45 graus|Leg press horizontal|Cadeira extensora=extensora|Cadeira extensora unilateral|Mesa flexora=flexora|Cadeira flexora=flexora|Flexora em pé|Afundo=avanço passada lunge|Afundo no Smith|Afundo com halteres|Avanço caminhando=passada|Passada lateral|Step-up=subida banco degrau|Stiff na barra=romeno|Cadeira adutora=adutora|Cadeira abdutora=abdutora|Adução na polia|Abdução na polia|"+
+"Elevação pélvica=hip thrust|Hip thrust na barra|Hip thrust na máquina|Ponte de glúteo=ponte glúteo|Glúteo na polia=coice polia|Coice na máquina|Coice com caneleira|Extensão de quadril|Abdução de quadril em pé|Glúteo 4 apoios=quatro apoios|Cadeira romana|"+
+"Panturrilha em pé|Panturrilha sentado|Panturrilha no leg press|Panturrilha no Smith|Panturrilha unilateral|Tibial anterior=canela|"+
+"Abdominal supra=crunch|Abdominal infra|Abdominal na máquina|Abdominal na polia=crunch polia|Abdominal remador|Abdominal bicicleta|Abdominal oblíquo|Elevação de pernas|Elevação de pernas na barra fixa|Prancha=plank|Prancha lateral|Prancha com toque no ombro|Mountain climber=escalador|Roda abdominal=rollout|Russian twist=rotação russa|Rotação de tronco na polia=woodchop|Dead bug|Bird dog|"+
+"Rosca de punho=antebraço|Rosca de punho inversa=antebraço|Pegada de fazendeiro=farmer carry|Caminhada do fazendeiro=farmer carry|Kettlebell swing=swing|Levantamento turco=turkish get-up|Arremesso de bola=wall ball|Burpee|Corda naval=battle rope|Salto na caixa=box jump|Remo ergômetro|Trenó empurrar=sled push|Clean com barra=power clean|Arranco=snatch|Arremesso=clean and jerk").split("|").map(x=>{ const [n, a] = x.split("="); return {n, a:a||""}; });
+const semAcento = t => String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+// até `max` exercícios cujo nome (ou apelido) começa com o que foi digitado, palavra por palavra; começo do nome vem primeiro
+function sugerirExercicio(q, max){
+  const ts = semAcento(q).split(/[\s,]+/).filter(Boolean); max = max || 6;
+  if (!ts.length || semAcento(q).trim().length<2) return [];
+  const out = [];
+  EXERCICIOS.forEach((e, ordem)=>{
+    const nome = semAcento(e.n), pal = nome.split(/[\s-]+/).concat(semAcento(e.a).split(/\s+/).filter(Boolean));
+    if (!ts.every(t=>pal.some(w=>w.startsWith(t)))) return;
+    out.push({n:e.n, p:(nome.startsWith(ts[0]) ? 0 : 1)*1000 + ordem});
+  });
+  return out.sort((a, b)=>a.p-b.p).slice(0, max).map(x=>x.n);
+}
 const copiaMeu = x => JSON.parse(JSON.stringify(x));
 function modeloVazio(){ return {dias:[0,1,2,3,4,5,6].map(()=>({treinos:[]}))}; }
 function modeloValido(m){
@@ -2799,7 +2823,7 @@ function mtHTML(){
         (t.k==="run" ? inp("Distância (km)", id+"|km", t.km, 1, "0.5") : "")+inp("Duração (min)", id+"|min", t.min, 1, "5")+'</div>'+
         inp("Esforço (ex.: 3/10 ou RIR 2)", id+"|ef", t.ef)+
         (t.k==="gym" ? (t.passos||[]).map((x, n)=>{ const e = exTxt(x);
-          return e ? '<div class="exr"><input class="inp" data-mt="'+id+'|'+n+'|n" maxlength="40" aria-label="Exercício" placeholder="Exercício" value="'+esc(e.n)+'"><div class="grid2"><input class="inp" data-mt="'+id+'|'+n+'|s" type="number" inputmode="numeric" min="1" aria-label="Séries" placeholder="Séries" value="'+esc(e.sr.split("×")[0])+'"><input class="inp" data-mt="'+id+'|'+n+'|r" type="number" inputmode="numeric" min="1" aria-label="Repetições" placeholder="Reps" value="'+esc(e.sr.split("×")[1].replace(/\D/g, ""))+'"></div><input class="inp" data-mt="'+id+'|'+n+'|kg" type="number" inputmode="decimal" min="0" step="0.5" aria-label="Carga em kg" placeholder="Carga (kg, opcional)" value="'+esc(e.kg)+'"><button type="button" class="lk in" data-mtxe="'+id+'|'+n+'">remover exercício</button></div>'
+          return e ? '<div class="exr"><input class="inp" data-mt="'+id+'|'+n+'|n" maxlength="40" aria-label="Exercício" placeholder="Exercício" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" value="'+esc(e.n)+'"><div class="grid2"><input class="inp" data-mt="'+id+'|'+n+'|s" type="number" inputmode="numeric" min="1" aria-label="Séries" placeholder="Séries" value="'+esc(e.sr.split("×")[0])+'"><input class="inp" data-mt="'+id+'|'+n+'|r" type="number" inputmode="numeric" min="1" aria-label="Repetições" placeholder="Reps" value="'+esc(e.sr.split("×")[1].replace(/\D/g, ""))+'"></div><input class="inp" data-mt="'+id+'|'+n+'|kg" type="number" inputmode="decimal" min="0" step="0.5" aria-label="Carga em kg" placeholder="Carga (kg, opcional)" value="'+esc(e.kg)+'"><button type="button" class="lk in" data-mtxe="'+id+'|'+n+'">remover exercício</button></div>'
             : '<p class="s">'+esc(x)+' <button type="button" class="lk in" data-mtxe="'+id+'|'+n+'">remover</button></p>'; }).join("")+((t.passos||[]).length<40 ? '<button type="button" class="lk" data-mtae="'+id+'">Adicionar exercício</button>' : "") : "")+
         '<div class="grid2"><label class="fld"><span class="k">Mover para</span><select class="inp" data-mtmv="'+id+'"><option value="">Escolher dia</option>'+PROPDIA.map((n, y)=>y===i ? "" : '<option value="'+y+'">'+n+'</option>').join("")+'</select></label><button type="button" class="btn ghost cor-ruim" data-mtrm="'+id+'">Remover treino</button></div></div>'; }).join("")+
     (d.treinos.length<3 ? '<div class="between">'+[["run","Corrida"],["gym","Força"],["bike","Bike"],["swim","Natação"],["outro","Outro esporte"]].map(([k, n])=>'<button type="button" class="lk" data-mtadd="'+i+'|'+k+'">+ '+n+'</button>').join("")+'</div>' : "")+'</div>').join("");
@@ -2842,7 +2866,17 @@ function telaMeuTreino(op){
     }
   };
   const c = $("mtc");
-  c.addEventListener("input", e=>{ const el = e.target; if (el.tagName==="INPUT" && el.dataset.mt) edita(el); });
+  const fechaSug = () => { c.querySelectorAll(".sug").forEach(u=>u.remove()); c.querySelectorAll('[aria-expanded="true"]').forEach(i=>i.setAttribute("aria-expanded", "false")); };
+  const mostraSug = el => {
+    fechaSug(); const lista = sugerirExercicio(el.value, 6); if (!lista.length || (lista.length===1 && lista[0]===el.value.trim())) return;
+    const u = document.createElement("ul"); u.className = "sug"; u.setAttribute("role", "listbox"); u.style.top = (el.offsetTop+el.offsetHeight)+"px";
+    u.innerHTML = lista.map(n=>'<li role="option" data-n="'+esc(n)+'">'+esc(n)+'</li>').join("");
+    el.after(u); el.setAttribute("aria-expanded", "true");
+    u.addEventListener("pointerdown", ev=>{ const li = ev.target.closest("li"); if (!li) return; ev.preventDefault(); el.value = li.dataset.n; edita(el); fechaSug(); });
+  };
+  c.addEventListener("input", e=>{ const el = e.target; if (el.tagName==="INPUT" && el.dataset.mt){ edita(el); if (el.dataset.mt.endsWith("|n")) mostraSug(el); } });
+  c.addEventListener("focusout", e=>{ if (e.target.dataset && e.target.dataset.mt && e.target.dataset.mt.endsWith("|n")) setTimeout(fechaSug, 120); });
+  c.addEventListener("keydown", e=>{ if (e.key==="Escape") fechaSug(); });
   c.addEventListener("change", e=>{ const el = e.target; if (el.tagName!=="SELECT" || !el.dataset.mtmv || el.value==="") return;
     const [i, j] = idx(el.dataset.mtmv), ds = MT.modelo.dias; if (ds[+el.value].treinos.length>=3){ toast("Esse dia já tem 3 treinos."); el.value = ""; return; }
     const [x] = ds[i].treinos.splice(j, 1); ds[+el.value].treinos.push(x); monta(); });
