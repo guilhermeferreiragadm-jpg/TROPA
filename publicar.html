@@ -775,8 +775,8 @@ function gerarPlano(p){
       d[1].push({k:"gym", t:"Força B · superiores", min:50, ef:"RIR 2", passos:["Supino 4×8","Remada curvada 4×8","Desenvolvimento 3×10","Puxada frente 3×10","Rosca direta 3×12"]});
       d[3].push({k:"gym", t:"Força C · corpo todo", min:45, ef:"RIR 2", passos:["Levantamento terra 3×6","Supino inclinado 3×10","Búlgaro 3×8","Prancha 3×40 s"]});
       if (dias>=5) d[4].push({k:"gym", t:"Força D · ombro e braço", min:40, ef:"RIR 2", passos:["Elevação lateral 4×12","Barra fixa 4×8","Rosca martelo 3×12","Tríceps corda 3×12"]});
-      d[5].push({k:"run", t:"Cardio leve", min:30, ef:"3/10", passos:["30 min de corrida leve, bike ou caminhada rápida"]});
-      sem.dias = d.map((x,i)=>({dia:DIAS[i], treinos:x})); sem.longao = Math.min(lg, 5); semanas.push(sem); continue;
+      d[5].push(p.naoCorre ? {k:"bike", t:"Cardio opcional", min:30, ef:"3/10", passos:["30 min de caminhada rápida ou bike leve, só se estiver com vontade"]} : {k:"run", t:"Cardio leve", min:30, ef:"3/10", passos:["30 min de corrida leve, bike ou caminhada rápida"]});
+      sem.dias = d.map((x,i)=>({dia:DIAS[i], treinos:x})); sem.longao = p.naoCorre ? 0 : Math.min(lg, 5); semanas.push(sem); continue;
     }
     if (t.mods.includes("hyrox") && !deload) d[3].push({k:"gym", t:"Hyrox · estações", min:50, ef:"6–7/10", passos:["Wall ball 4×15","Remada no remo 4×250 s","Afundo 4×12","Burpee 4×10"]});
     d[6].push({k:"run", t: t.geral ? "Corrida longa leve" : "Longão", km:lg, z:"fácil", ef:"3–4/10", passos:["10 min trotando bem leve","Correr "+lg+" km em ritmo de conversa (esforço 3–4/10)","5 min caminhando e alongar panturrilha"]});
@@ -2578,8 +2578,9 @@ function onb(i){
   } else if (i===3){
     h += '<h1 class="h1">Onde você está hoje</h1>'+(draft.lido?'<div class="chips"><span>✓ preenchido pelo que você contou</span></div>':'')+
       (forca ? '<div class="grid2"><div class="fld"><label for="f-am">Meses de academia</label><input class="inp" id="f-am" data-f="academiaMeses" type="number" inputmode="numeric" placeholder="12"></div><div class="fld"><span class="lbl">Onde treina</span>'+seg("onde",[["academia","Academia"],["casa","Casa"]],2)+'</div></div>' : '')+
-      '<div class="grid2"><div class="fld"><label for="f-cs">Corridas por semana</label><input class="inp" id="f-cs" data-f="corridasSem" type="number" inputmode="numeric" min="0" placeholder="2"></div><div class="fld"><label for="f-km">Km na semana</label><input class="inp" id="f-km" data-f="kmSemana" type="number" inputmode="decimal" min="0" placeholder="10"></div></div>'+
-      '<div class="grid2"><div class="fld"><label for="f-ml">Maior corrida (30 dias, km)</label><input class="inp" id="f-ml" data-f="maiorLongao" type="number" inputmode="decimal" placeholder="6"></div><div class="fld"><label for="f-mt">Melhor 5 ou 10 km</label><input class="inp" id="f-mt" data-f="melhorTempo" maxlength="30" placeholder="10 km em 58 min"></div></div>'+
+      '<button type="button" class="opt" data-nc="1" aria-pressed="'+!!draft.naoCorre+'"><span class="ic">0</span><span><b>Não corro</b><small>Sem corrida: pulamos as perguntas abaixo</small></span></button>'+
+      (draft.naoCorre ? "" : '<div class="grid2"><div class="fld"><label for="f-cs">Corridas por semana</label><input class="inp" id="f-cs" data-f="corridasSem" type="number" inputmode="numeric" min="0" placeholder="2"></div><div class="fld"><label for="f-km">Km na semana</label><input class="inp" id="f-km" data-f="kmSemana" type="number" inputmode="decimal" min="0" placeholder="10"></div></div>'+
+      '<div class="grid2"><div class="fld"><label for="f-ml">Maior corrida (30 dias, km)</label><input class="inp" id="f-ml" data-f="maiorLongao" type="number" inputmode="decimal" placeholder="6"></div><div class="fld"><label for="f-mt">Melhor 5 ou 10 km</label><input class="inp" id="f-mt" data-f="melhorTempo" maxlength="30" placeholder="10 km em 58 min"></div></div>')+
       (!forca ? '<div class="fld"><label for="f-am2">Meses de academia</label><input class="inp" id="f-am2" data-f="academiaMeses" type="number" inputmode="numeric" placeholder="0"></div>' : '')+
       (tri ? '<div class="fld"><span class="lbl">Nada crawl 400 m sem parar?</span>'+seg("nada400",[["sim","Sim"],["nao","Não"]])+'</div><div class="fld"><span class="lbl">Bike</span>'+seg("temBike",[["nao","Não tenho"],["bike","Bike"],["bike_rolo","Bike + rolo"]])+'</div>' : '')+
       '<div class="fld"><label for="f-pp">O que te fez parar da última vez? (opcional)</label><input class="inp" id="f-pp" data-f="parouPorque" maxlength="80" placeholder="ex.: lesão, faculdade"></div>'+nav();
@@ -2606,6 +2607,11 @@ function onb(i){
   const seg0 = app.querySelectorAll(".prog i")[i]; if (seg0){ void seg0.offsetWidth; seg0.classList.add("on"); }   // a etapa atual preenche com a transição
   bindForm(app, (n)=>{ if (n==="objetivo") onb(1); });
   app.querySelectorAll("[data-ob]").forEach(b=>b.addEventListener("click", ()=>{ const v = b.dataset.ob; if (v==="prova"){ draft.temProva = "sim"; if (!PROVAS.some(x=>x[0]===draft.objetivo)) draft.objetivo = ""; } else { draft.temProva = "nao"; draft.objetivo = v; draft.dataProva = ""; } salvarRascunho(); onb(1); }));
+  app.querySelectorAll("[data-nc]").forEach(b=>b.addEventListener("click", ()=>{
+    draft.naoCorre = !draft.naoCorre;
+    if (draft.naoCorre){ draft.corridasSem = 0; draft.kmSemana = 0; draft.maiorLongao = 0; draft.melhorTempo = ""; } else draft.corridasSem = "";
+    salvarRascunho(); onb(3);
+  }));
   const dp = $("f-dp"); if (dp) dp.addEventListener("change", ()=>{ draft.dataProva = dp.value; salvarRascunho(); onb(1); });
   const sg = $("sug"); if (sg) sg.addEventListener("click", ()=>{ draft.temProva = "sugere"; onb(2); });
   const db0 = $("docb"); if (db0) db0.addEventListener("click", ()=>sheetDocumento(true));
@@ -2621,9 +2627,10 @@ async function lerRelato(){
   m.textContent = "Lendo o que você contou…";
   const ops = Object.entries(TPL).map(([k,v])=>k+" = "+v.nome).join("; ");
   try{
-    const r = await sample.json("Extraia dados de um praticante de exercício a partir do relato. Hoje é "+key(today)+". Se ele não citou prova, escolha o objetivo mais adequado entre: "+ops+". Responda só JSON com as chaves que conseguir inferir: {\"objetivo\":chave,\"dataProva\":\"AAAA-MM-DD\",\"corridasSem\":n,\"kmSemana\":n,\"maiorLongao\":n,\"melhorTempo\":\"texto\",\"academiaMeses\":n,\"diasSem\":n,\"horasDia\":n,\"melhorHorario\":\"cedo|almoco|tarde|noite\",\"sono\":n,\"meta\":\"texto curto\",\"resumo\":[\"até 5 fatos curtos, ex.: academia 3x\"]}. Relato: <<<"+txt.slice(0,2000)+">>>");
+    const r = await sample.json("Extraia dados de um praticante de exercício a partir do relato. Hoje é "+key(today)+". Se ele não citou prova, escolha o objetivo mais adequado entre: "+ops+". Responda só JSON com as chaves que conseguir inferir: {\"objetivo\":chave,\"dataProva\":\"AAAA-MM-DD\",\"naoCorre\":true se disser que não corre,\"corridasSem\":n,\"kmSemana\":n,\"maiorLongao\":n,\"melhorTempo\":\"texto\",\"academiaMeses\":n,\"diasSem\":n,\"horasDia\":n,\"melhorHorario\":\"cedo|almoco|tarde|noite\",\"sono\":n,\"meta\":\"texto curto\",\"resumo\":[\"até 5 fatos curtos, ex.: academia 3x\"]}. Relato: <<<"+txt.slice(0,2000)+">>>");
     if (r && typeof r === "object"){
       let n = 0; ["objetivo","dataProva","corridasSem","kmSemana","maiorLongao","melhorTempo","academiaMeses","diasSem","horasDia","melhorHorario","sono","meta"].forEach(k=>{ const v = r[k]; if (v!=null && v!=="" && !(k==="objetivo" && !TPL[v])){ draft[k] = typeof v==="number" ? String(v) : v; n++; } });
+      if (r.naoCorre===true){ draft.naoCorre = true; draft.corridasSem = 0; draft.kmSemana = 0; draft.maiorLongao = 0; draft.melhorTempo = ""; n++; }
       if (draft.objetivo) draft.temProva = PROVAS.some(x=>x[0]===draft.objetivo) ? "sim" : "nao";
       draft.lido = Array.isArray(r.resumo) ? r.resumo.slice(0,5).map(String) : [];
       salvarRascunho(); onb(2); const m2 = $("lm"); if (m2) m2.textContent = "Preenchi "+n+" respostas. Confira nas próximas telas.";
