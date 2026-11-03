@@ -2831,7 +2831,7 @@ function telaMeuTreino(op){
     else if (a[2]==="ef") t.ef = el.value.slice(0, 20);
     else if (a[2]==="km" || a[2]==="min"){ const r = numero(el, a[2]==="km" ? LIM_MEU.km : LIM_MEU.min, false, true); if (r){ if (r.n==null) delete t[a[2]]; else t[a[2]] = r.n; } }
     else {
-      const row = el.closest(".exr"), n = +a[3]; if (!row) return;
+      const row = el.closest(".exr"), n = +a[2]; if (!row) return;
       const [ne, se, re, ke] = [...row.querySelectorAll("input")], nm = ne.value.trim(); marca(ne, nm ? "" : "Dê um nome ao exercício.");
       const sr = numero(se, LIM_MEU.ser, true, false), rp = numero(re, LIM_MEU.rep, true, false), kg = numero(ke, LIM_MEU.kg, false, true);
       if (nm && sr && rp && kg) t.passos[n] = nm.slice(0, 40)+" "+sr.n+"×"+rp.n+(kg.n ? " · "+kg.n+" kg" : "");
@@ -3626,7 +3626,7 @@ function telaHoje(o){
     (aj && !pausaCobre(PAUSAS(), k) ? '<div class="flag">'+rotuloAj(aj)+': '+esc({pular:"treino de hoje cancelado",descanso:"hoje virou descanso",leve:"treino na versão leve"}[aj.acao]||"ajuste")+(aj.motivo?' · '+esc(aj.motivo):'')+' <button type="button" class="lk in" id="undo">desfazer</button></div>' : '')+
     sugestaoHTML(sugestaoSemana())+corpoManhaHTML();
   const sec = (id, tit, corpo, aberta) => '<details class="dia-sec" data-sec="'+id+'"'+(aberta?' open':'')+'><summary>'+tit+'</summary><div class="dia-corpo">'+corpo+'</div></details>';
-  const h = topo('semana '+(s&&s.w>0&&pl?s.w+' de '+pl.semanas.length:'')+(dd!=null?' · '+dd+' dias p/ '+({meia:'a meia',maratona:'a maratona','703':'o 70.3',tri:'o triatlo','5k':'os 5 km','10k':'os 10 km'}[p.objetivo]||'a prova'):''), 'Hoje, '+esc(today.toLocaleDateString('pt-BR',{weekday:'long'}).replace('-feira','')))+
+  const h = topo((pl && pl.custom ? esc(pl.nome) : 'semana '+(s&&s.w>0&&pl?s.w+' de '+pl.semanas.length:''))+(dd!=null?' · '+dd+' dias p/ '+({meia:'a meia',maratona:'a maratona','703':'o 70.3',tri:'o triatlo','5k':'os 5 km','10k':'os 10 km'}[p.objetivo]||'a prova'):''), 'Hoje, '+esc(today.toLocaleDateString('pt-BR',{weekday:'long'}).replace('-feira','')))+
     (avisos ? '<div class="avisos">'+avisos+'</div>' : '')+semanaBHTML(f, ms)+checkinRowHTML(c, pr)+heroTreinoHTML(ts, k)+
     feedbackHTML()+metaCheckinHTML()+tilesHojeHTML(c, pr)+(agora>=20 && c && !LOG["co_"+k] ? '<button type="button" class="ci hot" data-go="hoje|checkout"><span><b>Hora de fechar o dia</b><small>30 segundos: como foi, nota e feedback</small></span><span class="n">→</span></button>' : '')+
     (pa ? '' : '<button type="button" class="lk" id="pz">Doente ou machucado? Pausar o plano</button>')+
@@ -3932,12 +3932,12 @@ function telaSemana(o){
     return '<button type="button" class="semn" data-off="'+(semOff + off/7)+'"><div class="between"><b>Semana '+si.w+'</b><span class="chip">'+esc(fs)+(si.sem.deload?' · leve':'')+'</span></div><span class="k">'+fmt(base)+' a '+fmt(addDays(base,6))+(rs.tot ? ' · '+rs.tot+(rs.tot===1?' treino':' treinos') : '')+'</span>'+(si.sem.longao ? '<div class="lgb"><span class="k">longão '+si.sem.longao+' km</span><div class="bar"><i style="width:'+Math.round(100*si.sem.longao/mx)+'%"></i></div></div>' : '')+'</button>'; }
   const nav = '<div class="between"><button type="button" class="btn sm ghost wnav" id="wp" aria-label="Semana anterior">‹</button><span class="k">'+(semOff===0 ? 'esta semana' : semOff<0 ? 'semana passada' : 'daqui a '+semOff+(semOff===1?' semana':' semanas'))+'</span><button type="button" class="btn sm ghost wnav" id="wn" aria-label="Próxima semana">›</button></div>';
   const rec = String(recadoCoach()||""), coach = '<div class="box"><div class="coach"><span class="av">C</span><div><b>Coach</b><br>'+esc(rec.length>150 ? rec.slice(0, rec.lastIndexOf(" ",150))+"…" : rec)+'</div></div></div>';
-  let h = topo(s && s.sem ? 'semana '+s.w+' de '+tot+' · '+fase : esc(pl.nome), semOff===0 ? "Sua semana" : semOff<0 ? "Semana passada" : "Próxima semana")+
+  let h = topo(s && s.sem && !pl.custom ? 'semana '+s.w+' de '+tot+' · '+fase : esc(pl.nome), semOff===0 ? "Sua semana" : semOff<0 ? "Semana passada" : "Próxima semana")+
     (LOG["teto_"+key(base0)] ? (tt=>'<div class="flag"><b>Carga reduzida por segurança.</b> Esta semana passava de '+tt.de+' min e '+(tt.fonte==='fisio' ? 'o limite do seu fisioterapeuta é '+tt.teto+' min' : 'o limite é '+tt.teto+' min (+10% do que você vem fazendo)')+'. Passei '+tt.cortes+(tt.cortes===1?' dia':' dias')+' para a versão leve.'+(tt.excedeu?' Ainda ficou acima do limite: fale com o coach.':'')+(tt.fonte==='fisio' ? '' : ' <button type="button" class="lk in" id="toff">manter o plano original</button>')+'</div>')(LOG["teto_"+key(base0)]) : '')+
     (semOff===0 ? sugestaoHTML(sugestaoSemana()) : '')+
     (LOG["fb_"+key(base0)] && LOG["fb_"+key(base0)].estado==="aceito" ? '<div class="flag"><b>Semana aliviada pelo seu feedback.</b> Passei '+LOG["fb_"+key(base0)].cortes+(LOG["fb_"+key(base0)].cortes===1?' dia':' dias')+' para a versão leve ('+LOG["fb_"+key(base0)].de+' para '+LOG["fb_"+key(base0)].para+' min).'+(addDays(base0,6) < today ? '' : ' <button type="button" class="lk in" id="fboff">manter o plano original</button>')+'</div>' : '')+
-    contagem+nav+semCard(base0, semOff===0 ? "Semana "+wAtual+" · agora" : "Semana "+wAtual, true)+(prox ? '<span class="k">próximas semanas</span>'+prox : '')+
-    '<button type="button" class="btn soft" id="todas">Ver todas as '+tot+' semanas</button>'+coach+
+    (pl.custom ? '' : contagem)+nav+semCard(base0, semOff===0 ? "Semana "+wAtual+" · agora" : "Semana "+wAtual, true)+(prox ? '<span class="k">próximas semanas</span>'+prox : '')+
+    (pl.custom ? '' : '<button type="button" class="btn soft" id="todas">Ver todas as '+tot+' semanas</button>')+coach+
     (semOff===0 ? temporadaHTML() : '')+
     (semOff===0 && !temPersonal() ? (sc=>sc ? '<div class="flag ok"><b>Semana montada pelo coach.</b> '+esc(sc.v.foco||'')+' <button type="button" class="lk" id="scoff" style="padding:0">voltar ao plano original</button></div><button type="button" class="btn" id="scmont">Refazer a semana com o coach</button>' : '<button type="button" class="btn go" id="scmont">Montar minha semana com o coach</button>')(semanaCoachAtiva()) : '')+
     (!temPersonal() ? '<button type="button" class="btn ghost" id="mmt">'+(pl.custom ? 'Editar meu treino' : 'Montar meu treino próprio')+'</button>' : '')+
@@ -3945,7 +3945,7 @@ function telaSemana(o){
   const app = tela(h, o); bindGo(app); bindChecks(app);
   app.querySelectorAll("[data-dia]").forEach(b=>b.addEventListener("click", ()=>sheetDia(b.dataset.dia)));
   app.querySelectorAll("[data-off]").forEach(b=>b.addEventListener("click", ()=>{ semOff = +b.dataset.off; render(); }));
-  $("todas").addEventListener("click", sheetTodasSemanas);
+  if ($("todas")) $("todas").addEventListener("click", sheetTodasSemanas);
   const cc = app.querySelector(".coach"); if (cc) cc.addEventListener("click", irChatDoDia);
   $("wp").addEventListener("click", ()=>{ semOff--; render(); }); $("wn").addEventListener("click", ()=>{ semOff++; render(); });
   if ($("mmt")) $("mmt").addEventListener("click", ()=>{ if (!pl.custom && !confirm("Isso substitui o seu plano atual pelo treino que você montar. Continuar?")) return; telaMeuTreino(); });
