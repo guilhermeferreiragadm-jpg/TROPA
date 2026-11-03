@@ -741,7 +741,8 @@ const TPL = {
   correr:   {nome:"Começar a correr", pico:8, geral:true, mods:["run"]},
   emagrecer:{nome:"Emagrecer com saúde", pico:8, geral:true, mods:["run"]},
   massa:    {nome:"Ganhar massa e força", pico:5, geral:true, forca:true, mods:["run"]},
-  saude:    {nome:"Saúde e disposição", pico:6, geral:true, mods:["run"]}
+  saude:    {nome:"Saúde e disposição", pico:6, geral:true, mods:["run"]},
+  meu:      {nome:"Meu treino", pico:0, geral:true, custom:true, mods:[]}
 };
 function nivel(p){ const r = +p.corridasSem||0, km = +p.kmSemana||0; if (TPL[p.objetivo] && TPL[p.objetivo].forca){ const m = +p.academiaMeses||0; return m<6?"iniciante":m<24?"intermediario":"avancado"; } if (r<=1 || km<8) return "iniciante"; if (km<20) return "base"; if (km<35) return "intermediario"; return "avancado"; }
 const floor2 = x => Math.floor(x*2)/2;
@@ -799,6 +800,7 @@ function gerarPlano(p){
   return {versao:2, objetivo:p.objetivo, nome:t.nome, nivel:lv, inicio:key(start), semProva, semanas, geradoEm:new Date().toISOString()};
 }
 function validar(plano, p){
+  if (plano.custom) return [];
   const v = []; const maior = baseLongao(p); let prev = maior;
   plano.semanas.forEach(s=>{
     if (s.longao > Math.max(prev*1.1, prev+0.5) + 0.01 && !s.taper) v.push("S"+s.w+": longão sobe mais de 10%");
@@ -808,6 +810,45 @@ function validar(plano, p){
     if (!s.deload && !s.taper) prev = s.longao;
   });
   return v;
+}
+/* ===== Meu treino: o plano que a pessoa monta (mesmo formato do gerado, marcado custom) ===== */
+const LIM_MEU = {km:500, min:1000, ser:99, rep:999, kg:1000};
+const KS_MEU = ["run","gym","bike","swim"];
+const copiaMeu = x => JSON.parse(JSON.stringify(x));
+function modeloVazio(){ return {dias:[0,1,2,3,4,5,6].map(()=>({treinos:[]}))}; }
+function modeloValido(m){
+  if (!m || !Array.isArray(m.dias) || m.dias.length!==7) return ["Modelo inválido."];
+  const e = []; let total = 0, comTreino = 0;
+  m.dias.forEach((d, i)=>{
+    const ts = d && Array.isArray(d.treinos) ? d.treinos : [], dia = DIAS[i];
+    total += ts.length; if (ts.length) comTreino++;
+    if (ts.length>3) e.push(dia+": no máximo 3 treinos por dia.");
+    ts.forEach(t=>{
+      if (!t || typeof t.t!=="string" || !t.t.trim()) e.push(dia+": dê um nome ao treino.");
+      if (!t || !KS_MEU.includes(t.k)){ e.push(dia+": tipo de treino inválido."); return; }
+      const min = +t.min, km = +t.km, okMin = min>0 && min<=LIM_MEU.min, okKm = km>0 && km<=LIM_MEU.km;
+      if (t.k==="run" ? !(okMin || okKm) : !okMin) e.push(dia+": informe a duração"+(t.k==="run" ? " ou a distância" : "")+" de "+String(t.t||"treino").trim()+".");
+      if (t.min!=null && t.min!=="" && !okMin && !(t.k==="run" && okKm)) e.push(dia+": duração fora do limite em "+String(t.t||"treino").trim()+".");
+      if ((t.passos||[]).length>40) e.push(dia+": exercícios demais em "+String(t.t||"treino").trim()+".");
+    });
+  });
+  if (!total) e.push("Monte pelo menos um treino.");
+  if (comTreino===7) e.push("A semana precisa de pelo menos 1 dia de descanso.");
+  return e;
+}
+// 52 semanas a partir do modelo. Com `antigo`, os dias até hoje ficam como estavam; sem ele, só os dias antes de hoje ficam vazios.
+function planoMeu(modelo, inicio, antigo, hoje){
+  const m = copiaMeu(modelo), ini = parseD(inicio), semanas = [];
+  for (let w=1; w<=52; w++){
+    const velha = antigo && antigo.semanas && antigo.semanas[w-1];
+    semanas.push({w, deload:false, taper:false, longao:0, dias:m.dias.map((d, i)=>{
+      const k = key(addDays(ini, 7*(w-1)+i));
+      if (hoje && antigo && velha && velha.dias[i] && k<=hoje) return copiaMeu(velha.dias[i]);
+      if (hoje && !antigo && k<hoje) return {dia:DIAS[i], treinos:[]};
+      return {dia:DIAS[i], treinos:copiaMeu(d.treinos)};
+    })});
+  }
+  return {versao:2, objetivo:"meu", nome:"Meu treino", nivel:"intermediario", inicio, semProva:true, custom:true, modelo:m, semanas, geradoEm:(antigo && antigo.geradoEm) || new Date().toISOString()};
 }
 const NOMEF = {F0:"recuperação",F1:"base",F2:"festas",F3:"meia",F4:"transição",F5:"base tri",F6:"construção",F7:"específico",F8:"polimento"};
 /* cores das fases: texto branco por cima, mínimo 4,5:1 nos dois temas (tests/contraste.test.js) */
