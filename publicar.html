@@ -875,6 +875,20 @@ function planoMeu(modelo, inicio, antigo, hoje){
   }
   return {versao:2, objetivo:"meu", nome:"Meu treino", nivel:"intermediario", inicio, semProva:true, custom:true, modelo:m, semanas, geradoEm:(antigo && antigo.geradoEm) || new Date().toISOString()};
 }
+// Edição de um treino do plano em várias semanas: a partir de `inicio`, troca o treino `nomeOrig` do mesmo dia da semana.
+// achaSemana(d) devolve a semana do plano ou null (fim do plano); travado(d) protege dias já feitos ou com ajuste; devolve quantas semanas mudaram.
+function aplicarEdicaoNoPlano(achaSemana, inicio, nomeOrig, novo, travado){
+  let n = 0;
+  for (let i=0; i<260; i++){
+    const d = addDays(inicio, 7*i), sem = achaSemana(d); if (!sem) break;
+    if (travado(d)) continue;
+    const ts = sem.dias[dow(d)].treinos, j = ts.findIndex(t=>t.t===nomeOrig && !t.fixo && !t.meta); if (j<0) continue;
+    const c = Object.assign({}, ts[j], {t:novo.t, ef:novo.ef, passos:(novo.passos||[]).slice(), edit:true});
+    ["min","km"].forEach(k=>{ if (novo[k]>0) c[k] = novo[k]; else delete c[k]; });
+    ts[j] = c; n++;
+  }
+  return n;
+}
 const NOMEF = {F0:"recuperação",F1:"base",F2:"festas",F3:"meia",F4:"transição",F5:"base tri",F6:"construção",F7:"específico",F8:"polimento"};
 /* cores das fases: texto branco por cima, mínimo 4,5:1 nos dois temas (tests/contraste.test.js) */
 const CORF = {F0:"#667080",F1:"#46525D",F2:"#667080",F3:"var(--go-fill)",F4:"#667080",F5:"#2E5E8E",F6:"#2E5E8E",F7:"var(--go-fill)",F8:"#0F7A3E"};
@@ -2868,14 +2882,7 @@ function telaMeuTreino(op){
     }
   };
   const c = $("mtc");
-  const fechaSug = () => { c.querySelectorAll(".sug").forEach(u=>u.remove()); c.querySelectorAll('[aria-expanded="true"]').forEach(i=>i.setAttribute("aria-expanded", "false")); };
-  const mostraSug = el => {
-    fechaSug(); const lista = sugerirExercicio(el.value, 6); if (!lista.length || (lista.length===1 && lista[0]===el.value.trim())) return;
-    const u = document.createElement("ul"); u.className = "sug"; u.setAttribute("role", "listbox"); u.style.top = (el.offsetTop+el.offsetHeight)+"px";
-    u.innerHTML = lista.map(n=>'<li role="option" data-n="'+esc(n)+'">'+esc(n)+'</li>').join("");
-    el.after(u); el.setAttribute("aria-expanded", "true");
-    u.addEventListener("pointerdown", ev=>{ const li = ev.target.closest("li"); if (!li) return; ev.preventDefault(); el.value = li.dataset.n; edita(el); fechaSug(); });
-  };
+  const fechaSug = () => fechaSugestao(c), mostraSug = el => mostraSugestao(c, el, edita);
   c.addEventListener("input", e=>{ const el = e.target; if (el.tagName==="INPUT" && el.dataset.mt){ edita(el); if (el.dataset.mt.endsWith("|n")) mostraSug(el); } });
   c.addEventListener("focusin", e=>{ const el = e.target; if (el.tagName!=="INPUT" || !el.dataset.mt) return;
     if (el.dataset.pad==="1"){ el.value = ""; el.dataset.pad = ""; } else { try{ el.select(); }catch(x){} } });
@@ -4022,11 +4029,12 @@ function telaTreino(a){
     (motivoTreino(t,d) ? '<div class="rcard"><span class="k">por que esse treino</span><span>'+esc(motivoTreino(t,d))+'</span></div>' : '')+detalheHTML(t)+
     (!ok ? '<div class="rcard"><span class="k">alguma observação?</span><textarea class="inp" id="obtx" rows="2" placeholder="Ex.: tô me sentindo bem, posso fazer mais? / dormi mal / tô com a perna pesada"></textarea><button type="button" class="btn" id="obsv">Perguntar ao coach</button><div id="obres">'+obsHTML(LOG["ob_"+k+"_"+i], k, i)+'</div></div>' : '')+
     (ok ? '<div class="flag ok">'+(ok.imp && ok.imp.garmin ? '<span class="pill" style="background:var(--done);margin-right:6px">via Garmin</span>' : '')+'Feito'+(ok.km?' · '+num(ok.km,1)+' km':'')+(ok.m?' · '+ok.m+' m':'')+(ok.min?' · '+ok.min+' min':'')+(ok.imp && ok.imp.pace?' · '+paceTexto(ok.imp.pace)+'/km':'')+(ok.imp && ok.imp.fc?' · FC média '+ok.imp.fc:'')+(ok.rpe?' · esforço '+ok.rpe:'')+'</div><button type="button" class="btn" id="desf">Desmarcar</button>' :
-      (suspenso() && +d===+today ? '<div class="flag red">Plano pausado hoje pelo seu check-in.</div>' : '<button type="button" class="btn go" id="fiz">Fiz o treino</button>'+(d>=today?'<button type="button" class="btn" id="nao">Não consigo fazer hoje</button><button type="button" class="btn" id="mud">Mudar ou mover este treino</button>':'')+'<button type="button" class="btn" id="imp">Importar do relógio ou Strava</button><input type="file" id="impf" accept=".gpx,.tcx,.fit,.gz,application/gzip" hidden><p class="s">GPX, TCX ou FIT, também compactado (.gz). Só guardo km, tempo, ritmo, subida e batimentos, nunca o trajeto. No Strava: abra a atividade, menu de três pontos, Exportar GPX.</p>')), {fab:true});
+      (suspenso() && +d===+today ? '<div class="flag red">Plano pausado hoje pelo seu check-in.</div>' : '<button type="button" class="btn go" id="fiz">Fiz o treino</button>'+(d>=today?'<button type="button" class="btn" id="nao">Não consigo fazer hoje</button>'+(podeEditarTreino(d, t, i) ? '<button type="button" class="btn" id="edt2">Editar treino</button>' : '')+'<button type="button" class="btn" id="mud">Mudar ou mover este treino</button>':'')+'<button type="button" class="btn" id="imp">Importar do relógio ou Strava</button><input type="file" id="impf" accept=".gpx,.tcx,.fit,.gz,application/gzip" hidden><p class="s">GPX, TCX ou FIT, também compactado (.gz). Só guardo km, tempo, ritmo, subida e batimentos, nunca o trajeto. No Strava: abra a atividade, menu de três pontos, Exportar GPX.</p>')), {fab:true});
   bindGo(app);
   const f = $("fiz"); if (f) f.addEventListener("click", ()=>sheetFeito(a));
   const nc = $("nao"); if (nc) nc.addEventListener("click", ()=>naoConsigo(k,i));
   const mu = $("mud"); if (mu) mu.addEventListener("click", ()=>sheetMudarTreino(k,i));
+  const e2 = $("edt2"); if (e2) e2.addEventListener("click", ()=>sheetEditarTreino(k, i));
   const ib = $("imp"), inf = $("impf"); if (ib && inf){ ib.addEventListener("click", ()=>inf.click()); inf.addEventListener("change", ()=>{ const fl = inf.files && inf.files[0]; inf.value = ""; if (fl) importarTreino(a, fl); }); }
   const ds = $("desf"); if (ds) ds.addEventListener("click", ()=>salvarLog("ck_"+k+"_"+i, null).then(()=>render()));
   const bindObs = ()=>{
@@ -4125,7 +4133,7 @@ function telaForca(a){
   const S = sessaoDe(a), ok = feito(d,i);
   const notas = (t.passos||[]).filter(x=>!/\d+\s*[×x]\s*\d+/.test(x));
   let h = '<button type="button" class="back" data-go="treino">← Semana</button><div class="between"><span class="k">'+esc(fmtLongo(d))+' · '+S.ex.length+' exercícios</span><span class="n" id="crono"></span></div><h1 class="h1">'+esc(t.t)+'</h1>'+
-    '<div class="chips"><span>'+esc(t.ef||"")+'</span><span>'+(t.min||"")+' min</span><span>pare 2 reps antes da falha</span></div>'+
+    '<div class="chips"><span>'+esc(t.ef||"")+'</span><span>'+(t.min||"")+' min</span><span>pare 2 reps antes da falha</span>'+(t.edit ? '<span>editado por você</span>' : '')+'</div>'+
     notas.map(x=>'<p class="s">'+esc(x)+'</p>').join("")+detalheHTML(t);
   S.ex.forEach((e,ei)=>{
     const sg = sugestaoAjustada(e, d), h0 = historicoEx(e.nome), last = h0.length ? h0[h0.length-1].sets : [];
@@ -4134,7 +4142,7 @@ function telaForca(a){
       '<table class="sets"><thead><tr><th>Série</th><th>Anterior</th><th>'+(e.seg?'—':'kg')+'</th><th>'+(e.seg?'seg':'reps')+'</th><th>✓</th></tr></thead><tbody>'+
       e.sets.map((s2,j)=>'<tr class="'+(s2.ok?'done':'')+'"><td>'+(j+1)+'</td><td class="prev">'+(last[j]?esc(num(+last[j].kg,1)+" × "+last[j].reps):"—")+'</td><td>'+(e.seg?'':'<input type="number" inputmode="decimal" step="0.5" aria-label="Carga série '+(j+1)+'" data-kg="'+ei+'~'+j+'" value="'+esc(s2.kg)+'">')+'</td><td><input type="number" inputmode="numeric" aria-label="Repetições série '+(j+1)+'" data-rp="'+ei+'~'+j+'" value="'+esc(s2.reps)+'"></td><td><button type="button" class="ck" data-ok="'+ei+'~'+j+'" aria-label="Concluir série '+(j+1)+'">'+(s2.ok?'✓':'')+'</button></td></tr>').join("")+'</tbody></table></div>';
   });
-  h += '<div id="restbox"></div>'+(ok ? '<div class="flag ok">Treino concluído.</div><button type="button" class="btn" data-go="treino|fim|'+a+'">Ver resumo</button>' : '<button type="button" class="btn go" id="fim">Terminar treino</button>'+(d>=today ? '<button type="button" class="btn" id="fmud">Mudar ou mover este treino</button>' : ''));
+  h += '<div id="restbox"></div>'+(ok ? '<div class="flag ok">Treino concluído.</div><button type="button" class="btn" data-go="treino|fim|'+a+'">Ver resumo</button>' : '<button type="button" class="btn go" id="fim">Terminar treino</button>'+(d>=today ? (podeEditarTreino(d, t, i) ? '<button type="button" class="btn" id="fedt">Editar treino</button>' : '')+'<button type="button" class="btn" id="fmud">Mudar ou mover este treino</button>' : ''));
   const app = tela(h, {});
   bindGo(app);
   app.querySelectorAll("[data-kg]").forEach(inp=>inp.addEventListener("change", ()=>{ const [x,y] = inp.dataset.kg.split("~").map(Number); S.ex[x].sets[y].kg = parseFloat(String(inp.value).replace(",","."))||""; salvarSessao(); }));
@@ -4144,6 +4152,7 @@ function telaForca(a){
   app.querySelectorAll("[data-apl]").forEach(b=>b.addEventListener("click", ()=>{ const e = S.ex[+b.dataset.apl], sg = sugestaoAjustada(e, d); e.sets.forEach(s2=>{ if (!s2.ok) s2.kg = sg.kg; }); salvarSessao(); const sc = rolagem().scrollTop; telaForca(a); rolagem().scrollTop = sc; }));
   const f = $("fim"); if (f) f.addEventListener("click", ()=>terminarForca(a));
   const fm = $("fmud"); if (fm) fm.addEventListener("click", ()=>sheetMudarTreino(k, i));
+  const fe = $("fedt"); if (fe) fe.addEventListener("click", ()=>sheetEditarTreino(k, i));
   desenharDescanso(); crono();
 }
 /* comentário por exercício: LOG.coment["AAAA-MM-DD|exercício"] = {t, at}; o snap de treino leva isso ao Personal */
@@ -6390,6 +6399,15 @@ function mudarObjetivo(){
   const vai = ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); };
   if (P && P.plano && P.plano.custom && !P.planoProf) sheetConfirma("Trocar o objetivo?", "Se você escolher outro objetivo, o treino que você montou é substituído. O que você já treinou continua registrado.", "Trocar objetivo", vai); else vai();
 }
+// lista de sugestão de exercício embaixo do campo `el`; `c` é o contêiner que a recebe; aoEscolher(el) roda depois de preencher o nome
+function fechaSugestao(c){ c.querySelectorAll(".sug").forEach(u=>u.remove()); c.querySelectorAll('[aria-expanded="true"]').forEach(i=>i.setAttribute("aria-expanded", "false")); }
+function mostraSugestao(c, el, aoEscolher){
+  fechaSugestao(c); const lista = sugerirExercicio(el.value, 6); if (!lista.length || (lista.length===1 && lista[0]===el.value.trim())) return;
+  const u = document.createElement("ul"); u.className = "sug"; u.setAttribute("role", "listbox"); u.style.top = (el.offsetTop+el.offsetHeight)+"px";
+  u.innerHTML = lista.map(n=>'<li role="option" data-n="'+esc(n)+'">'+esc(n)+'</li>').join("");
+  el.after(u); el.setAttribute("aria-expanded", "true");
+  u.addEventListener("pointerdown", ev=>{ const li = ev.target.closest("li"); if (!li) return; ev.preventDefault(); el.value = li.dataset.n; aoEscolher(el); fechaSugestao(c); });
+}
 function abrirSheet(rotulo){
   $("ov").innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="'+esc(rotulo)+'"><span class="grab"></span><div id="shb"></div></div>';
   $("dim").addEventListener("click", ()=>fecharSheet());
@@ -7117,6 +7135,72 @@ function sheetMudarTreino(k, i){
     if ($("muped")) $("muped").onclick = ()=>ap(res.pedido, "ele");
   };
   inicio();
+}
+/* ===================== EDITAR UM TREINO (nome, duração, exercícios): só neste dia ou neste e nos próximos ===================== */
+function podeEditarTreino(d, t, i){ return !!t && d>=today && !feito(d, i) && !t.fixo && !t.meta && KS_MEU.includes(t.k) && !temPersonal() && !(A && A.plano) && !pausaCobre(PAUSAS(), key(d)); }
+function sheetEditarTreino(k, i){
+  const d = parseD(k), tr0 = LOG["tr_"+k+"_"+i], b0 = treinosBase(d)[i], base = tr0 && tr0.treino ? tr0.treino : b0;
+  if (!b0 || !base || !podeEditarTreino(d, treinosDe(d)[i], i)) return;
+  const E = copiaMeu(base), nomePlano = b0.t, err = new Set(), ehGym = E.k==="gym", ehRun = E.k==="run";
+  E.passos = E.passos || [];
+  const corpo = abrirSheet("Editar treino");
+  const campo = (rot, f, v, num, st) => '<label class="fld"><span class="k">'+rot+'</span><input class="inp" data-ed="'+f+'"'+(num ? ' type="number" inputmode="decimal" step="'+st+'" min="0"' : ' maxlength="40"')+' value="'+esc(v==null ? "" : v)+'"></label>';
+  const linhas = () => E.passos.map((x, n)=>{ const e = exTxt(x);
+    return e ? '<div class="exr"><input class="inp" data-ed="x|'+n+'|n" maxlength="40" aria-label="Exercício" placeholder="Exercício" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" value="'+esc(e.n)+'"><div class="grid2"><input class="inp" data-ed="x|'+n+'|s" type="number" inputmode="numeric" min="1" aria-label="Séries" placeholder="Séries" value="'+esc(e.sr.split("×")[0])+'"><input class="inp" data-ed="x|'+n+'|r" type="number" inputmode="numeric" min="1" aria-label="'+(/ s$/.test(e.sr) ? "Segundos" : "Repetições")+'" placeholder="'+(/ s$/.test(e.sr) ? "Seg" : "Reps")+'" value="'+esc(e.sr.split("×")[1].replace(/\D/g, ""))+'"></div><input class="inp" data-ed="x|'+n+'|kg" type="number" inputmode="decimal" min="0" step="0.5" aria-label="Carga em kg" placeholder="Carga (kg, opcional)" value="'+esc(e.kg)+'"><button type="button" class="lk in" data-edxe="'+n+'">remover exercício</button></div>'
+      : '<p class="s">'+esc(x)+' <button type="button" class="lk in" data-edxe="'+n+'">remover</button></p>'; }).join("");
+  const desenha = () => {
+    err.clear();
+    corpo.innerHTML = '<h2 class="h2 lg">Editar treino</h2><p class="s">'+esc(fmtLongo(d))+(E.edit ? ' · já editado por você' : '')+'</p><div id="edc" class="ped" style="border:0;padding-top:0">'+
+      campo("Treino", "t", E.t)+'<div class="grid2">'+(ehRun ? campo("Distância (km)", "km", E.km, 1, "0.5") : "")+campo("Duração (min)", "min", E.min, 1, "5")+'</div>'+campo("Esforço (ex.: 3/10 ou RIR 2)", "ef", E.ef)+
+      (ehGym ? linhas()+(E.passos.length<40 ? '<button type="button" class="lk" id="edae">Adicionar exercício</button>' : "") : "")+'</div>'+
+      '<p class="msg" id="edm" role="alert"></p><button type="button" class="btn go" id="eddia">Salvar só neste dia</button><button type="button" class="btn" id="edtodos">Salvar neste e nos próximos</button>'+
+      (tr0 && tr0.por==="edicao" ? '<button type="button" class="btn ghost" id="edvolta">Voltar ao treino original deste dia</button>' : "")+'<button type="button" class="lk" id="edno">Cancelar</button>';
+    $("edno").addEventListener("click", ()=>fecharSheet());
+    $("eddia").addEventListener("click", ()=>salvar(false)); $("edtodos").addEventListener("click", ()=>salvar(true));
+    if ($("edvolta")) $("edvolta").addEventListener("click", async ()=>{ await salvarLog("tr_"+k+"_"+i, null); SESS = null; fecharSheet(); render(true); toast("Voltou ao treino original."); });
+    const c = $("edc");
+    c.addEventListener("input", ev=>{ const el = ev.target; if (el.tagName==="INPUT" && el.dataset.ed){ muda(el); if (el.dataset.ed.endsWith("|n")) mostraSugestao(c, el, muda); } });
+    c.addEventListener("focusout", ev=>{ if (ev.target.dataset && ev.target.dataset.ed && ev.target.dataset.ed.endsWith("|n")) setTimeout(()=>fechaSugestao(c), 120); });
+    c.addEventListener("click", ev=>{ const bt = ev.target.closest("button"); if (!bt) return;
+      if (bt.id==="edae"){ E.passos.push("Novo exercício 3×10"); desenha(); }
+      else if (bt.dataset.edxe!=null){ E.passos.splice(+bt.dataset.edxe, 1); desenha(); } });
+  };
+  const marca = (el, txt) => { let m = el.nextElementSibling; m = m && m.classList.contains("err") ? m : null;
+    if (txt && !m){ m = document.createElement("span"); m.className = "msg err"; m.setAttribute("role", "alert"); el.after(m); }
+    if (m) m.textContent = txt || ""; if (txt){ err.add(el); el.setAttribute("aria-invalid", "true"); } else { err.delete(el); el.removeAttribute("aria-invalid"); } };
+  const numero = (el, max, inteiro, vazioOk) => { const v = String(el.value).trim(); if (!v){ marca(el, vazioOk ? "" : "Informe um número."); return vazioOk ? {n:null} : null; }
+    const n = parseFloat(v.replace(",", ".")), ok = Number.isFinite(n) && n>0 && n<=max && (!inteiro || Number.isInteger(n));
+    marca(el, ok ? "" : "Use um número maior que 0 e até "+max+(inteiro ? ", inteiro" : "")+"."); return ok ? {n} : null; };
+  const muda = el => {
+    const a = el.dataset.ed.split("|");
+    if (a[0]==="t"){ const v = el.value.trim(); marca(el, v ? "" : "Dê um nome ao treino."); if (v) E.t = v.slice(0, 40); }
+    else if (a[0]==="ef") E.ef = el.value.slice(0, 20);
+    else if (a[0]==="km" || a[0]==="min"){ const r = numero(el, a[0]==="km" ? LIM_MEU.km : LIM_MEU.min, false, true); if (r){ if (r.n==null) delete E[a[0]]; else E[a[0]] = r.n; } }
+    else {
+      const n = +a[1], row = el.closest(".exr"), atual = exTxt(E.passos[n]); if (!row || !atual) return;
+      const [ne, se, re, ke] = [...row.querySelectorAll("input")], nm = ne.value.trim(); marca(ne, nm ? "" : "Dê um nome ao exercício.");
+      const sr = numero(se, LIM_MEU.ser, true, false), rp = numero(re, LIM_MEU.rep, true, false), kg = numero(ke, LIM_MEU.kg, false, true);
+      if (nm && sr && rp && kg) E.passos[n] = nm.slice(0, 40)+" "+sr.n+"×"+rp.n+(/ s$/.test(atual.sr) ? " s" : "")+(kg.n ? " · "+kg.n+" kg" : "");   // mantém o "s" de exercício por tempo (prancha)
+    }
+  };
+  const salvar = async todos => {
+    const m = $("edm"), erros = modeloValido({dias:[{treinos:[E]}, ...[1,2,3,4,5,6].map(()=>({treinos:[]}))]}).map(x=>x.replace(/^[^:]+: /, ""));
+    if (err.size || erros.length){ m.className = "msg err"; m.textContent = err.size ? "Corrija os campos marcados." : erros[0]; return; }
+    $("eddia").disabled = $("edtodos").disabled = true;
+    const novo = Object.assign({}, E, {edit:true});
+    let aplicou = 0;
+    if (todos){
+      const pl = P && P.plano; if (!pl || pl!==planoAtual()){ m.className = "msg err"; m.textContent = "Esse plano não pode ser mudado aqui."; $("eddia").disabled = $("edtodos").disabled = false; return; }
+      aplicou = aplicarEdicaoNoPlano(dd=>{ const r = semanaEm(pl, pausasDoPlano(), key(dd)); return r.sem; }, d, nomePlano, novo,
+        dd=>treinosDe(dd).some((_, j)=>feito(dd, j)) || !!LOG["dia_"+key(dd)]);
+      if (aplicou && pl.custom && pl.modelo){ const mt = pl.modelo.dias[dow(d)].treinos, j = mt.findIndex(t=>t.t===nomePlano); if (j>=0) mt[j] = Object.assign({}, mt[j], {t:novo.t, ef:novo.ef, passos:novo.passos.slice(), meu:true}, ["min","km"].reduce((o, c)=>{ o[c] = novo[c]; return o; }, {})); }
+      if (aplicou){ if (tr0 && tr0.por==="edicao") await salvarLog("tr_"+k+"_"+i, null); await salvarPerfil(); }
+    }
+    if (!aplicou) await salvarLog("tr_"+k+"_"+i, {treino:novo, de:nomePlano, at:new Date().toISOString(), por:"edicao"});
+    SESS = null; fecharSheet(); render(true);
+    toast(todos ? (aplicou ? "Treino mudado em "+aplicou+(aplicou===1 ? " dia." : " dias.") : "Não achei esse treino nas próximas semanas: mudei só neste dia.") : "Treino mudado só neste dia.");
+  };
+  desenha();
 }
 // plano prescrito por um Personal: o coach do app não reescreve, só analisa e sugere
 const temPersonal = () => !!(P && P.planoProf);

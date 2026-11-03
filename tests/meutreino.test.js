@@ -8,7 +8,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "publicar.html"), "utf8"
 const trecho = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + a); return html.slice(i, j + b.length); };
 const ajudas = trecho("const DAY = 864e5;", "const dow = d => (d.getDay()+6)%7;");
 const gerador = trecho("/* ===================== GERADOR DE PLANO (regras fixas)", "const NOMEF").replace(/const NOMEF$/, "");
-const F = new Function(ajudas + "\n" + gerador + "\nreturn {TPL, gerarPlano, validar, nivel, modeloVazio, modeloValido, planoMeu, sugerirExercicio, EXERCICIOS};")();
+const F = new Function(ajudas + "\n" + gerador + "\nreturn {TPL, gerarPlano, validar, nivel, modeloVazio, modeloValido, planoMeu, sugerirExercicio, EXERCICIOS, aplicarEdicaoNoPlano};")();
 const G = F;
 
 const todos = pl => pl.semanas.flatMap(s => s.dias.flatMap(d => d.treinos));
@@ -130,4 +130,23 @@ test("base de exercícios: nomes únicos e preenchidos", () => {
   assert.ok(nomes.length > 150);
   assert.equal(new Set(nomes).size, nomes.length);
   assert.ok(nomes.every(n => n.trim() === n && n.length >= 3 && n.length <= 40));
+});
+
+test("aplicarEdicaoNoPlano muda só o treino de mesmo nome no mesmo dia da semana, das semanas livres", () => {
+  const gerado = F.gerarPlano({objetivo: "massa", naoCorre: true, academiaMeses: 12, diasSem: 4});
+  const ini = new Date(2026, 10, 2);   // segunda
+  const sem = d => { const w = Math.floor(Math.round((d - ini) / 864e5) / 7); return gerado.semanas[w] || null; };
+  const dias = gerado.semanas[0].dias, iB = dias.findIndex(d => d.treinos.some(t => /superiores/.test(t.t)));
+  assert.ok(iB >= 0, "plano de força tem o treino de superiores");
+  const nome = dias[iB].treinos.find(t => /superiores/.test(t.t)).t;
+  const dia = new Date(2026, 10, 2 + iB), travado = d => +d === +new Date(2026, 10, 2 + iB + 7);   // 2ª semana travada
+  const novo = {t: "Força B (meu)", min: 70, ef: "RIR 1", passos: ["Supino reto 5×5 · 80 kg"]};
+  const n = F.aplicarEdicaoNoPlano(sem, dia, nome, novo, travado);
+  assert.ok(n >= 2 && n < gerado.semanas.length, "mudou várias semanas, menos a travada");
+  const em = w => gerado.semanas[w].dias[iB].treinos.find(t => t.edit);
+  assert.equal(em(0).t, "Força B (meu)"); assert.equal(em(0).min, 70); assert.deepEqual(em(0).passos, ["Supino reto 5×5 · 80 kg"]);
+  assert.ok(!gerado.semanas[1].dias[iB].treinos.some(t => t.edit), "semana travada fica como estava");
+  assert.ok(gerado.semanas[2].dias[iB].treinos.some(t => t.edit));
+  const outros = gerado.semanas[0].dias.filter((_, j) => j !== iB).flatMap(d => d.treinos);
+  assert.ok(outros.every(t => !t.edit), "outros dias não mudam");
 });
