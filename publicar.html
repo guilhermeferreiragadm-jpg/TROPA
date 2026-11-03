@@ -2863,6 +2863,9 @@ function telaMeuTreino(op){
     P.plano = planoMeu(MT.modelo, base ? base.inicio : key(addDays(today, -dow(today))), base, key(today));
     P.viol = []; P.perfil.objetivo = "meu"; P.perfil.temProva = "nao"; P.perfil.dataProva = ""; delete P.perfil.meuPendente; delete P.perfil.meuAnterior;
     await salvarPerfil();
+    const seg0 = addDays(today, -dow(today));   // cortes do teto feitos no plano anterior não valem para o treino próprio
+    for (let i=0;i<14;i++){ const k = key(addDays(today, i)), x = LOG["aj_"+k]; if (x && x.por==="teto") await salvarLog("aj_"+k, null); }
+    for (let n=0;n<2;n++){ const wk = key(addDays(seg0, 7*n)); if (LOG["teto_"+wk]) await salvarLog("teto_"+wk, null); }
     if (MT.primeira) telaPlanoPronto(); else { semOff = 0; toast("Meu treino salvo."); ir("treino"); }
   });
 }
@@ -3819,8 +3822,10 @@ function sheetTeto(){
     if (novo==="off"){ for (let i=0;i<28;i++){ const k = key(addDays(today,i)); const a = LOG["aj_"+k]; if (a && a.por==="teto") await salvarLog("aj_"+k, null); } for (let n=0;n<5;n++){ const wk = key(addDays(seg0,7*n)); if (LOG["teto_"+wk]) await salvarLog("teto_"+wk, null); } }
     fecha(); render(true); toast(novo==="off" ? "Teto desligado. O seu plano vale como está." : "Teto ligado."); };
 }
+// o treino que a pessoa montou é dela: o teto de +10% não corta, só o limite de um fisioterapeuta vale
+function tetoIsento(){ const pl = planoAtual(); return !!(pl && pl.custom && !(P.perfil.fisio && +P.perfil.fisio.limiteMinSemana)); }
 function aplicarTeto(){
-  if (!P || !P.perfil || !planoAtual() || pausaAtiva() || P.perfil.tetoModo==="off") return;
+  if (!P || !P.perfil || !planoAtual() || pausaAtiva() || P.perfil.tetoModo==="off" || tetoIsento()) return;
   const seg0 = addDays(today, -dow(today));
   [0,1].forEach(n=>{
     const ini = addDays(seg0, 7*n), wk = key(ini);
@@ -6956,7 +6961,7 @@ function diasMontaveis(){
 function dorRecente(){ let mx = null; for (let i = 0; i < 3; i++){ const c = LOG["ci_"+key(addDays(today,-i))]; if (c && c.dor != null && !isNaN(+c.dor)) mx = Math.max(mx==null ? 0 : mx, +c.dor); } return mx; }
 function limitesSemana(datas){
   const lim = P.perfil.fisio && +P.perfil.fisio.limiteMinSemana || 0, seg0 = addDays(today, -dow(today));
-  const ct = P.perfil.tetoModo==="off" ? null : calcularTeto([1,2,3].map(i=>minFeitosSemana(addDays(seg0, -7*i))), (+P.perfil.kmSemana||0)*7, 0);
+  const ct = P.perfil.tetoModo==="off" || tetoIsento() ? null : calcularTeto([1,2,3].map(i=>minFeitosSemana(addDays(seg0, -7*i))), (+P.perfil.kmSemana||0)*7, 0);
   const doPlano = datas.reduce((sm,k)=>sm + treinosDoPlano(parseD(k)).reduce((x,t)=>x + minutosPlan(t), 0), 0);
   return {fisioMin: lim || null, limiteMin: Math.max(ct ? ct.teto : 0, Math.round(doPlano*1.1)) || null, doPlano};
 }
