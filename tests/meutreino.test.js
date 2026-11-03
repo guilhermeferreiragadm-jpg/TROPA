@@ -88,3 +88,21 @@ test("planoMeu com plano anterior mantém os dias até hoje e troca o resto", ()
   assert.equal(depois.geradoEm, antes.geradoEm);
   assert.equal(depois.modelo.dias[0].treinos[0].t, "Novo");
 });
+
+test("planoMeu cobre sempre um ano à frente de hoje, mesmo com início antigo", () => {
+  const m = modelo({0: [trino()]});
+  assert.equal(F.planoMeu(m, "2026-11-02", null, "2026-11-04").semanas.length, 52);
+  const ant = F.planoMeu(m, "2025-11-03", null, "2025-11-03");
+  const depois = F.planoMeu(m, ant.inicio, ant, "2026-11-04");
+  assert.ok(depois.semanas.length >= 52 + 52, "início de um ano atrás pede ~104 semanas");
+  assert.equal(depois.semanas[depois.semanas.length - 1].dias[0].treinos.length, 1);
+});
+
+test("planoMeu a partir de um plano gerado preserva os dias até hoje", () => {
+  const gerado = F.gerarPlano({objetivo: "massa", naoCorre: true, academiaMeses: 12, diasSem: 4});
+  const feito = gerado.semanas[0].dias.map(d => d.treinos.map(t => t.t));
+  const hoje = gerado.inicio;   // segunda da semana 1
+  const pl = F.planoMeu(modelo({0: [trino({t: "Novo"})]}), gerado.inicio, gerado, hoje);
+  assert.deepEqual(pl.semanas[0].dias[0].treinos.map(t => t.t), feito[0]);
+  assert.equal(pl.semanas[0].dias[1].treinos[0] && pl.semanas[0].dias[1].treinos[0].t, undefined);
+});

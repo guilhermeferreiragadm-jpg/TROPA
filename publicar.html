@@ -839,7 +839,8 @@ function modeloValido(m){
 // 52 semanas a partir do modelo. Com `antigo`, os dias até hoje ficam como estavam; sem ele, só os dias antes de hoje ficam vazios.
 function planoMeu(modelo, inicio, antigo, hoje){
   const m = copiaMeu(modelo), ini = parseD(inicio), semanas = [];
-  for (let w=1; w<=52; w++){
+  const n = hoje ? Math.min(260, Math.max(52, Math.floor(Math.round((parseD(hoje)-ini)/864e5)/7)+52)) : 52;   // sempre 1 ano à frente de hoje
+  for (let w=1; w<=n; w++){
     const velha = antigo && antigo.semanas && antigo.semanas[w-1];
     semanas.push({w, deload:false, taper:false, longao:0, dias:m.dias.map((d, i)=>{
       const k = key(addDays(ini, 7*(w-1)+i));
@@ -952,7 +953,7 @@ function fatorRetornoEm(pausas, k){
   return f == null ? 1 : f;
 }
 function semanaEm(plano, pausas, k){
-  const ini = addDays(parseD(plano.inicio), 7*deslocamentoEm(pausas, k));
+  const ini = addDays(parseD(plano.inicio), plano.custom ? 0 : 7*deslocamentoEm(pausas, k));   // a semana própria se repete: pausa não desloca
   const w = Math.floor((parseD(k) - ini)/DAY/7) + 1;
   return {w, ini, sem: plano.semanas[w-1] || null};
 }
@@ -2283,7 +2284,7 @@ function kmEst(t, zk){ if (t.km) return +t.km; const Z = zonas(), p = meioZ(Z, z
 function minEst(t, zk){ if (t.min) return +t.min; const Z = zonas(), p = meioZ(Z, zk); return (p && t.km) ? Math.round(t.km*p/60/5)*5 : 0; }
 const kmTxt = v => String(v).replace(".",",");
 function detalheBase(t){
-  const Z = zonas(), semPace = !Z.vdot, nome = norm(t.t), pas = (t.passos||[]).join(" ");
+  const Z = zonas(), semPace = !Z.vdot, nome = t.meu ? "" : norm(t.t), pas = (t.passos||[]).join(" ");
   const sentir = {regen:"dá para conversar frases longas; respiração quase normal", leve:"dá para conversar frases inteiras", limiar:"dá para falar só 2 ou 3 palavras; forte, mas segura 20 min", tiro:"forte: não dá para conversar, mas a técnica não quebra"};
   const alvo = k => semPace ? sentir[k] : faixa(Z[k])+" ("+sentir[k]+")";
   const B = [], D = [];
@@ -2648,7 +2649,7 @@ function onb(i){
   const mcx = $("mocx"); if (mcx) mcx.addEventListener("click", ()=>{ mudandoObjetivo = false; render(true); });
   const seg0 = app.querySelectorAll(".prog i")[i]; if (seg0){ void seg0.offsetWidth; seg0.classList.add("on"); }   // a etapa atual preenche com a transição
   bindForm(app, (n)=>{ if (n==="objetivo") onb(1); });
-  app.querySelectorAll("[data-ob]").forEach(b=>b.addEventListener("click", ()=>{ const v = b.dataset.ob; if (v==="prova"){ draft.temProva = "sim"; if (!PROVAS.some(x=>x[0]===draft.objetivo)) draft.objetivo = ""; } else { draft.temProva = "nao"; draft.objetivo = v; draft.dataProva = ""; } salvarRascunho(); onb(1); }));
+  app.querySelectorAll("[data-ob]").forEach(b=>b.addEventListener("click", ()=>{ const v = b.dataset.ob; delete draft.objetivoOrig; if (v==="prova"){ draft.temProva = "sim"; if (!PROVAS.some(x=>x[0]===draft.objetivo)) draft.objetivo = ""; } else { draft.temProva = "nao"; draft.objetivo = v; draft.dataProva = ""; } salvarRascunho(); onb(1); }));
   app.querySelectorAll("[data-nc]").forEach(b=>b.addEventListener("click", ()=>{
     draft.naoCorre = !draft.naoCorre;
     if (draft.naoCorre){ draft.corridasSem = 0; draft.kmSemana = 0; draft.maiorLongao = 0; draft.melhorTempo = ""; } else draft.corridasSem = "";
@@ -2703,21 +2704,22 @@ function avancar(i){
   if (i===2 && !draft.objetivo){ if (!need(false, draft.relato ? "Toque em Preencher pelo que eu contei, ou volte e escolha um objetivo." : "Conte o que você busca ou volte e escolha um objetivo.")) return; }
   if (i===3 && !need(draft.corridasSem!=null && draft.corridasSem!=="", "Quantas corridas por semana você faz hoje? (pode ser 0)")) return;
   if (i===4 && !need(draft.diasSem && draft.horasDia && draft.melhorHorario, "Escolha dias, tempo e horário.")) return;
-  if (i===5){ const f = PARQ.concat(EXTRA).filter(([k])=>!draft[k]); if (!need(!f.length, "Responda todas as perguntas de saúde.")) return; if (draft.naoCorre && !["massa","meu"].includes(draft.objetivo)){ telaEscolhaSemCorrida(); return; } enviarPerfil(); return; }
-  if (mudandoObjetivo && i===1 && P){ mudandoObjetivo = false; enviarPerfil(); return; }
+  if (i===5){ const f = PARQ.concat(EXTRA).filter(([k])=>!draft[k]); if (!need(!f.length, "Responda todas as perguntas de saúde.")) return; if (draft.naoCorre && !["massa","meu"].includes(draft.objetivo)){ telaEscolhaSemCorrida(5); return; } enviarPerfil(); return; }
+  if (mudandoObjetivo && i===1 && P){ mudandoObjetivo = false; if (draft.naoCorre && !["massa","meu"].includes(draft.objetivo)){ telaEscolhaSemCorrida(1); return; } enviarPerfil(); return; }
   onb(i+1);
 }
 let mudandoObjetivo = false;
 async function enviarPerfil(){
-  const p = Object.assign({}, draft); delete p.lido;
-  const meu = p.objetivo==="meu", mantem = meu && P && P.plano && P.plano.custom ? P.plano : null;
-  const fl = flagsDe(p), plano = mantem || (TPL[p.objetivo] && !meu ? gerarPlano(p) : null), viol = plano ? validar(plano, p) : [];
+  const p = Object.assign({}, draft); delete p.lido; delete p.meuPendente; delete p.meuAnterior; if (!(p.naoCorre && ["massa","meu"].includes(p.objetivo))) delete p.objetivoOrig;
+  const velho = P || {};
+  const meu = p.objetivo==="meu", mantem = meu && velho.plano && velho.plano.custom ? velho.plano : null;
+  const fl = flagsDe(p), plano = mantem || (TPL[p.objetivo] && !meu ? gerarPlano(p) : null), viol = plano ? validar(plano, p) : (meu && velho.plano ? velho.viol||[] : []);
+  if (meu && !mantem){ p.meuPendente = true; if (velho.plano && velho.perfil){ const a = velho.perfil; p.meuAnterior = {objetivo:a.objetivo, temProva:a.temProva||"nao", dataProva:a.dataProva||""}; } }
   if (plano && !plano.semProva){ const pk = Math.max(...plano.semanas.map(s=>s.longao)), t = TPL[p.objetivo]; if (pk < t.pico*0.75) fl.amarelo.push("Pelo ponto de partida, o longão chega a "+pk+" km até a prova (ideal ~"+t.pico+" km)"); }
   const ant = P && P.perfil || {};
   p.flags = fl; p.enviadoAt = new Date().toISOString();
   ["compromisso","assinatura","compartilha","foto","extras"].forEach(k=>{ if (ant[k]!=null && p[k]==null) p[k] = ant[k]; });
-  const velho = P || {};
-  P = {perfil:p, plano, viol, pausas:velho.pausas || []};
+  P = {perfil:p, plano: plano || (meu && velho.plano) || null, viol, pausas:velho.pausas || []};
   ["planoAlim","planoProf"].forEach(k=>{ if (velho[k]) P[k] = velho[k]; });   // planos aceitos de profissionais não somem ao editar respostas
   try{
     await salvarPerfil();
@@ -2759,7 +2761,7 @@ function projecao(p){
 }
 function telaPlanoPronto(){
   const p = P.perfil, pl = P.plano;
-  if (!pl){ telaCompromisso(); return; }
+  if (!pl){ if (p.objetivo==="meu") telaMeuTreino({primeira:true}); else telaCompromisso(); return; }
   const s1 = pl.semanas[0], pj = projecao(p), m = metasDia(today);
   const app = tela('<span class="k">seu plano · '+esc(pl.nome)+'</span><h1 class="h1">Está pronto</h1>'+
     (pj ? '<div class="proj"><span class="k">projeção na prova</span><b>'+esc(pj)+'</b><span class="s">se cumprir 80% dos treinos · atualiza toda semana</span></div>' :
@@ -2774,20 +2776,20 @@ function telaPlanoPronto(){
   $("aj").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); onb(4); });
 }
 /* ===================== MEU TREINO: a pessoa monta a própria semana ===================== */
-function telaEscolhaSemCorrida(){
+function telaEscolhaSemCorrida(volta){
   const app = tela('<h1 class="h1">Como você quer treinar?</h1><p class="s">Sem corrida, você escolhe: o app monta um plano de força ou você coloca os seus exercícios.</p>'+
     [["massa","FOR","Gerar plano de força","o app monta a semana, sem corrida"],["meu","MEU","Montar meu treino","você coloca a sua semana e os seus exercícios"]].map(o=>'<button type="button" class="opt" data-esc="'+o[0]+'"><span class="ic">'+o[1]+'</span><span><b>'+o[2]+'</b><small>'+o[3]+'</small></span></button>').join("")+
     '<button type="button" class="lk" id="bk">Voltar</button>');
-  app.querySelectorAll("[data-esc]").forEach(b=>b.addEventListener("click", ()=>{ draft.objetivo = b.dataset.esc; draft.temProva = "nao"; draft.dataProva = ""; salvarRascunho(); enviarPerfil(); }));
-  $("bk").addEventListener("click", ()=>onb(5));
+  app.querySelectorAll("[data-esc]").forEach(b=>b.addEventListener("click", ()=>{ draft.objetivoOrig = draft.objetivo; draft.objetivo = b.dataset.esc; draft.temProva = "nao"; draft.dataProva = ""; salvarRascunho(); enviarPerfil(); }));
+  $("bk").addEventListener("click", ()=>{ if (volta===1) mudandoObjetivo = true; onb(volta||5); });
 }
 let MT = null;
 const NOVO_MT = {
-  run:{k:"run", t:"Corrida", min:30, z:"fácil", ef:"3/10", passos:[]},
-  gym:{k:"gym", t:"Treino de força", min:50, ef:"RIR 2", passos:["Agachamento 3×10"]},
-  bike:{k:"bike", t:"Bike", min:60, ef:"3–4/10", passos:["Pedal em ritmo de conversa"]},
-  swim:{k:"swim", t:"Natação", min:40, ef:"4/10", passos:[]},
-  outro:{k:"gym", t:"Outro esporte", min:60, ef:"5/10", passos:[]}
+  run:{k:"run", meu:true, t:"Corrida", min:30, z:"fácil", ef:"3/10", passos:[]},
+  gym:{k:"gym", meu:true, t:"Treino de força", min:50, ef:"RIR 2", passos:["Agachamento 3×10"]},
+  bike:{k:"bike", meu:true, t:"Bike", min:60, ef:"3–4/10", passos:["Pedal em ritmo de conversa"]},
+  swim:{k:"swim", meu:true, t:"Natação", min:40, ef:"4/10", passos:[]},
+  outro:{k:"gym", meu:true, t:"Outro esporte", min:60, ef:"5/10", passos:[]}
 };
 function mtHTML(){
   const inp = (rot, f, v, num, st) => '<label class="fld"><span class="k">'+rot+'</span><input class="inp" data-mt="'+f+'"'+(num ? ' type="number" inputmode="decimal" step="'+st+'" min="0"' : ' maxlength="40"')+' value="'+esc(v==null ? "" : v)+'"></label>';
@@ -2807,10 +2809,12 @@ function telaMeuTreino(op){
   const antigo = P && P.plano && P.plano.custom ? P.plano : null;
   MT = {modelo:copiaMeu(antigo && antigo.modelo ? antigo.modelo : modeloVazio()), primeira:!!op.primeira, err:new Set()};
   const monta = () => { MT.err = new Set(); $("mtc").innerHTML = mtHTML(); };
+  const anterior = op.primeira && P.perfil.meuAnterior ? P.perfil.meuAnterior : null;
   const topoMT = op.primeira ? "" : '<button type="button" class="back" id="mtb">← Treino</button>';
   const app = tela(topoMT+'<h1 class="h1">Meu treino</h1><p class="s">Monte a sua semana. Ela se repete toda semana, e você pode mudar quando quiser. Dias sem treino são descanso.</p><div id="mtc"></div>'+
-    '<p class="msg" id="mtm"></p><button type="button" class="btn go" id="mts">Salvar meu treino</button>', op.primeira ? undefined : {tabs:true});
+    '<p class="msg" id="mtm"></p><button type="button" class="btn go" id="mts">Salvar meu treino</button>'+(anterior ? '<button type="button" class="lk" id="mtx">Cancelar e manter o meu plano</button>' : ''), op.primeira ? undefined : {tabs:true});
   monta();
+  if (anterior) $("mtx").addEventListener("click", async ()=>{ Object.assign(P.perfil, anterior); delete P.perfil.meuPendente; delete P.perfil.meuAnterior; await salvarPerfil(); rotear(); });
   if (!op.primeira) $("mtb").addEventListener("click", ()=>ir("treino"));
   const trs = (i, j) => MT.modelo.dias[i].treinos[j];
   const idx = x => x.split("|").map(Number);
@@ -2855,8 +2859,9 @@ function telaMeuTreino(op){
     const m = $("mtm"), erros = modeloValido(MT.modelo);
     if (MT.err.size || erros.length){ m.className = "msg err"; m.textContent = MT.err.size ? "Corrija os campos marcados." : erros[0]; return; }
     const b = $("mts"); b.disabled = true;
-    P.plano = planoMeu(MT.modelo, antigo ? antigo.inicio : key(addDays(today, -dow(today))), antigo, key(today));
-    P.viol = []; P.perfil.objetivo = "meu"; P.perfil.temProva = "nao"; P.perfil.dataProva = "";
+    const base = P.plano && P.plano.semanas ? P.plano : null;   // plano gerado também vira base: os dias até hoje ficam como estavam e os treinos já feitos seguem contando
+    P.plano = planoMeu(MT.modelo, base ? base.inicio : key(addDays(today, -dow(today))), base, key(today));
+    P.viol = []; P.perfil.objetivo = "meu"; P.perfil.temProva = "nao"; P.perfil.dataProva = ""; delete P.perfil.meuPendente; delete P.perfil.meuAnterior;
     await salvarPerfil();
     if (MT.primeira) telaPlanoPronto(); else { semOff = 0; toast("Meu treino salvo."); ir("treino"); }
   });
@@ -3948,8 +3953,8 @@ function telaSemana(o){
   if ($("todas")) $("todas").addEventListener("click", sheetTodasSemanas);
   const cc = app.querySelector(".coach"); if (cc) cc.addEventListener("click", irChatDoDia);
   $("wp").addEventListener("click", ()=>{ semOff--; render(); }); $("wn").addEventListener("click", ()=>{ semOff++; render(); });
-  if ($("mmt")) $("mmt").addEventListener("click", ()=>{ if (!pl.custom && !confirm("Isso substitui o seu plano atual pelo treino que você montar. Continuar?")) return; telaMeuTreino(); });
-  $("mob").addEventListener("click", ()=>{ if (pl.custom && !confirm("Trocar o objetivo substitui o treino que você montou. Continuar?")) return; Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
+  if ($("mmt")) $("mmt").addEventListener("click", ()=>{ if (pl.custom) telaMeuTreino(); else sheetConfirma("Montar meu treino?", "Isso substitui o seu plano atual"+(P.perfil.dataProva ? " e a data da prova" : "")+" pelo treino que você montar. O que você já treinou continua registrado.", "Continuar", ()=>telaMeuTreino()); });
+  $("mob").addEventListener("click", mudarObjetivo);
   if ($("toff")) $("toff").addEventListener("click", ()=>manterPlanoOriginal(base0));
   if ($("fboff")) $("fboff").addEventListener("click", ()=>manterOriginalFeedback(base0));
   if (semOff===0) bindSugestao();
@@ -4127,7 +4132,7 @@ function desenharDescanso(){
 async function terminarForca(a){
   const {d,k,i,t} = argTreino(a); const S = sessaoDe(a);
   const feitas = S.ex.reduce((n,e)=>n+e.sets.filter(s=>s.ok).length, 0);
-  if (!feitas){ toast("Marque ✓ nas séries que você fez."); return; }
+  if (!feitas && S.ex.length){ toast("Marque ✓ nas séries que você fez."); return; }
   const antes = nivelAntes();
   // recordes: comparar com o melhor antes desta sessão
   let prs = 0, vol = 0; const subiu = [];
@@ -4623,13 +4628,13 @@ function faixaCal(){
   const p = P && P.perfil || {}; if (ehMenor(p)) return null;
   let n = 0; for (let i = 0; i < 7; i++) treinosDe(addDays(addDays(today, -dow(today)), i)).forEach(t=>{ n += kcalTreino(t, null); });
   const td = tendenciaPeso(LOG.corpo, key(today));
-  return faixaKcal({kg:p.peso, cm:p.altura, idade:p.idade, sexo:p.sexo, objetivo:p.objetivo, menor:p.menor, red:(p.flags && p.flags.red) || [], ciclo:p.ciclo, treinoDia:Math.round(n/7), tendenciaKgSemana:td ? td.kgSemana : null, diasTendencia:td ? td.dias : 0});
+  return faixaKcal({kg:p.peso, cm:p.altura, idade:p.idade, sexo:p.sexo, objetivo:p.objetivoOrig||p.objetivo, menor:p.menor, red:(p.flags && p.flags.red) || [], ciclo:p.ciclo, treinoDia:Math.round(n/7), tendenciaKgSemana:td ? td.kgSemana : null, diasTendencia:td ? td.dias : 0});
 }
 function faixaCaloriasHTML(){
   const p = P && P.perfil || {}; if (ehMenor(p)) return "";
   let n = 0; for (let i = 0; i < 7; i++) treinosDe(addDays(addDays(today, -dow(today)), i)).forEach(t=>{ n += kcalTreino(t, null); });
   const td = tendenciaPeso(LOG.corpo, key(today));
-  const f = faixaKcal({kg:p.peso, cm:p.altura, idade:p.idade, sexo:p.sexo, objetivo:p.objetivo, menor:p.menor, red:(p.flags && p.flags.red) || [], ciclo:p.ciclo, treinoDia:Math.round(n/7), tendenciaKgSemana:td ? td.kgSemana : null, diasTendencia:td ? td.dias : 0});
+  const f = faixaKcal({kg:p.peso, cm:p.altura, idade:p.idade, sexo:p.sexo, objetivo:p.objetivoOrig||p.objetivo, menor:p.menor, red:(p.flags && p.flags.red) || [], ciclo:p.ciclo, treinoDia:Math.round(n/7), tendenciaKgSemana:td ? td.kgSemana : null, diasTendencia:td ? td.dias : 0});
   if (!f) return "";
   return '<div class="box"><div class="between"><b>Faixa de calorias</b><span class="k">estimativa</span></div><b style="font-size:1.3rem">'+f.min.toLocaleString("pt-BR")+' a '+f.max.toLocaleString("pt-BR")+' kcal por dia</b><p class="s">'+esc(f.motivo)+'.</p><span class="s">Estimativa pela sua rotina e treinos, não é prescrição. Para um plano individual, procure um nutricionista.</span></div>';
 }
@@ -5955,7 +5960,7 @@ function temporadaHTML(){
     '<button type="button" class="lk in" id="tpnova">+ meta ou prova</button></div>';
 }
 function bindTemporada(app){
-  const d = app.querySelector("#tpdata"); if (d) d.addEventListener("click", ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
+  const d = app.querySelector("#tpdata"); if (d) d.addEventListener("click", mudarObjetivo);
   const n = app.querySelector("#tpnova"); if (n) n.addEventListener("click", sheetMeta);
 }
 // para o coach: a temporada inteira, com prioridade
@@ -6056,7 +6061,7 @@ function telaExtras(){
     '<div class="pf-card"><span class="k">objetivos extras e compromissos fixos</span><span class="s">Coisas que você faz além do principal. Fixos entram na sua semana e o coach respeita. Os obrigatórios ele não tira.</span>'+fx+'<button type="button" class="btn go" id="exfx">Adicionar compromisso fixo</button></div>'+
     '<div class="pf-card"><span class="k">metas</span><span class="s">Escreva uma meta e o coach analisa se cabe e como encaixa no seu treino, sem atrapalhar o objetivo principal.</span>'+mt+'<button type="button" class="btn go" id="exmt">Adicionar meta</button></div>', {tabs:true, fab:true});
   bindGo(app);
-  $("exobj").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
+  $("exobj").addEventListener("click", mudarObjetivo);
   $("exfx").addEventListener("click", ()=>sheetFixo());
   $("exmt").addEventListener("click", ()=>sheetMeta());
   app.querySelectorAll("[data-fx]").forEach(b=>b.addEventListener("click", ()=>sheetFixo(b.dataset.fx)));
@@ -6330,6 +6335,16 @@ async function lerConvite(cod){   // só lê e valida; não consome
     return {n, c, nome: String(pp.nome||"").slice(0, 40) || "Seu "+NOMEMODO[c.papel]};
   }catch(e){ return {erro:"falha"}; }
 }
+function sheetConfirma(titulo, texto, rotulo, fn){
+  const c = abrirSheet(titulo);
+  c.innerHTML = '<h2 class="h2 lg">'+esc(titulo)+'</h2><p class="s">'+esc(texto)+'</p><button type="button" class="btn go" id="scok">'+esc(rotulo)+'</button><button type="button" class="lk" id="scno">Agora não</button>';
+  $("scno").addEventListener("click", ()=>fecharSheet());
+  $("scok").addEventListener("click", ()=>{ fecharSheet(); fn(); });
+}
+function mudarObjetivo(){
+  const vai = ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); };
+  if (P && P.plano && P.plano.custom && !P.planoProf) sheetConfirma("Trocar o objetivo?", "Se você escolher outro objetivo, o treino que você montou é substituído. O que você já treinou continua registrado.", "Trocar objetivo", vai); else vai();
+}
 function abrirSheet(rotulo){
   $("ov").innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog" aria-label="'+esc(rotulo)+'"><span class="grab"></span><div id="shb"></div></div>';
   $("dim").addEventListener("click", ()=>fecharSheet());
@@ -6569,7 +6584,7 @@ function telaPerfil(){
   $("ext").addEventListener("click", ()=>ir("perfil","extras"));
   $("teto").addEventListener("click", sheetTeto);
   $("cor").addEventListener("click", ()=>ir("perfil","corpo"));
-  $("obj").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); mudandoObjetivo = true; onb(1); });
+  $("obj").addEventListener("click", mudarObjetivo);
   $("doc").addEventListener("click", ()=>sheetDocumento(false));
   $("edt").addEventListener("click", ()=>{ Object.assign(draft, P.perfil); onb(0); });
   $("foto").addEventListener("click", sheetFoto); $("fotob").addEventListener("click", sheetFoto); $("sair").addEventListener("click", sheetSair);
@@ -7173,6 +7188,7 @@ function rotear(clique){
   if (!isOwner && !(ACESSO && ACESSO.status==="aceito")){ if (!entrou){ telaAbertura(); return; } if (ACESSO && ACESSO.status==="recusado"){ telaPedido(); return; } telaCodigo(); return; }
   if (ehPro()){ render(); return; }   // conta profissional: layout próprio, sem questionário, plano nem revisão de aluno
   if (!P || !P.perfil){ if (!entrou && !step){ telaAbertura(); return; } if (!tipoConta && !step){ telaTipoConta(); return; } if (tipoConta==="pro"){ telaCadastroPro(); return; } onb(Math.min(step||0, 5)); return; }
+  if (P.perfil.meuPendente){ telaMeuTreino({primeira:true}); return; }
   if (!P.perfil.compromisso){ telaPlanoPronto(); return; }
   if (!P.perfil.assinatura){ telaAssinatura(); return; }
   const red = P.perfil.flags && P.perfil.flags.red && P.perfil.flags.red.length;
