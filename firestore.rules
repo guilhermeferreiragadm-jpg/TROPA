@@ -44,8 +44,40 @@ service cloud.firestore {
     match /config/{id} { allow read: if logado(); allow write: if dono(); }
     match /posts/{id}  { allow read: if logado(); allow write: if dono(); }
 
-    // Nome e foto públicos, gravados pelo shim no login.
-    match /perfis/{id} { allow read: if logado(); allow write: if eu(id); }
+    // Nome, foto e resumo públicos (para o feed), gravados pelo próprio uid. Lê quem tem acesso ao app.
+    match /perfis/{id} { allow read: if temAcesso() || eu(id); allow write: if eu(id); }
+
+    // Feed compartilhado: todo mundo com acesso vê todos os posts.
+    // O autor cria, edita e apaga o próprio post; qualquer pessoa com acesso só dá fogo (na própria chave) e comenta (um por vez, em nome próprio).
+    function feedChaves() { return ['autor','nome','avatar','date','at','esporte','outro','titulo','stats','legenda','foto','plano','junto','selo','fogos','coments']; }
+    function antesFogos() { return resource.data.get('fogos', {}); }
+    function depoisFogos() { return request.resource.data.get('fogos', {}); }
+    function antesComents() { return resource.data.get('coments', []); }
+    function depoisComents() { return request.resource.data.get('coments', []); }
+    function fogoOk() { return depoisFogos().diff(antesFogos()).affectedKeys().hasOnly([request.auth.uid]); }
+    function comentOk() {
+      return depoisComents() == antesComents()
+        || (depoisComents().size() == antesComents().size() + 1
+            && depoisComents().size() <= 200
+            && depoisComents()[0:antesComents().size()] == antesComents()
+            && depoisComents()[antesComents().size()].de == request.auth.uid
+            && depoisComents()[antesComents().size()].t is string
+            && depoisComents()[antesComents().size()].t.size() <= 120);
+    }
+    match /feedposts/{id} {
+      allow read: if temAcesso();
+      allow create: if temAcesso()
+        && request.resource.data.autor == request.auth.uid
+        && request.resource.data.keys().hasOnly(feedChaves())
+        && request.resource.data.get('foto', '').size() <= 300000;
+      allow update: if temAcesso() && (
+        (resource.data.autor == request.auth.uid
+          && request.resource.data.autor == resource.data.autor
+          && request.resource.data.keys().hasOnly(feedChaves())
+          && request.resource.data.get('foto', '').size() <= 300000)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fogos', 'coments']) && fogoOk() && comentOk()));
+      allow delete: if dono() || (logado() && resource.data.autor == request.auth.uid);
+    }
 
     // Contador diário da IA: só a Cloud Function (Admin SDK ignora as regras).
     match /uso/{id} { allow read, write: if false; }

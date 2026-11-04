@@ -86,10 +86,59 @@ test("convites, vinculos, snap, prop e inbox: logado lê e grava", async () => {
   }
 });
 
-test("perfis: logado lê, só o próprio grava", async () => {
+test("perfis: quem tem acesso lê, o próprio lê e grava, os outros não gravam", async () => {
   await assertSucceeds(ana().doc("perfis/ana").set({ name: "Ana" }));
+  await assertSucceeds(ana().doc("perfis/ana").get());
+  await assertFails(bia().doc("perfis/ana").get());          // bia ainda sem acesso
+  await comAcesso("bia");
   await assertSucceeds(bia().doc("perfis/ana").get());
   await assertFails(bia().doc("perfis/ana").set({ name: "X" }));
+});
+
+const post = (autor, extra) => Object.assign({ autor, nome: autor, avatar: "", date: "2026-11-04", at: "2026-11-04T10:00:00.000Z", esporte: "run", outro: "", titulo: "Longão", stats: [{ v: "10", u: "km" }], legenda: "", foto: "", plano: "", junto: [], selo: "", fogos: {}, coments: [] }, extra || {});
+
+test("feedposts: só quem tem acesso lê; só o próprio autor cria", async () => {
+  await comAcesso("ana"); await comAcesso("bia");
+  await assertSucceeds(ana().doc("feedposts/p1").set(post("ana")));
+  await assertSucceeds(bia().doc("feedposts/p1").get());
+  await assertFails(env.authenticatedContext("zed").firestore().doc("feedposts/p1").get());
+  await assertFails(anon().doc("feedposts/p1").get());
+  await assertFails(bia().doc("feedposts/p2").set(post("ana")));                     // em nome de outra pessoa
+  await assertFails(bia().doc("feedposts/p3").set(post("bia", { extra: 1 })));       // chave desconhecida
+  await assertFails(bia().doc("feedposts/p4").set(post("bia", { foto: "x".repeat(300001) })));
+  await assertSucceeds(bia().doc("feedposts/p5").set(post("bia")));
+});
+
+test("feedposts: fogo só na própria chave, dá e tira", async () => {
+  await comAcesso("ana"); await comAcesso("bia");
+  await semear(db => db.doc("feedposts/p1").set(post("ana")));
+  await assertSucceeds(bia().doc("feedposts/p1").update({ "fogos.bia": "2026-11-04T11:00:00.000Z" }));
+  await assertFails(bia().doc("feedposts/p1").update({ "fogos.ana": "2026-11-04T11:00:00.000Z" }));
+  await assertSucceeds(bia().doc("feedposts/p1").update({ fogos: {} }));                       // tirar o próprio fogo
+});
+
+test("feedposts: comentário um por vez e só do próprio uid", async () => {
+  await comAcesso("ana"); await comAcesso("bia");
+  const ant = [{ de: "ana", nome: "Ana", t: "oi", at: "2026-11-04T10:01:00.000Z" }];
+  const meu = { de: "bia", nome: "Bia", t: "bora", at: "2026-11-04T10:02:00.000Z" };
+  const tenta = async coments => { await semear(db => db.doc("feedposts/p1").set(post("ana", { coments: ant }))); return bia().doc("feedposts/p1").update({ coments }); };
+  await assertSucceeds(tenta(ant.concat([meu])));
+  await assertFails(tenta(ant.concat([Object.assign({}, meu, { de: "ana" })])));        // em nome de outro
+  await assertFails(tenta(ant.concat([meu, meu])));                                    // dois de uma vez
+  await assertFails(tenta([meu]));                                                     // apagou o comentário alheio
+  await assertFails(tenta(ant.concat([Object.assign({}, meu, { t: "x".repeat(121) })])));
+});
+
+test("feedposts: terceiros não editam o conteúdo; autor edita; apagar só autor ou dono", async () => {
+  await comAcesso("ana"); await comAcesso("bia");
+  await semear(db => db.doc("feedposts/p1").set(post("ana")));
+  await assertFails(bia().doc("feedposts/p1").update({ titulo: "hackeado" }));
+  await assertFails(bia().doc("feedposts/p1").delete());
+  await assertSucceeds(ana().doc("feedposts/p1").update({ titulo: "Novo título" }));
+  await assertFails(ana().doc("feedposts/p1").update({ autor: "bia" }));
+  await assertSucceeds(dono().doc("feedposts/p1").delete());
+  await semear(db => db.doc("feedposts/p2").set(post("ana")));
+  await assertSucceeds(ana().doc("feedposts/p2").delete());
 });
 
 test("uso (contador da IA): o cliente nunca lê nem grava", async () => {
