@@ -161,3 +161,25 @@ test("fotos dos exercícios: todo nome mapeado existe na base e todo arquivo exi
   });
   assert.ok(Object.keys(mapa).length > 120);
 });
+
+test("feed: 'Outro esporte' mostra o nome digitado e os demais esportes seguem iguais", () => {
+  const i = html.indexOf("const ESPN ="), j = html.indexOf("\n", html.indexOf("function espNome(p){", i));
+  const ESPN = new Function(html.slice(i, j) + "\nreturn espNome;")();
+  assert.equal(ESPN({esporte: "outro", outro: "Futebol"}), "Futebol");
+  assert.equal(ESPN({esporte: "outro", outro: ""}), "outro esporte");
+  assert.equal(ESPN({esporte: "run"}), "corrida");
+  assert.equal(ESPN({esporte: "hyrox"}), "hyrox");
+  assert.equal(ESPN({esporte: "desconhecido"}), "treino");
+});
+
+test("feed: formulário de postar tem Outro, campo do nome e validação", () => {
+  const f = trecho("function postarHTML(){", "function bindFeed(app){");
+  assert.match(f, /\["outro","Outro"\]/);
+  assert.match(f, /id="pf-outro-box"/);
+  assert.match(f, /data-f="pf_outro"/);
+  assert.match(html, /Diga qual esporte foi\./);
+});
+
+test("feed: cartão de post 'outro' mostra o nome do esporte como etiqueta", () => {
+  assert.match(trecho("function postFull(p){", "const nc ="), /p\.esporte==="outro" \? '<span class="pill2">'\+esc\(espNome\(p\)\)/);
+});
