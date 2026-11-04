@@ -4401,22 +4401,104 @@ function seedSocial(){
   SOC.desafios = SOC.desafios || [];
   if (isOwner){ delete SOC.people.andre; Object.keys(SOC.follows).forEach(k=>{ SOC.follows[k] = SOC.follows[k].filter(x=>x!=="andre"); }); delete SOC.follows.andre; }
 }
-function carregarPostsDono(src){
-  if (!src || !src.collection || isOwner) return;
-  try{ src.collection("posts").onSnapshot(snap=>{
-    const real = snap.docs.map(d=>Object.assign({id:d.id}, d.data()||{})).filter(p=>p.publicar);
-    SOC.posts = SOC.posts.filter(p=>p.autor!=="andre");
-    real.forEach(p=>SOC.posts.push({id:"a"+p.id, autor:"andre", date:p.date||p.id, at:p.at||((p.date||p.id)+"T12:00:00"), esporte:p.esporte||"run", outro:p.outro||"", titulo:p.titulo||"Treino", stats:Array.isArray(p.stats)?p.stats:[], legenda:p.legenda||"", foto:p.foto||((p.fotos||[])[0]?"/_blob/"+encodeURIComponent(p.fotos[0]):""), selo:p.selo||""}));
-    if (R.tab==="feed" && !R.sub) render(true);
-  }, ()=>{}); }catch(e){}
+/* ---- Feed real: posts, pessoas, fogo, comentários e quem segue vêm do Firestore (feedposts e perfis), visíveis para todo mundo com acesso ---- */
+const statsParaDb = st => (st||[]).map(x=>({v:String(x[0]), u:String(x[1])}));   // o Firestore não aceita lista dentro de lista
+const statsDeDb = st => (Array.isArray(st)?st:[]).map(x=>Array.isArray(x) ? [String(x[0]), String(x[1])] : [String(x&&x.v), String(x&&x.u)]);
+const fogosDe = m => Object.keys(m||{}).filter(k=>m[k]);
+function postDeDb(id, d){
+  d = d||{}; const cs = Array.isArray(d.coments)?d.coments:[];
+  return {id, autor:d.autor||"", date:d.date||String(d.at||"").slice(0,10), at:d.at||"", esporte:d.esporte||"run", outro:d.outro||"", titulo:d.titulo||"Treino", stats:statsDeDb(d.stats), legenda:d.legenda||"", foto:d.foto||"", plano:d.plano||"", selo:d.selo||"", junto:Array.isArray(d.junto)?d.junto:[],
+    reacoes:cs.map(c=>({de:c.de, t:c.t, at:c.at, nome:c.nome})), fogos:fogosDe(d.fogos), real:true, _fogos:d.fogos||{}, _coments:cs, _nome:d.nome||"", _avatar:d.avatar||""};
+}
+function pessoaDePerfil(d){ d = d||{}; return {nome:String(d.apelido||d.name||"Atleta"), foto:d.avatarUrl||"", meta:d.meta||"", cor:"#8A929B", exemplo:false, compartilha:d.compartilha!==false, streak:d.streak||0, km30:d.km30||0, feitos:d.feitos||0, nivel:d.nivel||0, xpSem:d.xpSem||0, kmSem:d.kmSem||0}; }
+function avisosReais(eu, posts, perfis, visto){
+  const nomeDe = id => { const q = (perfis||{})[id]; return q ? String(q.apelido||q.name||"Alguém").split(" ")[0] : "Alguém"; };
+  const out = [];
+  (posts||[]).filter(q=>q.autor===eu).forEach(q=>{
+    Object.keys(q._fogos||{}).forEach(u=>{ const at = q._fogos[u]; if (u!==eu && at) out.push({id:"f"+q.id+u, at, txt:nomeDe(u)+" deu fogo no seu post: "+q.titulo, ir:"feed"}); });
+    (q._coments||[]).forEach((c,i)=>{ if (c.de!==eu) out.push({id:"c"+q.id+i, at:c.at||"", txt:(c.nome?String(c.nome).split(" ")[0]:nomeDe(c.de))+" comentou em "+q.titulo+": "+c.t, ir:"feed"}); });
+  });
+  Object.keys(perfis||{}).forEach(id=>{ const sg = (perfis[id]||{}).seguindo||{}; if (id!==eu && sg[eu]) out.push({id:"s"+id, at:sg[eu], txt:nomeDe(id)+" começou a te seguir. Siga de volta?", ir:"pessoas"}); });
+  return out.filter(n=>n.at).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,50).map(n=>Object.assign(n, {lido:!!visto && String(n.at)<=String(visto)}));
+}
+const FEED = {on:false, perfis:{}, posts:[], un:[]};
+function feedReal(){ return !DEMO && FEED.on; }
+function montarSocialReal(){
+  const eu = ME();
+  SOC.people = {}; SOC.follows = {};
+  Object.keys(FEED.perfis).forEach(id=>{ const d = FEED.perfis[id]||{}; SOC.follows[id] = Object.keys(d.seguindo||{}).filter(k=>d.seguindo[k]); if (id!==eu && d.feed===true) SOC.people[id] = pessoaDePerfil(d); });
+  if (!SOC.follows[eu]) SOC.follows[eu] = [];
+  SOC.posts = FEED.posts.slice();
+  SOC.posts.forEach(q=>{ if (q.autor!==eu && !SOC.people[q.autor]) SOC.people[q.autor] = {nome:q._nome||"Atleta", foto:q._avatar||"", meta:"", cor:"#8A929B", exemplo:false, compartilha:false}; });
+  SOC.kudos = {}; SOC.posts.forEach(q=>{ SOC.kudos[q.id] = q.fogos; });
+  SOC.notifs = avisosReais(eu, SOC.posts, FEED.perfis, SOC.avisosVistoAt).concat((SOC.notifs||[]).filter(n=>n.local));
+  const f = document.activeElement;
+  if (R.tab==="feed" && !R.sub && feedView!=="postar" && !(f && /^(INPUT|TEXTAREA)$/.test(f.tagName))) render(true);
+}
+let perfT = 0;
+function publicarPerfil(forcar){
+  if (DEMO || !realDb || !me || !P || !P.perfil) return;
+  const agora = Date.now(); if (!forcar && agora-perfT < 600000) return; perfT = agora;
+  let v; try{ v = {feed:true, apelido:String(P.perfil.apelido||meName||"").slice(0,40), meta:(TPL[P.perfil.objetivo]&&TPL[P.perfil.objetivo].nome)||"", nivel:nivelXP().n, streak:foguinho().n, feitos:aderencia7(), km30:kmPeriodo(30), xpSem:xpSemana(), kmSem:kmPeriodo(7), compartilha:true, atualizadoEm:new Date().toISOString()}; }catch(e){ return; }
+  const dr = realDb.collection("perfis").doc(me);
+  dr.update(v).catch(()=>dr.set(Object.assign({name:meName, avatarUrl:meAv}, v)).catch(()=>{}));
+}
+function ligarFeedReal(){
+  if (DEMO || LOCAL || FEED.on || !realDb || !me) return;
+  if (!(isOwner || (ACESSO && ACESSO.status==="aceito"))) return;
+  FEED.on = true; FEED.un.forEach(f=>{ try{ f(); }catch(e){} }); FEED.un = [];
+  SOC.avisosVistoAt = SOC.avisosVistoAt || new Date().toISOString();
+  SOC.desafios = (SOC.desafios||[]).filter(dz=>!(dz.membros||[]).some(x=>DEMOPEOPLE[x]));   // desafios com os amigos de exemplo não valem no feed real
+  feedFiltro = "todos";
+  const erro = ()=>{ FEED.on = false; };
+  try{
+    FEED.un.push(realDb.collection("feedposts").orderBy("at","desc").limit(60).onSnapshot(sn=>{ FEED.posts = sn.docs.map(d=>postDeDb(d.id, d.data())).sort((a,b)=>String(b.at).localeCompare(String(a.at))); montarSocialReal(); }, erro));
+    FEED.un.push(realDb.collection("perfis").where("feed","==",true).onSnapshot(sn=>{ FEED.perfis = {}; sn.docs.forEach(d=>{ const v = d.data()||{}; if (v.feed===true) FEED.perfis[d.id] = v; }); montarSocialReal(); }, erro));
+  }catch(e){ FEED.on = false; }
+  publicarPerfil(true);
+}
+function postarReal(post){
+  return realDb.collection("feedposts").doc(post.id).set({autor:me, nome:pessoa(me).nome, avatar:meAv||"", date:post.date, at:post.at, esporte:post.esporte, outro:post.outro||"", titulo:post.titulo, stats:statsParaDb(post.stats), legenda:post.legenda||"", foto:post.foto||"", plano:post.plano||"", selo:"", junto:post.junto||[], fogos:{}, coments:[]});
+}
+function alternarFogo(id, soDar){
+  const q = SOC.posts.find(x=>x.id===id); if (!q) return;
+  if (!q.real){ const a = SOC.kudos[id] = SOC.kudos[id]||[], i = a.indexOf(ME()); if (i>=0){ if (!soDar) a.splice(i,1); } else a.push(ME()); salvarSocial(); return; }
+  const tem = q.fogos.includes(ME()); if (tem && soDar) return;
+  q.fogos = tem ? q.fogos.filter(x=>x!==ME()) : q.fogos.concat([ME()]); SOC.kudos[id] = q.fogos;
+  realDb.collection("feedposts").doc(id).update({["fogos."+me]: tem ? null : new Date().toISOString()}).catch(()=>toast("Não consegui enviar o fogo. Tente de novo."));
+}
+function comentar(id, t){
+  t = String(t||"").trim().slice(0,120); if (!t) return false;
+  const q = SOC.posts.find(x=>x.id===id); if (!q) return false;
+  if (!q.real){ q.reacoes = (q.reacoes||[]).concat([{de:ME(), t}]); salvarSocial(); return true; }
+  const novo = {de:me, nome:pessoa(me).nome, t, at:new Date().toISOString()};
+  q._coments = (q._coments||[]).concat([novo]); q.reacoes = q._coments.map(c=>({de:c.de, t:c.t, at:c.at, nome:c.nome}));
+  realDb.collection("feedposts").doc(id).update({coments:q._coments}).catch(()=>toast("Não consegui enviar o comentário. Tente de novo."));
+  return true;
+}
+function alternarSeguir(id){
+  const a = SOC.follows[ME()] = SOC.follows[ME()]||[], i = a.indexOf(id), seguir = i<0;
+  if (seguir) a.push(id); else a.splice(i,1);
+  if (!feedReal()){ salvarSocial(); return; }
+  const meu = FEED.perfis[me] = FEED.perfis[me]||{}; meu.seguindo = Object.assign({}, meu.seguindo); meu.seguindo[id] = seguir ? new Date().toISOString() : null;
+  const dr = realDb.collection("perfis").doc(me), campo = {["seguindo."+id]: meu.seguindo[id]};
+  dr.update(campo).catch(()=>dr.set({name:meName, avatarUrl:meAv, seguindo:{[id]:meu.seguindo[id]}}).catch(()=>toast("Não consegui salvar. Tente de novo.")));
+}
+function apagarPost(id){
+  const q = SOC.posts.find(x=>x.id===id); if (!q || q.autor!==ME()) return;
+  sheetConfirma("Apagar este post?", "Ele some do feed de todo mundo.", "Apagar", ()=>{
+    if (!q.real){ SOC.posts = SOC.posts.filter(x=>x.id!==id); salvarSocial(); render(true); return; }
+    FEED.posts = FEED.posts.filter(x=>x.id!==id); montarSocialReal();
+    realDb.collection("feedposts").doc(id).delete().catch(()=>toast("Não consegui apagar. Tente de novo."));
+  });
 }
 let socT = null;
-function salvarSocial(){ if (DEMO || !db || !me) return; clearTimeout(socT); socT = setTimeout(()=>{ const c = JSON.parse(JSON.stringify(SOC)); c.posts = c.posts.filter(p=>p.autor!=="andre" || isOwner); c.posts.forEach(p=>{ if (p.demo) p.foto = ""; }); Object.keys(c.people||{}).forEach(k=>{ if (DEMOAV[k]) delete c.people[k].foto; }); let n = 0; c.posts.sort((a,b)=>String(b.at).localeCompare(String(a.at))).forEach(p=>{ if (p.foto && p.foto.startsWith("data:")){ n++; if (n>3) p.foto = ""; } }); db.collection(base()).doc("social").set(c).catch(()=>{}); }, 600); }
+function salvarSocial(){ if (DEMO || !db || !me) return; clearTimeout(socT); socT = setTimeout(()=>{ const c = JSON.parse(JSON.stringify(SOC)); if (FEED.on){ c.posts = []; c.people = {}; c.follows = {}; c.kudos = {}; c.notifs = (c.notifs||[]).filter(n=>n.local); } c.posts = c.posts.filter(p=>p.autor!=="andre" || isOwner); c.posts.forEach(p=>{ if (p.demo) p.foto = ""; }); Object.keys(c.people||{}).forEach(k=>{ if (DEMOAV[k]) delete c.people[k].foto; }); let n = 0; c.posts.sort((a,b)=>String(b.at).localeCompare(String(a.at))).forEach(p=>{ if (p.foto && p.foto.startsWith("data:")){ n++; if (n>3) p.foto = ""; } }); db.collection(base()).doc("social").set(c).catch(()=>{}); }, 600); }
 function pessoa(id){ if (id===ME()) return {nome:(P&&P.perfil&&P.perfil.apelido)||meName||"Você", meta:(P&&P.perfil&&TPL[P.perfil.objetivo]?TPL[P.perfil.objetivo].nome:""), cor:"var(--go-fill)", eu:true, nivel:nivelXP().n}; return SOC.people[id] || {nome:"Atleta", cor:"var(--neutro)"}; }
 function avatar(id, sz){ const p = pessoa(id); if (p.foto) return '<img class="avp" alt="" style="width:'+(sz||34)+'px;height:'+(sz||34)+'px;border-radius:50%;object-fit:cover" src="'+esc(p.foto)+'">'; return '<span class="av" style="width:'+(sz||34)+'px;height:'+(sz||34)+'px;background:'+p.cor+'">'+esc(ini(p.nome))+'</span>'; }
 function segue(a,b){ return (SOC.follows[a]||[]).includes(b); }
 function relTempo(iso){ const m = Math.round((Date.now()-new Date(iso))/60000); if (m<60) return m<=1?"agora":"há "+m+" min"; const h = Math.round(m/60); if (h<24) return "há "+h+" h"; const dd = Math.round(h/24); return dd===1?"ontem":"há "+dd+" dias"; }
-function avisar(txt, ir2){ SOC.notifs.unshift({id:"n"+Date.now(), at:new Date().toISOString(), txt, ir:ir2||"feed", lido:false}); salvarSocial(); }
+function avisar(txt, ir2){ SOC.notifs.unshift({id:"n"+Date.now(), at:new Date().toISOString(), txt, ir:ir2||"feed", lido:false, local:true}); salvarSocial(); }
 /* ---- Feed D1: post em tela cheia (estilo Reels), com coluna de ações e "Ver desempenho" ---- */
 const FEED_COR = {run:["#E35A12","#B03A00"], gym:["#7C65D8","#5340A8"], swim:["#1E6FD0","#0D47A1"], bike:["#B07A06","#7A5000"], hyrox:["#E35A12","#8F2D00"], race:["#E35A12","#B03A00"], outro:["#2F8F83","#1B5E56"]};
 function avatarFeed(id, sz){ const pe = pessoa(id); if (id===ME() && fotoSrc()) return '<img class="avp" style="width:'+sz+'px;height:'+sz+'px" alt="" src="'+esc(fotoSrc())+'">'; return avatar(id, sz); }
@@ -4429,7 +4511,7 @@ function postFull(p){
     '<div class="fpact"><div class="fpav"><button type="button" class="fpavb" data-fv="perfil:'+esc(p.autor)+'" aria-label="Perfil de '+esc(pe.nome)+'">'+avatarFeed(p.autor, 44)+'</button>'+(p.autor!==ME() ? '<button type="button" class="fpseg'+(seg?' ok':'')+'" data-fol="'+esc(p.autor)+'" aria-label="'+(seg?'Deixar de seguir':'Seguir')+'">'+(seg?'✓':'+')+'</button>' : '')+'</div>'+
       '<button type="button" class="fpb" data-kudo="'+esc(p.id)+'" aria-pressed="'+mine+'" aria-label="Dar fogo"><span class="fpi"><svg width="24" height="24" viewBox="0 0 24 24" fill="'+(mine?'#FF8A4C':'#fff')+'"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg></span>'+ks.length+'</button>'+
       '<button type="button" class="fpb" data-com="'+esc(p.id)+'" aria-label="Comentar"><span class="fpi">💬</span>'+nc+'</button>'+
-      '<button type="button" class="fpb" data-shr="'+esc(p.id)+'" aria-label="Compartilhar"><span class="fpi">↗</span>enviar</button></div>'+
+      '<button type="button" class="fpb" data-shr="'+esc(p.id)+'" aria-label="Compartilhar"><span class="fpi">↗</span>enviar</button>'+(p.autor===ME()?'<button type="button" class="fpb" data-del="'+esc(p.id)+'" aria-label="Apagar post"><span class="fpi">🗑</span>apagar</button>':'')+'</div>'+
     '<div class="fpleg"><b>@'+esc(pe.nome.split(" ")[0].toLowerCase())+(pe.exemplo?' <span class="pill2" style="padding:1px 7px;font-size:.625rem">exemplo</span>':'')+(p.selo?' <span class="pill2" style="padding:1px 7px;font-size:.625rem">🏅 '+esc(p.selo)+'</span>':'')+'</b><div class="fpt">'+esc(p.titulo)+(p.legenda?' · '+esc(p.legenda):'')+'</div><div class="fpch">'+chips+'</div><small>'+esc(relTempo(p.at))+(p.junto&&p.junto.length?' · com '+esc(p.junto.map(j=>pessoa(j).nome.split(" ")[0]).join(", ")):'')+'</small></div>'+
     '<button type="button" class="fpdt" data-dsm="'+esc(p.id)+'">⌃ Ver desempenho</button></article>';
 }
@@ -4439,7 +4521,7 @@ function sheetDesempenho(id){
   const cab = '<div class="row nw" style="gap:10px">'+avatarFeed(p.autor, 38)+'<div class="grow"><b>'+esc(pe.nome)+' · '+esc(p.titulo)+'</b><small class="s">'+esc(relTempo(p.at))+' · '+esc(espNome(p))+'</small></div>'+(p.selo?'<span class="chip o">🏅 '+esc(p.selo)+'</span>':'')+'</div>';
   if (!seg){
     shb.innerHTML = '<h2 class="h2">Desempenho</h2>'+cab+'<div class="dlock"><div style="font-size:1.6rem">🔒</div><b>Siga '+esc(pe.nome.split(" ")[0])+' para ver o desempenho</b><p class="s">Ritmo, tempo e detalhes do treino aparecem para quem segue.</p><button type="button" class="btn go" id="dseg">Seguir '+esc(pe.nome.split(" ")[0])+'</button></div>';
-    $("dseg").addEventListener("click", ()=>{ const a = SOC.follows[ME()] = SOC.follows[ME()]||[]; if (!a.includes(p.autor)) a.push(p.autor); salvarSocial(); sheetDesempenho(id); render(true); });
+    $("dseg").addEventListener("click", ()=>{ if (!segue(ME(), p.autor)) alternarSeguir(p.autor); sheetDesempenho(id); render(true); });
     return;
   }
   const big = st[0] ? '<div class="dbig">'+esc(st[0][0])+'<small> '+esc(st[0][1])+'</small></div>' : '';
@@ -4448,18 +4530,18 @@ function sheetDesempenho(id){
   const spl = Array.isArray(p.splits) && p.splits.length ? '<span class="k">ritmo por quilômetro</span><div class="dspl">'+(()=>{ const mx = Math.max(...p.splits), mn = Math.min(...p.splits); return p.splits.map(v=>'<i style="height:'+Math.round(30+70*(mx-v)/Math.max(.01,mx-mn))+'%'+(v===mn?';background:var(--done)':'')+'"></i>').join(""); })()+'</div>' : '';
   shb.innerHTML = '<h2 class="h2">Desempenho</h2>'+cab+big+'<div class="d4">'+resto+extra+'</div>'+spl+(p.plano?'<span class="badge">'+esc(p.plano)+'</span>':'')+
     '<div class="row"><button type="button" class="btn ink" id="dfg">🔥 Dar foguinho</button><button type="button" class="btn ink" id="dcm">💬 Comentar</button></div>';
-  $("dfg").addEventListener("click", ()=>{ const a = SOC.kudos[p.id] = SOC.kudos[p.id]||[]; if (!a.includes(ME())) a.push(ME()); salvarSocial(); fecharSheet(); render(true); toast("Foguinho enviado."); });
+  $("dfg").addEventListener("click", ()=>{ alternarFogo(p.id, true); fecharSheet(); render(true); toast("Foguinho enviado."); });
   $("dcm").addEventListener("click", ()=>sheetComentarios(id));
 }
 function sheetComentarios(id){
-  const p = SOC.posts.find(x=>x.id===id); if (!p) return;
-  const shb = abrirSheet("Comentários"), lista = p.reacoes||[];
+  if (!SOC.posts.find(x=>x.id===id)) return;
+  const shb = abrirSheet("Comentários");
   const pinta = ()=>{
-    const ls = p.reacoes||[];
+    const p = SOC.posts.find(x=>x.id===id) || {}, ls = p.reacoes||[];
     shb.innerHTML = '<h2 class="h2">'+ls.length+(ls.length===1?' comentário':' comentários')+'</h2><div class="cml">'+(ls.length ? ls.map(r=>'<div class="cmi">'+avatarFeed(r.de, 32)+'<div><b>'+esc(pessoa(r.de).nome.split(" ")[0].toLowerCase())+'</b><div>'+esc(r.t)+'</div></div></div>').join("") : '<p class="s">Ninguém comentou ainda. Seja o primeiro.</p>')+'</div>'+
       '<div class="row" style="gap:6px;flex-wrap:wrap">'+["🔥","💪","👏","😮","❤️"].map(e=>'<button type="button" class="chip" data-emo="'+e+'" style="font-size:1.1rem">'+e+'</button>').join("")+["Monstro!","Bora!","Que pace","Inspirou"].map(t=>'<button type="button" class="chip" data-emo="'+t+'">'+t+'</button>').join("")+'</div>'+
       '<div class="row nw" style="gap:8px"><input class="inp" id="cmin" maxlength="120" placeholder="Adicionar comentário…" aria-label="Comentário"><button type="button" class="btn go" id="cmok" style="width:auto;padding:0 18px;flex:none">Enviar</button></div>';
-    const add = t => { t = String(t||"").trim(); if (!t) return; p.reacoes = (p.reacoes||[]).concat([{de:ME(), t:t.slice(0,120)}]); salvarSocial(); pinta(); };
+    const add = t => { if (comentar(id, t)) pinta(); };
     shb.querySelectorAll("[data-emo]").forEach(b=>b.addEventListener("click", ()=>add(b.dataset.emo)));
     $("cmok").addEventListener("click", ()=>add($("cmin").value));
     $("cmin").addEventListener("keydown", e=>{ if (e.key==="Enter"){ e.preventDefault(); add($("cmin").value); } });
@@ -4480,7 +4562,7 @@ function postCard(p){
     '<div class="chips" data-reac="'+esc(p.id)+'">'+["Monstro!","Bora!","Que pace","Inspirou"].map(t=>'<button type="button" class="chip" data-t="'+esc(t)+'">'+esc(t)+'</button>').join("")+'</div></article>';
 }
 function telaFeed(o){
-  let h;
+  let h; publicarPerfil();
   if (feedView==="pessoas") h = pessoasHTML();
   else if (feedView==="avisos") h = avisosHTML();
   else if (feedView==="postar") h = postarHTML();
@@ -4491,8 +4573,8 @@ function telaFeed(o){
     const nl = SOC.notifs.filter(n=>!n.lido).length;
     h = '<div class="between"><h1 class="h1">Feed</h1><div class="row"><button type="button" class="btn sm" data-fv="pessoas">pessoas</button><button type="button" class="btn sm" data-fv="avisos">avisos'+(nl?' · '+nl:'')+'</button><button type="button" class="fplus" data-fv="postar" aria-label="Postar meu treino">+</button></div></div>'+
       '<div class="seg" style="--c:2" id="ff"><button type="button" data-v="seguindo" aria-pressed="'+(feedFiltro==="seguindo")+'">Seguindo</button><button type="button" data-v="todos" aria-pressed="'+(feedFiltro==="todos")+'">Todos</button></div>'+
-      (posts.length ? '<div class="fcol">'+posts.map(postFull).join("")+'</div>' : '<p class="s">Ninguém que você segue postou ainda. Toque em pessoas para achar seus amigos.</p>')+
-      '<p class="s tc">Fase de teste: os amigos marcados "exemplo" são de mentira. No app oficial, todo mundo vê o feed de todo mundo.</p>';
+      (posts.length ? '<div class="fcol">'+posts.map(postFull).join("")+'</div>' : '<p class="s">'+(feedFiltro==="todos" ? 'Ninguém postou ainda. Seja o primeiro: toque no + e poste seu treino.' : 'Ninguém que você segue postou ainda. Toque em pessoas para achar seus amigos.')+'</p>')+
+      (feedReal() ? '<p class="s tc">Todo mundo que usa o app vê os posts do feed. Peso, sono, comida e check-in nunca aparecem.</p>' : '<p class="s tc">Fase de teste: os amigos marcados "exemplo" são de mentira. No app oficial, todo mundo vê o feed de todo mundo.</p>');
   }
   const app = tela(h, o); bindFeed(app);
 }
@@ -4531,14 +4613,15 @@ function postarHTML(){
 }
 function bindFeed(app){
   bindForm(app, nome=>{ if (nome==="pf_esp"){ const bx = $("pf-outro-box"); if (bx){ bx.hidden = draft.pf_esp!=="outro"; if (!bx.hidden){ const i = $("pfo"); if (i) i.focus(); } } } }); bindGo(app);
-  app.querySelectorAll("[data-fv]").forEach(b=>b.addEventListener("click", ()=>{ feedView = b.dataset.fv; if (feedView==="avisos"){ SOC.notifs.forEach(n=>n.lido = true); salvarSocial(); } render(); }));
+  app.querySelectorAll("[data-fv]").forEach(b=>b.addEventListener("click", ()=>{ feedView = b.dataset.fv; if (feedView==="avisos"){ SOC.avisosVistoAt = new Date().toISOString(); SOC.notifs.forEach(n=>n.lido = true); salvarSocial(); } render(); }));
   const ff = $("ff"); if (ff) ff.addEventListener("click", e=>{ const b = e.target.closest("button[data-v]"); if (b){ feedFiltro = b.dataset.v; render(true); } });
   app.querySelectorAll("[data-dsm]").forEach(b=>b.addEventListener("click", ()=>sheetDesempenho(b.dataset.dsm)));
   app.querySelectorAll("[data-com]").forEach(b=>b.addEventListener("click", ()=>sheetComentarios(b.dataset.com)));
   app.querySelectorAll("[data-shr]").forEach(b=>b.addEventListener("click", ()=>{ const p = SOC.posts.find(x=>x.id===b.dataset.shr); copiar((p?pessoa(p.autor).nome.split(" ")[0]+" treinou: "+p.titulo+" no "+BRAND+". ":"")+convite()); }));
-  app.querySelectorAll("[data-kudo]").forEach(b=>b.addEventListener("click", ()=>{ const a = SOC.kudos[b.dataset.kudo] = SOC.kudos[b.dataset.kudo]||[]; const i = a.indexOf(ME()); if (i>=0) a.splice(i,1); else a.push(ME()); salvarSocial(); render(true); }));
-  app.querySelectorAll("[data-reac]").forEach(box=>box.addEventListener("click", e=>{ const b = e.target.closest("button[data-t]"); if (!b) return; const p = SOC.posts.find(x=>x.id===box.dataset.reac); if (!p) return; p.reacoes = (p.reacoes||[]).concat([{de:ME(), t:b.dataset.t}]); salvarSocial(); render(true); toast("Reação enviada."); }));
-  app.querySelectorAll("[data-fol]").forEach(b=>b.addEventListener("click", ()=>{ const a = SOC.follows[ME()] = SOC.follows[ME()]||[]; const i = a.indexOf(b.dataset.fol); if (i>=0) a.splice(i,1); else a.push(b.dataset.fol); salvarSocial(); render(true); }));
+  app.querySelectorAll("[data-kudo]").forEach(b=>b.addEventListener("click", ()=>{ alternarFogo(b.dataset.kudo); render(true); }));
+  app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", ()=>apagarPost(b.dataset.del)));
+  app.querySelectorAll("[data-reac]").forEach(box=>box.addEventListener("click", e=>{ const b = e.target.closest("button[data-t]"); if (!b) return; if (comentar(box.dataset.reac, b.dataset.t)){ render(true); toast("Reação enviada."); } }));
+  app.querySelectorAll("[data-fol]").forEach(b=>b.addEventListener("click", ()=>{ alternarSeguir(b.dataset.fol); render(true); }));
   app.querySelectorAll("[data-notif]").forEach(b=>b.addEventListener("click", ()=>{ const n = SOC.notifs.find(x=>x.id===b.dataset.notif); feedView = n && n.ir || "feed"; render(); }));
   const bu = $("busca"); if (bu) bu.addEventListener("input", ()=>{ draft._busca = bu.value; clearTimeout(bu._t); bu._t = setTimeout(()=>{ render(true); const x = $("busca"); if (x){ x.focus(); x.setSelectionRange(x.value.length, x.value.length); } }, 250); });
   const iv = $("inv"); if (iv) iv.addEventListener("click", ()=>copiar(convite()));
@@ -4551,8 +4634,8 @@ function bindFeed(app){
     const st = []; if (km) st.push([num(km,1),"km"]); if (km && mn && esp==="run"){ const p = mn/km; st.push([Math.floor(p)+":"+String(Math.round((p%1)*60)).padStart(2,"0"),"/km"]); } if (mn) st.push([String(mn),"min"]);
     const s = semanaDe(today), pl = planoAtual();
     const post = {id:"p"+Date.now(), autor:ME(), date:key(today), at:new Date().toISOString(), esporte:esp, outro:esp==="outro"?outro:"", titulo:tit, stats:st, legenda:String(draft.pf_leg||"").trim().slice(0,220), foto:fotoTmp, junto:Array.isArray(draft.pf_junto)?draft.pf_junto:[], plano: pl && s && s.w>0 ? pl.nome+" · semana "+s.w+" · cumprido como prescrito" : ""};
-    SOC.posts.unshift(post);
-    if (isOwner && realDb && !DEMO) realDb.collection("posts").doc(post.id).set({publicar:true, date:post.date, at:post.at, esporte:esp, outro:post.outro, titulo:tit, stats:st, legenda:post.legenda, foto:fotoTmp, selo:""}).catch(()=>{});
+    if (feedReal()){ postarReal(post).catch(()=>toast("Não consegui postar. Tente de novo.")); post.real = true; post.fogos = []; post._fogos = {}; post._coments = []; FEED.posts.unshift(post); montarSocialReal(); }
+    else SOC.posts.unshift(post);
     fotoTmp = ""; ["pf_tit","pf_km","pf_min","pf_leg","pf_esp","pf_outro","pf_junto"].forEach(x=>delete draft[x]);
     salvarSocial(); feedView = "feed"; render(); toast("Postado. Foguinho aceso.");
   });
@@ -6767,7 +6850,7 @@ function telaPainel(){
 }
 function startDemo(){
   DEMO = true; db = memDB(); me = "demo-amigo"; meName = "Amigo de teste"; meAv = ""; isOwner = false; P = null; A = null; ACESSO = {status:"aceito", via:"demo", indicadoPor:"DEMO"}; LOG = {}; step = 0;
-  Object.keys(draft).forEach(k=>delete draft[k]); SOC = {posts:[], people:{}, follows:{}, kudos:{}, notifs:[], desafios:[], desafiosGanhos:0}; seedSocial(); atualizarDemo(); carregarPostsDono(realDb);
+  Object.keys(draft).forEach(k=>delete draft[k]); SOC = {posts:[], people:{}, follows:{}, kudos:{}, notifs:[], desafios:[], desafiosGanhos:0}; seedSocial(); atualizarDemo();
   R.tab = "hoje"; R.sub = null; telaAbertura();
 }
 
@@ -7377,14 +7460,14 @@ $("fab").addEventListener("click", ()=>ir("chat"));
   cfg("cupons", d=>{ CUPONS = Array.isArray(d.lista) ? d.lista.filter(c=>!c.ate || c.ate>=key(today)) : []; });
   cfg("afiliados", d=>{ AFIL = d.map || {}; });
   try{ const [pf, lg, rc, so] = await Promise.all(["perfil","log","rascunho","social"].map(d=>db.collection(base()).doc(d).get())); if (pf.exists){ const v = pf.data(); if (v && v.perfil) P = v; } if (lg.exists) LOG = (lg.data()||{}).log||{}; if (rc.exists && !P){ const r = rc.data()||{}; Object.assign(draft, r.draft||{}); step = r.step||step; } if (so.exists) SOC = Object.assign(SOC, so.data()||{}); }catch(e){}
-  if (!SOC.posts.length && !Object.keys(SOC.people||{}).length) seedSocial();
-  atualizarDemo();
+  if (LOCAL){ if (!SOC.posts.length && !Object.keys(SOC.people||{}).length) seedSocial(); atualizarDemo(); }
+  else { SOC.posts = []; SOC.people = {}; SOC.follows = {}; SOC.kudos = {}; SOC.notifs = (SOC.notifs||[]).filter(n=>n.local); }   // feed real: tudo vem do Firestore
   if (P && LOG.pausa){ const lp = LOG.pausa; if (lp.ate && lp.ate > key(today) && !pausaAtiva()){ const pl = planoAtual(); P.pausas = PAUSAS().concat([{tipo:{"Lesão":"lesao","Doença":"doenca","Viagem":"viagem"}[lp.motivo]||"outro", motivo:"", inicio:lp.de||key(today), fim:null, plano: pl && pl.geradoEm || null}]); salvarPerfil(); } salvarLog("pausa", null); }
   if (P && P.plano && (P.plano.versao||1)<2 && P.perfil){ const np = gerarPlano(P.perfil); if (np){ P.plano = np; delete P.planoProf; P.viol = validar(np, P.perfil); salvarPerfil(); } }
   try{ const pd = await db.collection("pedidos").doc(me).get(); if (pd.exists) PEDIDO = pd.data(); }catch(e){}
   try{ const ac = await db.collection("acessos").doc(me).get(); if (ac.exists) ACESSO = ac.data(); }catch(e){}
   if (!ACESSO && !isOwner){ try{ ACESSO = JSON.parse(localStorage.getItem("ar2-acesso-"+me)||"null"); }catch(e){} }
-  db.collection("acessos").doc(me).onSnapshot(s=>{ const prev = ACESSO && ACESSO.status; ACESSO = s.exists ? s.data() : null; if (!isOwner && (ACESSO&&ACESSO.status)!==prev && entrou) rotear(); }, ()=>{});
+  db.collection("acessos").doc(me).onSnapshot(s=>{ const prev = ACESSO && ACESSO.status; ACESSO = s.exists ? s.data() : null; if (!isOwner && (ACESSO&&ACESSO.status)!==prev && entrou) rotear(); ligarFeedReal(); }, ()=>{});
   db.collection("aprovados").doc(me).onSnapshot(s=>{ const prev = A && A.status; A = s.exists ? s.data() : null; if (P && !isOwner && (A&&A.status)!==prev && entrou) rotear(); }, ()=>{});
   if (isOwner){
     const re = () => { if (R.tab==="painel" && !DEMO) telaPainel(); };
@@ -7394,7 +7477,7 @@ $("fab").addEventListener("click", ()=>ir("chat"));
     realDb.collection("acessos").onSnapshot(s=>{ s.docs.forEach(d=>{ ACS[d.id] = d.data()||{}; }); re(); }, ()=>{});
     realDb.collection("resumo").onSnapshot(s=>{ s.docs.forEach(d=>{ RES[d.id] = d.data()||{}; }); re(); }, ()=>{});
   }
-  carregarPostsDono(realDb);
+  ligarFeedReal();
   carregarGrupos();
   Pro.aoMudar = aoMudarPro;
   try{ Pro.iniciar().catch(()=>{}); }catch(e){}

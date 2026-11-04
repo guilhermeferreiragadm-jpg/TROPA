@@ -183,3 +183,49 @@ test("feed: formulário de postar tem Outro, campo do nome e validação", () =>
 test("feed: cartão de post 'outro' mostra o nome do esporte como etiqueta", () => {
   assert.match(trecho("function postFull(p){", "const nc ="), /p\.esporte==="outro" \? '<span class="pill2">'\+esc\(espNome\(p\)\)/);
 });
+
+/* ---------- feed real: funções puras ---------- */
+const trechoAte = (ini, fim) => { const i = html.indexOf(ini), j = html.indexOf(fim, i); assert.ok(i >= 0 && j > i, "marcador não achado: " + ini); return html.slice(i, j); };
+const feedFns = new Function(trechoAte("const statsParaDb =", "const FEED = {") + "\nreturn {statsParaDb, statsDeDb, fogosDe, postDeDb, pessoaDePerfil, avisosReais};")();
+
+test("feed real: stats viram lista de mapas no banco (sem lista dentro de lista) e voltam em pares", () => {
+  const db = feedFns.statsParaDb([["14", "km"], ["6:10", "/km"]]);
+  assert.deepEqual(db, [{v: "14", u: "km"}, {v: "6:10", u: "/km"}]);
+  assert.ok(!db.some(Array.isArray));
+  assert.deepEqual(feedFns.statsDeDb(db), [["14", "km"], ["6:10", "/km"]]);
+  assert.deepEqual(feedFns.statsDeDb([["1", "min"]]), [["1", "min"]]);   // posts antigos em pares continuam lendo
+  assert.deepEqual(feedFns.statsDeDb(undefined), []);
+});
+
+test("feed real: postDeDb monta o post com fogos, comentários e valores padrão", () => {
+  const p = feedFns.postDeDb("p1", {autor: "ana", at: "2026-11-04T10:00:00.000Z", titulo: "Longão", stats: [{v: "10", u: "km"}], fogos: {bia: "2026-11-04T11:00:00.000Z", caio: null}, coments: [{de: "bia", nome: "Bia Souza", t: "bora", at: "x"}]});
+  assert.equal(p.id, "p1"); assert.equal(p.autor, "ana"); assert.equal(p.esporte, "run"); assert.equal(p.real, true);
+  assert.deepEqual(p.fogos, ["bia"]);                       // fogo removido (null) não conta
+  assert.deepEqual(p.stats, [["10", "km"]]);
+  assert.equal(p.reacoes.length, 1); assert.equal(p.reacoes[0].de, "bia");
+  assert.equal(p.date, "2026-11-04");
+  const vazio = feedFns.postDeDb("p2", {});
+  assert.equal(vazio.titulo, "Treino"); assert.deepEqual(vazio.fogos, []); assert.deepEqual(vazio.junto, []);
+});
+
+test("feed real: pessoaDePerfil usa apelido, depois nome; nunca é exemplo", () => {
+  assert.equal(feedFns.pessoaDePerfil({name: "Ana Lima", apelido: "Aninha"}).nome, "Aninha");
+  assert.equal(feedFns.pessoaDePerfil({name: "Ana Lima"}).nome, "Ana Lima");
+  assert.equal(feedFns.pessoaDePerfil({}).nome, "Atleta");
+  assert.equal(feedFns.pessoaDePerfil({name: "X"}).exemplo, false);
+});
+
+test("feed real: avisos de fogo, comentário e novo seguidor; só do que é meu; lido depende do 'visto'", () => {
+  const posts = [
+    feedFns.postDeDb("p1", {autor: "eu", titulo: "Longão", fogos: {bia: "2026-11-04T11:00:00.000Z", eu: "2026-11-04T11:30:00.000Z"}, coments: [{de: "caio", nome: "Caio Reis", t: "monstro", at: "2026-11-04T12:00:00.000Z"}, {de: "eu", t: "valeu", at: "2026-11-04T12:05:00.000Z"}]}),
+    feedFns.postDeDb("p2", {autor: "bia", titulo: "Yoga", fogos: {eu: "2026-11-04T09:00:00.000Z"}})
+  ];
+  const perfis = {bia: {name: "Bia Souza"}, caio: {apelido: "Caio"}, dani: {name: "Dani", seguindo: {eu: "2026-11-04T13:00:00.000Z"}}};
+  const av = feedFns.avisosReais("eu", posts, perfis, "2026-11-04T11:45:00.000Z");
+  assert.deepEqual(av.map(a => a.id), ["sdani", "cp10", "fp1bia"]);          // mais novo primeiro; fogo/comentário do próprio eu e posts alheios ficam de fora
+  assert.match(av[0].txt, /Dani começou a te seguir/); assert.equal(av[0].ir, "pessoas");
+  assert.match(av[1].txt, /Caio comentou em Longão: monstro/);
+  assert.match(av[2].txt, /Bia deu fogo no seu post: Longão/);
+  assert.deepEqual(av.map(a => a.lido), [false, false, true]);                 // visto às 11:45: o fogo das 11:00 já foi visto
+  assert.deepEqual(feedFns.avisosReais("eu", posts, perfis, "").map(a => a.lido), [false, false, false]);
+});

@@ -17,7 +17,7 @@
   }
   if (q.get("perfil")!=="0" && !(EU && S["data/users/"+me+"/perfil"])){
     S["data/users/"+me+"/perfil"] = {perfil:{
-      apelido:"Gui", idade:28, sexo:"m", peso:78, altura:178, objetivo:"10k", temProva:"sim", dataProva:iso(mais(84)),
+      apelido:(EU ? (q.get("nome")||EU) : "Gui"), idade:28, sexo:"m", peso:78, altura:178, objetivo:"10k", temProva:"sim", dataProva:iso(mais(84)),
       corridasSem:3, kmSemana:20, maiorLongao:10, melhorTempo:"", academiaMeses:0, diasSem:4, horasDia:1, melhorHorario:"tarde", sono:7,
       q1:"nao", q2:"nao", q3:"nao", q4:"nao", q5:"nao", q6:"nao", q7:"nao", morte:"nao", ta:"nao", fumo:"nao", fratura:"nao",
       consent1:true, consent2:true, consentAt:new Date().toISOString(), termos:"2026-10-21", menor:false,
@@ -34,7 +34,7 @@
     const api = {
       doc:id=>{ const k = path+"/"+id; return {id, path:k,
         get:async()=>{ if (window.__FALHA_CHAVES && /\/chaves$/.test(k)) throw new Error("falha simulada"); return snap(k); }, set:async v=>{ S[k] = JSON.parse(JSON.stringify(v)); persistir(); avisar(k); avisar(path); },
-        update:async v=>{ S[k] = Object.assign(S[k]||{}, v); persistir(); avisar(k); avisar(path); }, delete:async()=>{ delete S[k]; persistir(); avisar(k); avisar(path); },
+        update:async v=>{ const o = S[k] = S[k]||{}; Object.keys(v).forEach(c=>{ const ps = c.split("."); let t = o; ps.slice(0,-1).forEach(x=>{ if (typeof t[x]!=="object" || t[x]===null) t[x] = {}; t = t[x]; }); t[ps[ps.length-1]] = v[c]===undefined ? null : JSON.parse(JSON.stringify(v[c])); }); persistir(); avisar(k); avisar(path); }, delete:async()=>{ delete S[k]; persistir(); avisar(k); avisar(path); },
         onSnapshot:(f)=>{ (ouvintes[k] = ouvintes[k]||[]).push(()=>f(snap(k))); setTimeout(()=>f(snap(k)),0); return ()=>{}; },
         collection:p=>col(k+"/"+p) }; },
       get:async()=>{ const d = lista(); return {docs:d, size:d.length, empty:!d.length}; },
