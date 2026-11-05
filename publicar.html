@@ -6723,7 +6723,7 @@ function bindPerfilNovo(app, p){
     conta: ()=>sheetMenuPerfil("Conta", [{t:"Dados pessoais", sub:"nome, idade, peso, rotina", id:"edt"},{t:"Assinatura", sub:(p.assinatura&&p.assinatura.plano ? p.assinatura.plano+" · " : "")+"fase de teste grátis", id:"ass"},{t:"Foto de perfil", sub:"trocar ou remover", id:"foto"}]),
     prof: ()=>sheetMenuPerfil("Profissionais", [{t:"Meus profissionais", sub:"Personal ou Nutri que acompanham você", id:"mpro"},{t:"Entrar com código de um profissional", sub:"cole o código que ele te mandou", id:"cvp"},{t:"Propostas", sub:"mudanças que seu Personal ou sua Nutri propuseram", id:"pps"}]),
     priv: ()=>sheetMenuPerfil("Privacidade", [{t:"Mostrar meu progresso para amigos", sub:"foguinho, km do mês e % de treinos. Nunca peso, sono ou comida.", id:"sh", toggle:true},{t:"Baixar meus dados", sub:"arquivo com tudo que o app guarda de você", id:"exp"},{t:"Apagar minha conta e meus dados", sub:"não dá para desfazer", id:"del", cls:"cor-ruim"}]),
-    tema2: ()=>clicaAntigo("tema"), fb2: ()=>clicaAntigo("fb"), sair2: ()=>clicaAntigo("sair"), pn2: ()=>clicaAntigo("pn")
+    tema2: ()=>{ clicaAntigo("tema"); const sm = app.querySelector('[data-pt="tema2"] small'); if (sm) sm.textContent = NOME_TEMA[temaSalvo()]; }, fb2: ()=>clicaAntigo("fb"), sair2: ()=>clicaAntigo("sair"), pn2: ()=>clicaAntigo("pn")
   };
   app.querySelectorAll("[data-pt]").forEach(b=>b.addEventListener("click", ()=>{ const f = m[b.dataset.pt]; if (f) f(); }));
 }

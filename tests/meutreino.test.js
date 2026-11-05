@@ -229,3 +229,8 @@ test("feed real: avisos de fogo, comentário e novo seguidor; só do que é meu;
   assert.deepEqual(av.map(a => a.lido), [false, false, true]);                 // visto às 11:45: o fogo das 11:00 já foi visto
   assert.deepEqual(feedFns.avisosReais("eu", posts, perfis, "").map(a => a.lido), [false, false, false]);
 });
+
+test("perfil: a linha Aparência visível atualiza o rótulo (Claro, Escuro, Automático) ao trocar o tema", () => {
+  const f = trecho("function bindPerfilNovo(app, p){", "function telaPerfil(){");
+  assert.match(f, /tema2: \(\)=>\{ clicaAntigo\("tema"\);[^}]*\[data-pt="tema2"\] small[^}]*NOME_TEMA\[temaSalvo\(\)\]/);
+});
