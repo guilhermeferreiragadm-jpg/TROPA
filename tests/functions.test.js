@@ -166,18 +166,27 @@ test("validarConversa aceita 10 ferramentas (o Coach manda 10) e recusa 17", () 
 
 test("o chat do app manda no máximo MAX_FERRAMENTAS ferramentas (Coach e Nutri)", () => {
   const html = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "publicar.html"), "utf8");
-  const ini = html.indexOf("function ferramentas(){");
-  assert.ok(ini >= 0, "function ferramentas(){ não encontrada");
-  const resto = html.slice(ini + 5);
-  const fim = resto.search(/\nfunction /);
-  const fonte = fim < 0 ? resto : resto.slice(0, fim);
-  const corte = fonte.indexOf("\n  return [");
-  assert.ok(corte > 0, "segundo return [ (nutri) não encontrado");
+  const corpo = nome => {
+    const ini = html.indexOf("function " + nome + "(");
+    assert.ok(ini >= 0, "function " + nome + "( não encontrada");
+    const resto = html.slice(ini + 5), fim = resto.search(/\nfunction /);
+    return fim < 0 ? resto : resto.slice(0, fim);
+  };
+  const nomes = t => (t.match(/\{name:"(\w+)"/g) || []).map(x => x.slice(7, -1));
+  const fonte = corpo("ferramentas");
+  const corte = fonte.indexOf("\n  return ferramentasDiario().concat(ferramentasLeitura()");
+  assert.ok(corte > 0, "ramo da nutri não encontrado");
   const coach = fonte.slice(0, corte), nutri = fonte.slice(corte);
-  const conta = t => (t.match(/\{name:"/g) || []).length;
-  for (const [nome, ramo] of [["coach", coach], ["nutri", nutri]]) {
-    const n = conta(ramo);
-    assert.ok(n >= 1 && n <= MAX_FERRAMENTAS, nome + " manda " + n + " ferramentas (teto " + MAX_FERRAMENTAS + ")");
+  // coach: ferramentas do diário e a de consulta mais as da lista, menos as que o filtro final tira
+  const filtro = /\.filter\(f=>!\/\^\(([^)]*)\)\$\/\.test\(f\.name\)\)/.exec(coach);
+  const fora = filtro ? new RegExp("^(" + filtro[1] + ")$") : /$^/;
+  const doCoach = nomes(corpo("ferramentasDiario")).concat(nomes(corpo("ferramentasConsulta")), nomes(coach).filter(n => !fora.test(n)));
+  // nutri: diário, as quatro leituras que o filtro deixa passar, as do elo com o coach e a lista própria
+  const leituras = nomes(corpo("ferramentasLeitura")).filter(n => /ver_(comida|corpo|agenda|metas)/.test(n));
+  const daNutri = nomes(corpo("ferramentasDiario")).concat(leituras, nomes(corpo("ferramentasNutriCoach")), nomes(nutri));
+  for (const [nome, lista] of [["coach", doCoach], ["nutri", daNutri]]) {
+    assert.equal(new Set(lista).size, lista.length, nome + " tem ferramenta repetida");
+    assert.ok(lista.length >= 1 && lista.length <= MAX_FERRAMENTAS, nome + " manda " + lista.length + " ferramentas (teto " + MAX_FERRAMENTAS + ")");
   }
 });
 
