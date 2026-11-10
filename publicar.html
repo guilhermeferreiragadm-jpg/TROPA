@@ -731,6 +731,8 @@ function i18nUnidades(s){
   const n = x => parseFloat(String(x).replace(",", "."));
   const f1 = v => { const r = Math.round(v*10)/10; return IDIOMA==="en" ? String(r) : String(r).replace(".", ","); };
   const f0 = v => String(Math.round(v));
+  const faixa = (re, fator, un, dig) => { s = s.replace(re, (m,a,b)=>f1(n(a)*fator)+"–"+f1(n(b)*fator)+" "+un); };
+  faixa(/(\d+(?:[.,]\d+)?)\s?[–-]\s?(\d+(?:[.,]\d+)?)\s?km\b/g, 0.621371, "mi"); faixa(/(\d+(?:[.,]\d+)?)\s?[–-]\s?(\d+(?:[.,]\d+)?)\s?kg\b/g, 2.2046226, "lb");
   s = s.replace(/\b(\d{1,2}):(\d{2})\s?\/\s?km\b/g, (m,a,b)=>{ const t = Math.round((+a*60+ +b)*1.609344); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")+" /mi"; });
   s = s.replace(/(\d+(?:[.,]\d+)?)\s?km\/h\b/g, (m,a)=>f1(n(a)*0.621371)+" mph");
   s = s.replace(/(\d+(?:[.,]\d+)?)\s?km\b/g, (m,a)=>{ const v = n(a)*0.621371; return (v>=100 ? f0(v) : f1(v))+" mi"; });
@@ -738,6 +740,8 @@ function i18nUnidades(s){
   s = s.replace(/(\d+(?:[.,]\d+)?)\s?cm\b/g, (m,a)=>f1(n(a)*0.3937008)+" in");
   s = s.replace(/(\d+(?:[.,]\d+)?)\s?ml\b/g, (m,a)=>{ const v = n(a)*0.0338140; return (v>=10 ? f0(v) : f1(v))+" fl oz"; });
   s = s.replace(/(\d+[.,]\d+)\s?L\b/g, (m,a)=>f0(n(a)*33.814)+" fl oz");
+  // rótulos e frases sem número ao lado: "Distância (km)", "Carga (kg, opcional)", "quantos km"
+  s = s.replace(/\bkm\b/g, "mi").replace(/\bkg\b/g, "lb").replace(/\bcm\b(?!\/)/g, "in");
   return s;
 }
 function traduzir(s){
@@ -753,7 +757,7 @@ function traduzir(s){
     }
     if (r===undefined){ const t = i18nTrechos(); r = t.re ? core.replace(t.re, x=>I18N_EN[x]) : core; }
   }
-  if (IDIOMA==="en") r = r.replace(/\bde(?=\s+\d)/g, "of");
+  if (IDIOMA==="en") r = r.replace(/\bde(?=\s+\d)/g, "of").replace(/(?<=\d[^\s\d]*)\s+a\s+(?=\d)/g, " to ");
   r = i18nUnidades(m[1]+r+m[3]);
   if (I18N_CACHE.size>6000) I18N_CACHE.clear();
   I18N_CACHE.set(s, r);
@@ -766,9 +770,17 @@ const I18N_ATTRS = ["placeholder","aria-label","title","alt"];
 let i18nObs = null;
 const i18nAtivo = () => IDIOMA!=="pt" || UNIDADES!=="metrico";
 function i18nNoOk(p){ if (!p) return false; const t = p.nodeName; if (t==="SCRIPT"||t==="STYLE"||t==="TEXTAREA"||t==="NOSCRIPT") return false; return !(p.closest && p.closest("[data-notr],[contenteditable=true]")); }
+const hora12 = (h, m) => { const x = +h%12 || 12; return x+(m ? ":"+m : "")+" "+(+h>=12 && +h<24 ? "PM" : "AM"); };
+function i18nHora(n, s){   // horário de relógio: 17h, 6h30 (só em <time> e no rótulo do treino; durações como 1h30 não passam por aqui)
+  if (IDIOMA!=="en") return s;
+  const p = n.parentNode; if (!p) return s;
+  if (p.nodeName==="TIME") return s.replace(/^(\d{1,2})h(\d{2})?$/, (_,h,m)=>hora12(h,m));
+  if (p.classList && p.classList.contains("hk")) return s.replace(/ · (\d{1,2})h(\d{2})?$/, (_,h,m)=>" · "+hora12(h,m));
+  return s;
+}
 function i18nTexto(n){
   const v = n.nodeValue; if (!v || !v.trim() || !i18nNoOk(n.parentNode)) return;
-  const o = I18N_ORIG.get(n), pt = (o && v===o.en) ? o.pt : v, en = traduzir(pt);
+  const o = I18N_ORIG.get(n), pt = (o && v===o.en) ? o.pt : v, en = i18nHora(n, traduzir(pt));
   if (en===v && !o) return;
   I18N_ORIG.set(n, {pt, en}); if (en!==v) n.nodeValue = en;
 }
@@ -779,12 +791,37 @@ function i18nAttr(el, a){
   if (en===v && !o) return;
   m[a] = {pt, en}; if (en!==v) el.setAttribute(a, en);
 }
+// campos numéricos com unidade: a pessoa vê e digita em lb, in ou mi; o app lê e grava sempre em kg, cm ou km
+const U_FATOR = {kg:2.2046226, cm:0.3937008, km:0.6213712};
+function i18nUnidadeDoCampo(el){
+  const id = el.id || "";
+  if (/^(f-pe|cpe|cp-kg)$/.test(id)) return "kg";
+  if (/^(f-al|cm-.+)$/.test(id)) return "cm";
+  if (/^(pk|mpk)$/.test(id)) return "km";
+  const ph = el.getAttribute("placeholder"), o = I18N_ORIG.get(el), pt = (o && o.placeholder ? o.placeholder.pt : ph) || "";
+  if (/^Carga \(kg/.test(pt)) return "kg";
+  return null;
+}
+function i18nCampoU(el){
+  if (el.__u!==undefined) return;
+  const un = UNIDADES==="imperial" ? i18nUnidadeDoCampo(el) : null; if (!un) return;
+  const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value"), f = U_FATOR[un];
+  const ida = m => { const v = parseFloat(String(m).replace(",", ".")); return isNaN(v) ? m : String(Math.round(v*f*10)/10); };
+  const volta = s => { const v = parseFloat(String(s).replace(",", ".")); return isNaN(v) ? s : String(Math.round(v/f*100)/100); };
+  let exibido = null, original = null;   // o que mostramos e o valor métrico de onde saiu (evita deriva por arredondamento)
+  el.__u = un;
+  Object.defineProperty(el, "value", { configurable:true,
+    get(){ const s = proto.get.call(this); return (exibido!==null && s===exibido) ? original : volta(s); },
+    set(v){ original = String(v==null ? "" : v); exibido = original==="" ? "" : ida(original); proto.set.call(this, exibido); } });
+  const atual = proto.get.call(el); if (atual!=="") el.value = atual;
+}
 function i18nSub(raiz){
   if (!raiz) return;
   if (raiz.nodeType===3){ i18nTexto(raiz); return; }
   if (raiz.nodeType!==1) return;
   const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) i18nTexto(n);
   const els = [raiz].concat(Array.prototype.slice.call(raiz.querySelectorAll("[placeholder],[aria-label],[title],[alt]")));
+  (raiz.matches && raiz.matches("input") ? [raiz] : []).concat(Array.prototype.slice.call(raiz.querySelectorAll("input"))).forEach(i18nCampoU);
   els.forEach(el=>I18N_ATTRS.forEach(a=>{ if (el.hasAttribute && el.hasAttribute(a)) i18nAttr(el, a); }));
 }
 function i18nAplicar(){
