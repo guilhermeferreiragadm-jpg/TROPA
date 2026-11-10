@@ -65,7 +65,9 @@ function dosArquivos() {
   const fontes = [];
   const html = fs.readFileSync(path.join(raiz, "publicar.html"), "utf8");
   const a = html.indexOf("<script>") + 8, b = html.indexOf("</script>", a);
-  fontes.push(["publicar.html", html.slice(a, b)]);
+  // o dicionário embutido não é texto do app: sem isto o extrator leria o próprio dicionário
+  const semDic = html.slice(a, b).replace(/(\/\* @i18n:dict \*\/)[\s\S]*?(\/\* @i18n:dictend \*\/)/, "$1{}$2").replace(/(\/\* @i18n:pad \*\/)[\s\S]*?(\/\* @i18n:padend \*\/)/, "$1[]$2");
+  fontes.push(["publicar.html", semDic]);
   const shim = path.join(raiz, "app", "shim");
   fs.readdirSync(shim).filter(f => f.endsWith(".js")).forEach(f => fontes.push(["app/shim/" + f, fs.readFileSync(path.join(shim, f), "utf8")]));
   fontes.push(["functions/lib.js", fs.readFileSync(path.join(raiz, "functions", "lib.js"), "utf8")]);
