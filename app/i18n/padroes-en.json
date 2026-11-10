@@ -1,0 +1,4 @@
+[
+["^semana (\\d+) de (\\d+) · (\\d+) dias? p\\/ (?:a |o |os |as )?(.+)$", "", "week $1 of $2 · $3 days to $T4"],
+["^semana (\\d+) de (\\d+) · (.+)$", "", "week $1 of $2 · $T3"]
+]
