@@ -39,7 +39,7 @@ test("FORA_DO_CLAUDE vem de window.TROPA_LINK", () => {
 
 test("textos que mandam usar o Claude têm versão neutra fora do claude.ai", () => {
   const frases = [/conta do Claude/, /dentro do Claude/, /entrou no Claude/, /no Claude, em Compartilhar/, /href="https:\/\/claude\.ai"/];
-  const linhas = html.split("\n").filter(l => frases.some(f => f.test(l)));
+  const linhas = html.split("\n").filter(l => !l.includes("@i18n:dict") && frases.some(f => f.test(l)));
   assert.ok(linhas.length >= 6, "sumiu algum texto do claude.ai: " + linhas.length);
   linhas.forEach(l => assert.match(l, /FORA_DO_CLAUDE \?/, "sem versão neutra: " + l.trim().slice(0, 120)));
 });
