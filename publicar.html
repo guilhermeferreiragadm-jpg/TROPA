@@ -6053,7 +6053,7 @@ const TIPOS_FIXO = {
   corrida:{nome:"Corrida", k:"run", min:40, re:null, ef:"3/10", passos:[]},
   natacao:{nome:"Natação", k:"swim", min:40, re:null, ef:"4/10", passos:[]},
   bike:{nome:"Bike", k:"bike", min:60, re:null, ef:"3–4/10", passos:["Pedal em ritmo de conversa"]},
-  outro:{nome:"Treino fixo", k:"gym", min:45, re:null, ef:"5/10", passos:[]},
+  outro:{nome:"Outro", k:"gym", min:45, re:null, ef:"5/10", passos:[]},
 };
 function extrasDe(){ const p = P && P.perfil; if (!p) return {fixos:[], metas:[]}; if (!p.extras) p.extras = {fixos:[], metas:[]}; p.extras.fixos = p.extras.fixos||[]; p.extras.metas = p.extras.metas||[]; return p.extras; }
 function fixoTreino(f){ const tp = TIPOS_FIXO[f.tipo] || TIPOS_FIXO.outro; return {k:tp.k, t:f.nome||tp.nome, min:+f.min||tp.min, ef:tp.ef, passos:tp.passos.slice(), fixo:true, obrig:!!f.obrig, fixoId:f.id, motivo:"Compromisso fixo seu"+(f.obrig?" (obrigatório)":"")+": "+(f.nome||tp.nome)+" toda "+(f.dias||[]).map(i=>DIAS_PL[i]).join(", ")+"."}; }
@@ -6260,14 +6260,19 @@ function sheetFixo(id){
   let tipo = f0.tipo, dias = (f0.dias||[]).slice();
   ov.innerHTML = '<div class="dim" id="dim"></div><div class="sheet" role="dialog"><span class="grab"></span><h2 class="h2">'+(id?"Editar compromisso":"Compromisso fixo")+'</h2><p class="s">Algo que você faz toda semana, além do objetivo principal.</p>'+
     '<span class="k">o que é</span><div class="chips" id="fxt">'+Object.keys(TIPOS_FIXO).map(k=>'<button type="button" class="chip" data-v="'+k+'" aria-pressed="'+(k===tipo)+'">'+esc(TIPOS_FIXO[k].nome)+'</button>').join("")+'</div>'+
-    '<div class="fld"><label for="fxn">Nome</label><input class="inp" id="fxn" maxlength="40" value="'+esc(f0.nome)+'"></div>'+
+    '<div class="fld"><label for="fxn" id="fxnl">'+(tipo==="outro"?"Qual é o compromisso?":"Nome")+'</label><input class="inp" id="fxn" maxlength="40" placeholder="'+(tipo==="outro"?"Ex.: jiu-jitsu, vôlei, yoga":"")+'" value="'+esc(f0.nome)+'"></div>'+
     '<span class="k">em quais dias</span><div class="chips" id="fxd">'+DIAS.map((d,i)=>'<button type="button" class="chip" data-v="'+i+'" aria-pressed="'+dias.includes(i)+'">'+d+'</button>').join("")+'</div>'+
     '<div class="fld"><label for="fxm">Duração (min)</label><input class="inp" id="fxm" type="number" inputmode="numeric" value="'+(+f0.min||60)+'"></div>'+
     '<label class="chk"><input type="checkbox" id="fxo"'+(f0.obrig?' checked':'')+'><span><b>Obrigatório</b>: o coach não retira nem troca, só por dor forte ou saúde.</span></label>'+
     '<button type="button" class="btn go" id="fxok">Salvar</button>'+(id?'<button type="button" class="btn" id="fxdel">Remover</button>':'')+'<p class="msg" id="fxm2"></p><div id="fxres"></div></div>';
-  $("fxt").onclick = e=>{ const c = e.target.closest("[data-v]"); if (!c) return; tipo = c.dataset.v; $("fxt").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===c))); if (!id || $("fxn").value===f0.nome || !$("fxn").value){ $("fxn").value = TIPOS_FIXO[tipo].nome; $("fxm").value = TIPOS_FIXO[tipo].min; } };
+  $("fxt").onclick = e=>{ const c = e.target.closest("[data-v]"); if (!c) return; tipo = c.dataset.v; $("fxt").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===c)));
+    const outro = tipo==="outro", padrao = !$("fxn").value || Object.keys(TIPOS_FIXO).some(k=>TIPOS_FIXO[k].nome===$("fxn").value);
+    $("fxnl").textContent = outro ? "Qual é o compromisso?" : "Nome"; $("fxn").placeholder = outro ? "Ex.: jiu-jitsu, vôlei, yoga" : "";
+    if (!id || $("fxn").value===f0.nome || padrao){ $("fxn").value = outro ? "" : TIPOS_FIXO[tipo].nome; $("fxm").value = TIPOS_FIXO[tipo].min; }
+    if (outro) $("fxn").focus(); };
   $("fxd").onclick = e=>{ const c = e.target.closest("[data-v]"); if (!c) return; const i = +c.dataset.v; dias = dias.includes(i) ? dias.filter(x=>x!==i) : dias.concat([i]); c.setAttribute("aria-pressed", String(dias.includes(i))); };
-  $("fxok").onclick = async ()=>{ if (!dias.length){ $("fxm2").textContent = "Escolha pelo menos um dia."; return; }
+  $("fxok").onclick = async ()=>{ if (tipo==="outro" && !$("fxn").value.trim()){ $("fxm2").textContent = "Escreva qual é o compromisso."; $("fxn").focus(); return; }
+    if (!dias.length){ $("fxm2").textContent = "Escolha pelo menos um dia."; return; }
     const f = {id:id||("f"+Date.now().toString(36)), tipo, nome:$("fxn").value.trim().slice(0,40)||TIPOS_FIXO[tipo].nome, dias:dias.slice().sort(), min:Math.max(10,Math.min(240,+$("fxm").value||TIPOS_FIXO[tipo].min)), obrig:$("fxo").checked};
     ex.fixos = ex.fixos.filter(x=>x.id!==f.id).concat([f]); await salvarPerfil(); await lembrar("Compromisso fixo: "+f.nome+" toda "+f.dias.map(i=>DIAS_PL[i]).join("/")+(f.obrig?" (obrigatório)":""));
     const fortes = diasFortesSemana(iniSemana()); const aviso = fortes>2 ? '<div class="flag">Com isso a sua semana fica com '+fortes+' dias fortes. O ideal são no máximo 2: o coach pode aliviar os outros treinos, mas vale conversar com ele.</div>' : '<div class="flag ok">Salvo. Já aparece na sua semana.</div>';
