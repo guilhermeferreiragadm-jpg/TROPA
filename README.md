@@ -126,3 +126,13 @@ Protege contra terceiros e contra leitura futura depois de revogar. Não protege
 - A foto de perfil só aparece para a própria pessoa; no feed os amigos aparecem com iniciais.
 - A fase 3 (corpo) foi validada só por testes de funções puras e leitura de código; falta conferir dentro do artifact. Menores de 18 anos registram só o peso: sem medidas, foto, tendência, faixa de calorias ou lembrete. A faixa de calorias não substitui nutricionista.
 - A fase 4 (grupos, parceiro de responsa e importação de treino) foi validada só por testes de funções puras e leitura de código; falta conferir dentro do artifact. As regras de banco `grupos` e `grupos/{self}` precisam ser declaradas no publish. O fluxo de grupos e a importação ainda não foram exercitados no app publicado.
+
+## Idioma e unidades (inglês dos EUA)
+
+- Perfil tem as linhas **Idioma** (Português ou English) e **Unidades** (métrico ou imperial). Na primeira abertura, `navigator.language` começando com "en" liga inglês e imperial. A escolha vale na hora e é salva no aparelho e na conta.
+- O português continua sendo a fonte: o que se grava segue em português e em km, kg, cm e ml. A tradução e a conversão acontecem só na hora de mostrar (bloco `@i18n` do `publicar.html`: dicionário embutido, padrões para frases montadas, troca de trechos e conversão de unidades, aplicados ao DOM por um `MutationObserver`). Campos digitados (peso, altura, medidas, distância, carga) mostram e leem em lb, in e mi e entregam sempre métrico ao app.
+- Horários de relógio viram AM/PM só em elementos de horário. A semana de treino segue começando na segunda.
+- O coach, a Nutri e as demais chamadas de IA recebem uma instrução de idioma e de unidades (`envolverSample`), então respondem em inglês americano e convertendo dos dados métricos.
+- Dicionário: `app/i18n/en.json` (gerado) mais `extra-en.json` (manual) e `padroes-en.json` (regex com `$1` e `$T1` para traduzir um grupo). Textos mantidos de propósito (nomes, instruções para a IA): `mantidos.json`.
+- Texto novo no código? O teste `tests/i18n-cobertura.test.js` falha listando o que falta. Traduza em `app/i18n/extra-en.json` e rode `node app/scripts/i18n-embutir.js` (reembute o dicionário no `publicar.html`). Scripts em `app/scripts`: `i18n-extrair.js` (lista os textos), `i18n-validar.js` (confere uma tradução), `i18n-juntar.js` (junta lotes), `i18n-embutir.js` (embute).
+- Fora do escopo por enquanto: textos jurídicos (termos e privacidade para os EUA), moeda, outros idiomas, semana começando no domingo.
